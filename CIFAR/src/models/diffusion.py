@@ -181,7 +181,7 @@ class Diffusion_MLP(nn.Module):
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
             
-            outputs = []
+            outputs = [x[0]]
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
                 out = self.forward_step(x[t], t_tensor)
