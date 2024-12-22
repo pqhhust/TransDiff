@@ -85,12 +85,16 @@ class KEP_SVGPAttention(nn.Module):
         else:
             samples = mean + (v2.permute(0,1,3,2,4) @ torch.randn(B, self.num_heads, N, mean.shape[3], 1).to(x.device)).squeeze()
         attn_out = self.final_weight(samples)
+        mean = self.final_weight(mean)
         if self.concate:
             attn_out = self.embed_len_weight(attn_out.permute(0,1,3,2)).permute(0,1,3,2)
+            mean = self.embed_len_weight(mean.permute(0,1,3,2)).permute(0,1,3,2)
         attn_out = attn_out.transpose(1, 2).reshape(B, N, C)
+        mean = mean.transpose(1, 2).reshape(B, N, C)
         attn_out = attn_out + torch.randn_like(attn_out) * (1e-5)
         # attn_out = self.proj(attn_out)
         attn_out = self.proj_drop(attn_out)
+        mean = self.proj_drop(mean)
 
         ## compute the KL divergence 
         # Tr(\Lambda^{-2}S_{uu}) term 
@@ -249,7 +253,7 @@ class ViT(nn.Module):
         if self.attn_type == "softmax":
             return out
         elif self.attn_type == "kep_svgp":
-            return out, score_list, Lambda_inv_list, kl_list, x_t
+            return out, score_list, Lambda_inv_list, kl_list, x_t, means
 
 def vit_cifar(args, attn_type, num_classes, ksvd_layers, low_rank, rank_multi):
     return ViT(args=args, attn_type=attn_type, ksvd_layers=ksvd_layers, num_classes=num_classes, low_rank=low_rank, rank_multi=rank_multi, \

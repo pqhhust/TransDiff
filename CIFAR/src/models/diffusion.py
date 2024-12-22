@@ -105,7 +105,7 @@ class Diffusion_UNet1D(Unet1D):
             return outputs
         
 class Diffusion_MLP(nn.Module):
-    def __init__(self, d_model=384, hdim1=384*2, hdim2=384*2, hdim3=384*2, dropout=0.1, ViT_depth=7):
+    def __init__(self, d_model=384, hdim1=384*2, hdim2=384*4, hdim3=384*2, dropout=0.1, ViT_depth=7):
         super().__init__()
         self.d_model = d_model
         self.hdim1 = hdim1
@@ -181,7 +181,7 @@ class Diffusion_MLP(nn.Module):
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
             
-            outputs = [x[0]]
+            outputs = []
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
                 out = self.forward_step(x[t], t_tensor)

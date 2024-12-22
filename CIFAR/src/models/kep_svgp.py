@@ -89,8 +89,8 @@ class KEP_SVGPAttention(nn.Module):
         if self.concate:
             attn_out = self.embed_len_weight(attn_out.permute(0,1,3,2)).permute(0,1,3,2)
         attn_out = attn_out.transpose(1, 2).reshape(B, N, C)
-        attn_out = attn_out + torch.randn_like(attn_out) * (1e-5)
-        # attn_out = self.proj(attn_out)
+        # attn_out = attn_out + torch.randn_like(attn_out) * (1e-5) # just some tests
+        # attn_out = self.proj(attn_out) # original code also comment this line
         attn_out = self.proj_drop(attn_out)
 
         ## compute the KL divergence 
