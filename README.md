@@ -1,1 +1,18 @@
 # TransDiff
+## CIFAR
+First, create a conda environment and download packages for experiments
+```
+conda create -n transdiff python=3.8
+conda activate transdiff
+pip install -r requirements.txt
+```
+
+In the ```CIFAR/data/scripts``` directory run the following command
+```
+bash download_cifar.sh
+```
+
+The commands for training and testing are placed in the ```CIFAR/experiments/run_scripts``` directory
+
+## Cola
+## IMDB
