@@ -1,0 +1,5 @@
+data/CIFAR10
+data/CIFAR100
+wandb
+__pycache__
+CIFAR10_out 
