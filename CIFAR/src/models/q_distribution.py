@@ -85,16 +85,16 @@ class KEP_SVGPAttention(nn.Module):
         else:
             samples = mean + (v2.permute(0,1,3,2,4) @ torch.randn(B, self.num_heads, N, mean.shape[3], 1).to(x.device)).squeeze()
         attn_out = self.final_weight(samples)
-        # mean = self.final_weight(mean)
+        mean = self.final_weight(mean)
         if self.concate:
             attn_out = self.embed_len_weight(attn_out.permute(0,1,3,2)).permute(0,1,3,2)
             mean = self.embed_len_weight(mean.permute(0,1,3,2)).permute(0,1,3,2)
         attn_out = attn_out.transpose(1, 2).reshape(B, N, C)
-        # mean = mean.transpose(1, 2).reshape(B, N, C)
+        mean = mean.transpose(1, 2).reshape(B, N, C)
         attn_out = attn_out + torch.randn_like(attn_out) * (1e-5)
         # attn_out = self.proj(attn_out)
         attn_out = self.proj_drop(attn_out)
-        # mean = self.proj_drop(mean)
+        mean = self.proj_drop(mean)
 
         ## compute the KL divergence 
         # Tr(\Lambda^{-2}S_{uu}) term 
@@ -110,7 +110,7 @@ class KEP_SVGPAttention(nn.Module):
         # s term, which is a constant
         kl -= 0.5 * self.low_rank * self.low_rank * self.num_heads
 
-        return attn_out, [escore, rscore, self.we, self.wr], lambda_sqrt_inv_diag, kl
+        return attn_out, [escore, rscore, self.we, self.wr], lambda_sqrt_inv_diag, kl, mean
 
 class TransformerEncoder(nn.Module):
     def __init__(self, args, attn_type, feats, mlp_hidden=128, head=8, dropout=0., embed_len=64, \
@@ -138,15 +138,17 @@ class TransformerEncoder(nn.Module):
         if self.attn_type == "softmax":
             out = self.msa(out)
         elif self.attn_type == "kep_svgp":
-            out, scores, Lambda_inv, kl = self.msa(out)
+            out, scores, Lambda_inv, kl, mean = self.msa(out)
 
         out = out + x
         out = self.mlp(self.la2(out)) + out
+        mean = mean + x
+        mean = self.mlp(self.la2(mean)) + mean
 
         if self.attn_type == "softmax":
-            return out
+            return out, out
         elif self.attn_type == "kep_svgp":
-            return out, scores, Lambda_inv, kl
+            return out, scores, Lambda_inv, kl, mean
 
 
 class MultiHeadSelfAttention(nn.Module):
@@ -215,7 +217,7 @@ class ViT(nn.Module):
         score_list = []
         Lambda_inv_list = []
         kl_list = []
-        # means = []
+        means = []
         out = self._to_words(x)
         out = self.emb(out)
         if self.is_cls_token:
@@ -226,14 +228,14 @@ class ViT(nn.Module):
             if enc.attn_type == "softmax":
                 out = enc(out)
                 x_t.append(out)
-                # means.append(out)
+                means.append(out)
             elif enc.attn_type == "kep_svgp":
-                out, scores, Lambda_inv, kl= enc(out)
+                out, scores, Lambda_inv, kl, mean = enc(out)
                 score_list.append(scores)
                 Lambda_inv_list.append(Lambda_inv)
                 kl_list.append(kl)
                 x_t.append(out)
-                # means.append(mean)
+                means.append(mean)
         
         if self.is_cls_token:
             out = out[:,0]
@@ -244,7 +246,7 @@ class ViT(nn.Module):
         if self.attn_type == "softmax":
             return out
         elif self.attn_type == "kep_svgp":
-            return out, score_list, Lambda_inv_list, kl_list, x_t
+            return out, score_list, Lambda_inv_list, kl_list, x_t, means
 
 def vit_cifar(args, attn_type, num_classes, ksvd_layers, low_rank, rank_multi):
     return ViT(args=args, attn_type=attn_type, ksvd_layers=ksvd_layers, num_classes=num_classes, low_rank=low_rank, rank_multi=rank_multi, \

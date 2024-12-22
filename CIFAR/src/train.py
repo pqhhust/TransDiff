@@ -173,11 +173,11 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
 
         # loss = ce_criterion(output, targets)
         with torch.no_grad(): #to be uncomment
-            out, score_list, Lambda_inv_list, kl_list, x_t_from_ViT= vit_model(inputs)
+            out, score_list, Lambda_inv_list, kl_list, x_t_from_ViT, means_x_minus = vit_model(inputs)
         x_t_from_diffusion = diffusion_model(x_t_from_ViT, train=True)
         # print(x_t_from_diffusion[0].shape) # for debug only
         # print(means_x_minus[0].shape) # for debug only
-        loss = compute_loss_diffusion(mse_criterion, x_t_from_diffusion, x_t_from_ViT) #to be uncomment
+        loss = compute_loss_diffusion(mse_criterion, x_t_from_diffusion, means_x_minus)#to be uncomment
         loss.backward()
         optimizer.step()
 
