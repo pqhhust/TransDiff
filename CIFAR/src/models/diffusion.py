@@ -44,7 +44,7 @@ class Diffusion(DiT):
             return x
         else:
             assert len(x) - 1 == self.ViT_depth
-            outputs = [x[0]]
+            outputs = []
             for t in range(self.ViT_depth):
                 out = x[t]
                 t = self.t_embedder(torch.tensor([t], device=out.device))
@@ -97,7 +97,7 @@ class Diffusion_UNet1D(Unet1D):
             return x.transpose(1, 2)
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
-            outputs = [x[0]]
+            outputs = []
             # print(f'shape of x[0] {x[0].shape}')
             for t in range(self.ViT_depth):
                 out = super().forward(x=x[t].transpose(1, 2), time=t*torch.ones((x[t].shape[0],), device=x[t].device), x_self_cond=None)

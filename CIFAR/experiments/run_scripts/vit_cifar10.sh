@@ -131,6 +131,7 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test.py \
 --gpu 1 \
 --nb-run 1 \
 --model diffusion \
+--backbone mlp \
 --save-dir ../experiments/CIFAR10_out/diffusion \
 --pretrained_dir ../experiments/CIFAR10_out/vit_out_cat \
 --seed 0 \
