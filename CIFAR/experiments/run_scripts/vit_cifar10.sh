@@ -51,25 +51,25 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 main.py \
 Cifar10
 
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test.py \
---depth 5 \
+--depth 7 \
 --attn-type kep_svgp \
 --concate \
---ksvd-layers 5 \
---num_heads 4 \
---hdim 128 \
+--ksvd-layers 7 \
+--num_heads 12 \
+--hdim 384 \
 --eta-ksvd 10 \
 --batch-size 128 \
 --gpu 1 \
 --nb-run 1 \
 --model vit_cifar \
---save-dir ../../experiments/CIFAR10_out/vit_out_cat \
---epsilon 0.1 \
+--save-dir ../experiments/CIFAR10_out/vit_out_cat \
 --seed 0 \
---ood-data cifar100 \
---ood-train-dir ../data/CIFAR100/train \
---ood-val-dir ../data/CIFAR100/val \
---ood-test-dir ../data/CIFAR100/test \
 Cifar10
+# --ood-data cifar100 \
+# --ood-train-dir ../data/CIFAR100/train \
+# --ood-val-dir ../data/CIFAR100/val \
+# --ood-test-dir ../data/CIFAR100/test \
+# Cifar10
 
 ########## e(x)+r(x) ##########
 # one-layer of KSVD
@@ -122,17 +122,17 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 main.py \
 --backbone mlp \
 Cifar10
 
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test_diffusion.py \
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test.py \
 --attn-type kep_svgp \
 --concate \
---ksvd-layers 1 \
+--ksvd-layers 7 \
 --eta-ksvd 10 \
 --batch-size 128 \
 --gpu 1 \
 --nb-run 1 \
 --model diffusion \
---save-dir ../experiments/CIFAR10_out/vit_out_cat \
---epsilon 0.1 \
+--save-dir ../experiments/CIFAR10_out/diffusion \
+--pretrained_dir ../experiments/CIFAR10_out/vit_out_cat \
 --seed 0 \
 Cifar10
 

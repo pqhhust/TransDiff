@@ -32,7 +32,7 @@ def get_args_parser():
     parser.add_argument('--num_heads', type=int, default=12)
     
     ## diffusion
-    parser.add_argument('--backbone', default='diffusion', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer'], help='Backbone name')
+    parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer'], help='Backbone name')
     parser.add_argument('--pretrained_dir', default=None, type=str, help='Pretrained diffusion model directory')
 
     subparsers = parser.add_subparsers(title="dataset setting", dest="subcommand")
@@ -42,9 +42,9 @@ def get_args_parser():
                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                     help="Dataset parser for training on Cifar10")
     Cifar10.add_argument('--dataset', default='cifar10', type=str, help='Dataset name')
-    Cifar10.add_argument("--train-dir", type=str, default='./data/CIFAR10/train',help="Cifar10 train directory")
-    Cifar10.add_argument("--val-dir", type=str, default='./data/CIFAR10/val', help="Cifar10 val directory")
-    Cifar10.add_argument("--test-dir", type=str, default='./data/CIFAR10/test', help="Cifar10 test directory")
+    Cifar10.add_argument("--train-dir", type=str, default='../data/CIFAR10/train',help="Cifar10 train directory")
+    Cifar10.add_argument("--val-dir", type=str, default='../data/CIFAR10/val', help="Cifar10 val directory")
+    Cifar10.add_argument("--test-dir", type=str, default='../data/CIFAR10/test', help="Cifar10 test directory")
     Cifar10.add_argument("--corruption-dir", type=str, default='./data', help="Cifar10-C directory")
     Cifar10.add_argument("--nb-cls", type=int, default=10, help="number of classes in Cifar10")
 
@@ -54,18 +54,18 @@ def get_args_parser():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      help="Dataset parser for training on Cifar100")
     Cifar100.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
-    Cifar100.add_argument("--train-dir", type=str, default='./data/CIFAR100/train', help="Cifar100 train directory")
-    Cifar100.add_argument("--val-dir", type=str, default='./data/CIFAR100/val', help="Cifar100 val directory")
-    Cifar100.add_argument("--test-dir", type=str, default='./data/CIFAR100/test', help="Cifar100 test directory")
+    Cifar100.add_argument("--train-dir", type=str, default='../data/CIFAR100/train', help="Cifar100 train directory")
+    Cifar100.add_argument("--val-dir", type=str, default='../data/CIFAR100/val', help="Cifar100 val directory")
+    Cifar100.add_argument("--test-dir", type=str, default='../data/CIFAR100/test', help="Cifar100 test directory")
     Cifar100.add_argument("--nb-cls", type=int, default=100, help="number of classes in Cifar100")
 
 
     # diffusion setting
-    Diffusion = subparsers.add_parser("Diffusion",
-                                     description='Dataset parser for training on Diffusion',
-                                     add_help=True,
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                     help="Dataset parser for training on Diffusion")
-    Diffusion.add_argument('--backbone', default='diffusion', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer'], help='Backbone name')
+    # Diffusion = subparsers.add_parser("Diffusion",
+                                    #  description='Dataset parser for training on Diffusion',
+                                    #  add_help=True,
+                                    #  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                    #  help="Dataset parser for training on Diffusion")
+    # Diffusion.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer'], help='Backbone name')
 
     return parser.parse_args()

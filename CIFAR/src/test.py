@@ -25,6 +25,13 @@ def process_results_ood(args, loader, ood_loader, model, metrics, logger, method
     log = [f"{key}: {res[key]:.3f}" for key in res]
     logger.info(f'################## \n ---> Test {method_name} results：\t' + '\t'.join(log))
 
+def process_results_diffusion(args, loader, model, metrics, logger, method_name, results_storage, vit_model):
+    res = val.validation_diffusion(loader, model, args, vit_model)
+    for metric in metrics:
+        results_storage[metric].append(res[metric])
+    log = [f"{key}: {res[key]:.3f}" for key in res]
+    logger.info(f'################## \n ---> Test {method_name} results：\t' + '\t'.join(log))
+
 
 def test_cifar_c_corruptions(dataset, model, corruption_dir, transform_test, batch_size, metrics, logger):
     if dataset == "cifar10":
@@ -38,6 +45,23 @@ def test_cifar_c_corruptions(dataset, model, corruption_dir, transform_test, bat
                 corrupted_test_loader = DataLoader(dataset=corrupted_test_dataset, batch_size=batch_size, shuffle=False,
                                                num_workers=4, drop_last=False)
                 res = val.validation(corrupted_test_loader, model, args)
+                for metric in metrics:
+                    cor_results_storage[corruption][severity][metric].append(res[metric])
+
+    return cor_results_storage
+
+def test_cifar_c_corruptions_diffusion(dataset, model, corruption_dir, transform_test, batch_size, metrics, logger, vit_model):
+    if dataset == "cifar10":
+        cor_results_storage = {corruption: {severity: {metric: [] for metric in metrics} for severity in range(1, 6)} for
+                           corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
+        for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets:
+            for severity in range(1, 6):
+                logger.info(f"Testing on corruption: {corruption}, severity: {severity}")
+                corrupted_test_dataset = datasets.CIFARC.CIFAR10C(root=corruption_dir, transform=transform_test, subset=corruption,
+                                                            severity=severity, download=True)
+                corrupted_test_loader = DataLoader(dataset=corrupted_test_dataset, batch_size=batch_size, shuffle=False,
+                                               num_workers=4, drop_last=False)
+                res = val.validation_diffusion(corrupted_test_loader, model, args, vit_model)
                 for metric in metrics:
                     cor_results_storage[corruption][severity][metric].append(res[metric])
 
@@ -143,7 +167,7 @@ def test_diffusion():
         pretrained_ViT.cuda()
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_diffusion_{args.backbone}.pth')))
         net = net.cuda()
-        process_results(args, test_loader, net, metrics, logger, "MSP", results_storage, pretrained_ViT)
+        process_results_diffusion(args, test_loader, net, metrics, logger, "MSP", results_storage, pretrained_ViT)
 
         if args.dataset == 'cifar10':
             transform_test = torchvision.transforms.Compose([
@@ -151,7 +175,7 @@ def test_diffusion():
                 torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
             ])
 
-            cor_results_storage = test_cifar_c_corruptions(args.dataset, net, args.corruption_dir, transform_test, args.batch_size,
+            cor_results_storage = test_cifar_c_corruptions_diffusion(args.dataset, net, args.corruption_dir, transform_test, args.batch_size,
                                                             metrics, logger, pretrained_ViT)
             cor_results = {corruption: {
                 severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
@@ -166,7 +190,7 @@ def test_diffusion():
 
 
 if __name__ == '__main__':
-    args = utils.test_option.get_args_parser()
+    args = utils.test_utils.get_args_parser()
     set_seed(args.seed)
     if args.ood_data is None and args.model == 'diffusion':
         test_diffusion()
