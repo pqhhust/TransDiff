@@ -76,6 +76,7 @@ class KEP_SVGPAttention(nn.Module):
         s_sqrt = torch.exp(self.log_ssqrt) # (1, num_heads, low_rank, low_rank)
         s_sqrt_diag = torch.diag_embed(s_sqrt) # (1, num_heads, low_rank, low_rank, low_rank)
         s_sqrt_local = s_sqrt_diag + torch.tril(self.s_sqrt_low_triangle, diagonal=-1) # (1, num_heads, low_rank, low_rank, low_rank) 
+        
         # choleskey factor of the covariance matrix
         # the last dimension should be the [d] dimension
         v2 = v1.unsqueeze(2) @ s_sqrt_local # (batch_size, num_heads, low_rank, 2*seq_len / seq_len, low_rank([d] dimension))
