@@ -119,7 +119,7 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 main.py \
 --weight-decay 5e-5 \
 --save-dir ../experiments/CIFAR10_out/diffusion \
 --pretrained_dir ../experiments/CIFAR10_out/vit_out_cat \
---backbone mlp \
+--backbone mlp_mixer \
 Cifar10
 
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test.py \

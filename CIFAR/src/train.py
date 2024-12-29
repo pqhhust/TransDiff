@@ -163,13 +163,12 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
 
     for i, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.cuda(), targets.cuda()
-
         optimizer.zero_grad()
         output = vit_model._to_words(inputs)
         output = vit_model.emb(output)
         output = output + vit_model.pos_emb
-        output = diffusion_model(output)
-        output = vit_model.fc(output.mean(1))
+        # output = diffusion_model(output)
+        # output = vit_model.fc(output.mean(1))
 
         # loss = ce_criterion(output, targets)
         with torch.no_grad(): #to be uncomment
@@ -199,3 +198,65 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
 
     # Replace writer.add_scalar with wandb.log
     wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
+
+def train_diffusion_stage2(train_loader, diffusion_model, optimizer, epoch, logger, args, vit_model):
+    diffusion_model.eval()
+    vit_model.train()
+    for param in diffusion_model.parameters():
+        param.requires_grad = False
+
+    for param in vit_model.parameters():
+        param.requires_grad = False
+
+    for param in vit_model.fc.parameters():
+        param.requires_grad = True
+    
+    # Define loss function
+    ce_criterion = nn.CrossEntropyLoss()
+
+    # Initialize training logs
+    train_log = {
+        'Top1 Acc.': utils.utils.AverageMeter(),
+        'Tot. Loss': utils.utils.AverageMeter(),
+        'LR': utils.utils.AverageMeter(),
+    }
+
+    msg = '####### --- Training Epoch {:d} --- #######'.format(epoch)
+
+    logger.info(msg)
+
+    for i, (inputs, targets) in enumerate(train_loader):
+        inputs, targets = inputs.cuda(), targets.cuda()
+
+        optimizer.zero_grad()
+        output = vit_model._to_words(inputs)
+        output = vit_model.emb(output)
+        output = output + vit_model.pos_emb
+        output = diffusion_model(output)
+        output = vit_model.fc(output.mean(1))
+
+        loss = ce_criterion(output, targets)
+        loss.backward()
+        optimizer.step()
+
+        prec, _ = utils.utils.accuracy(output, targets)
+
+        for param_group in optimizer.param_groups:
+            lr = param_group["lr"]
+            break
+
+        train_log['Tot. Loss'].update(loss.item(), inputs.size(0)
+        )
+        train_log['Top1 Acc.'].update(prec.item(), inputs.size(0))
+        train_log['LR'].update(lr, inputs.size(0))
+
+        if i % 100 == 99:
+            log = ['LR : {:.5f}'.format(train_log['LR'].avg)] + [
+                key + ': {:.2f}'.format(train_log[key].avg) for key in train_log if key != 'LR'
+            ]
+            msg = 'Epoch {:d} \t Batch {:d}\t'.format(epoch, i) + '\t'.join(log)
+            logger.info(msg)
+            for key in train_log:
+                train_log[key] = utils.utils.AverageMeter()
+
+    

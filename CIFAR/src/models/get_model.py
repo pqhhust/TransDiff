@@ -14,6 +14,8 @@ def get_model(model_name, nb_cls, logger, args):
             net = models.diffusion.Diffusion_UNet1D()
         if args.backbone == 'transformer':
             net = models.diffusion.Diffusion_Transformer()
+        if args.backbone == 'mlp_mixer':
+            net = models.diffusion.Diffusion_MLPMixer()
     msg = 'Using {} ...'.format(model_name)
     logger.info(msg)
     return net

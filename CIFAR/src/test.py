@@ -191,6 +191,7 @@ def test_diffusion():
 
 if __name__ == '__main__':
     args = utils.test_utils.get_args_parser()
+    print(args)
     set_seed(args.seed)
     if args.ood_data is None and args.model == 'diffusion':
         test_diffusion()

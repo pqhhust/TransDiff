@@ -41,8 +41,9 @@ def get_args_parser():
     parser.add_argument('--gpu', default='0', type=str, help='GPU id to use')
 
     ## diffusion
-    parser.add_argument('--backbone', type=str, default=None, choices=['mlp', 'unet1d', 'transformer'], help='Backbone name')
+    parser.add_argument('--backbone', type=str, default=None, choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer'], help='Backbone name')
     parser.add_argument('--pretrained_dir', default=None, type=str, help='Pretrained diffusion model directory')
+    # parser.add_argument('--stage', default=1, type=int, help='Stage of the training')
 
     ## dataset setting
     subparsers = parser.add_subparsers(title="dataset setting", dest="subcommand")

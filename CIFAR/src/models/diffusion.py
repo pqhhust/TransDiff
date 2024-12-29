@@ -6,7 +6,7 @@ from models.UNet1D import Unet1D
 
 import math
 
-class Diffusion(DiT):
+class Diffusion_Transformer(DiT):
     def __init__(
         self,
         input_size=32,
@@ -105,7 +105,7 @@ class Diffusion_UNet1D(Unet1D):
             return outputs
         
 class Diffusion_MLP(nn.Module):
-    def __init__(self, d_model=384, hdim1=384*2, hdim2=384*4, hdim3=384*2, dropout=0.1, ViT_depth=7):
+    def __init__(self, d_model=384, hdim1=128*4, hdim2=128*8, hdim3=128*4, dropout=0.1, ViT_depth=7):
         super().__init__()
         self.d_model = d_model
         self.hdim1 = hdim1
@@ -181,6 +181,108 @@ class Diffusion_MLP(nn.Module):
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
             
+            outputs = []
+            for t in range(self.ViT_depth):
+                t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
+                out = self.forward_step(x[t], t_tensor)
+                outputs.append(out)
+            return outputs
+
+class MLPMixerLayer(nn.Module):
+    def __init__(self, seq_len, d_model, token_mixing_dim, channel_mixing_dim, dropout=0.1):
+        super().__init__()
+        self.ln_token_mixing = nn.LayerNorm(d_model)
+        self.token_mixing = nn.Sequential(
+            nn.Linear(seq_len, token_mixing_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(token_mixing_dim, seq_len),
+            nn.Dropout(dropout),
+        )
+        self.channel_mixing = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, channel_mixing_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(channel_mixing_dim, d_model),
+            nn.Dropout(dropout),
+        )
+
+    def forward(self, x):
+        # x: [batch_size, seq_len, d_model]
+        # Permute for token mixing
+        x = x + self.token_mixing(self.ln_token_mixing(x).permute(0, 2, 1)).permute(0, 2, 1)
+        # Channel mixing
+        x = x + self.channel_mixing(x)
+        return x
+
+
+class Diffusion_MLPMixer(nn.Module):
+    def __init__(self, seq_len=64, d_model=384, token_mixing_dim=192, channel_mixing_dim=768, dropout=0.1, depth=1, ViT_depth=7):
+        super().__init__()
+        self.d_model = d_model
+        self.seq_len = seq_len
+        self.depth = depth
+        self.ViT_depth = ViT_depth
+
+        # Stack of MLP-Mixer layers
+        self.mixer_layers = nn.ModuleList(
+            [MLPMixerLayer(seq_len, d_model, token_mixing_dim, channel_mixing_dim, dropout) for _ in range(depth)]
+        )
+
+        # Layer normalization for input
+        self.ln = nn.LayerNorm(d_model)
+
+    def get_timestep_embedding(self, timesteps, dim=None):
+        """
+        Create sinusoidal timestep embeddings.
+        
+        :param timesteps: tensor of shape [N] with integer timesteps
+        :param dim: embedding dimension (defaults to self.d_model)
+        :return: tensor of shape [N, dim]
+        """
+        if dim is None:
+            dim = self.d_model
+
+        half_dim = dim // 2
+        freqs = torch.exp(
+            -math.log(10000) * torch.arange(half_dim, dtype=torch.float32) / half_dim
+        ).to(timesteps.device)
+
+        args = timesteps[:, None].float() * freqs[None]
+        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
+
+        if dim % 2:  # Handle odd dimensions
+            embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim=-1)
+
+        return embedding
+
+    def forward_step(self, x, t):
+        batch_size, seq_len, _ = x.shape
+
+        # Sinusoidal time embedding
+        t_emb = self.get_timestep_embedding(t)  # [batch_size, d_model]
+        t_emb = t_emb.unsqueeze(1).expand(batch_size, seq_len, self.d_model)
+
+        # Add time embedding to input
+        x = x + t_emb
+
+        # Pass through mixer layers
+        for mixer in self.mixer_layers:
+            x = mixer(x)
+
+        return x
+
+    def forward(self, x, train=False):
+        if not train:
+            for t in range(self.ViT_depth):
+                t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
+                x = self.forward_step(x, t_tensor)
+            return x
+        else:
+            assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
+                f"Expected input list length {self.depth + 1}, got {len(x)}"
+
             outputs = []
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
