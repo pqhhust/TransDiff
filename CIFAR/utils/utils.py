@@ -3,6 +3,7 @@ import sys
 import logging
 import csv
 import numpy as np
+import wandb
 
 class AverageMeter(object):
     def __init__(self):
@@ -93,4 +94,11 @@ def save_cifar_c_results_to_csv(dataset, attn_type, save_path, metrics, cor_resu
                     values = [model_name, corruption, severity]
                     for metric in metrics:
                         values.append(f"{results[metric]:.2f}")
+                        for metric in metrics:
+                            wandb.log({
+                                "cifar_c_model": model_name,
+                                "corruption": corruption,
+                                "severity": severity,
+                                f"{metric}": results[metric]
+                            })
                     writer.writerow(values)

@@ -8,6 +8,7 @@ import json
 
 import train
 import val
+import test
 
 import models.get_model
 import datasets.cifar_loader
@@ -113,7 +114,6 @@ def main(args):
                 best_aurc = aurc
                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth'))
 
-    wandb.finish()
 
 def main_diffusion(args):
     if args.attn_type == 'softmax':
@@ -321,7 +321,6 @@ def main_diffusion_stage2(args):
                 best_aurc = aurc
                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
 
-    wandb.finish()
 
 if __name__ == '__main__':
     args = utils.train_utils.get_args_parser()
@@ -331,3 +330,5 @@ if __name__ == '__main__':
     #     main_diffusion_stage2(args)
     else:
         main(args)
+        test.test(args)
+        wandb.finish()

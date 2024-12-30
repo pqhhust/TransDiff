@@ -10,6 +10,7 @@ import models.get_model
 import csv
 from torch.utils.data import DataLoader
 import torchvision.transforms
+import wandb
 
 def process_results(args, loader, model, metrics, logger, method_name, results_storage):
     res = val.validation(loader, model, args)
@@ -67,7 +68,7 @@ def test_cifar_c_corruptions_diffusion(dataset, model, corruption_dir, transform
 
     return cor_results_storage
 
-def ood_test():
+def ood_test(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     metrics = ['AUROC', 'AUPR', 'FPR95']
     results_storage = {metric: [] for metric in metrics}
@@ -101,7 +102,7 @@ def ood_test():
         process_results_ood(args, test_loader, ood_test_loader, net, metrics, logger, "MSP", results_storage)
 
 
-def test():
+def test(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     metrics = ['Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
     results_storage = {metric: [] for metric in metrics}
@@ -137,12 +138,13 @@ def test():
             cor_results_all_models[f"model_{r + 1}"] = cor_results
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
+    wandb.log({f"Test/{metric}": results[metric]['mean'] for metric in results})
     test_results_path = os.path.join(save_path, 'test_results.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
     if args.dataset == 'cifar10':
         utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
 
-def test_diffusion():
+def test_diffusion(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     metrics = ['Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
     results_storage = {metric: [] for metric in metrics}
@@ -194,8 +196,8 @@ if __name__ == '__main__':
     print(args)
     set_seed(args.seed)
     if args.ood_data is None and args.model == 'diffusion':
-        test_diffusion()
+        test_diffusion(args)
     elif args.ood_data is None and args.model == 'vit_cifar':
-        test()
+        test(args)
     else:
-        ood_test()
+        ood_test(args)
