@@ -185,6 +185,7 @@ def test_diffusion(args):
             cor_results_all_models[f"model_{r + 1}"] = cor_results
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
+    wandb.log({f"Test/{metric}": results[metric]['mean'] for metric in results})
     test_results_path = os.path.join(save_path, 'test_results_diffusion.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
     if args.dataset == 'cifar10':
