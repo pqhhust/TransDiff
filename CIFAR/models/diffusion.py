@@ -131,6 +131,8 @@ class Diffusion_MLP(nn.Module):
             nn.Dropout(dropout)
         )
 
+        self.sigma = nn.Linear(d_model, 1)
+
     def get_timestep_embedding(self, timesteps, dim=None):
         """
         Create sinusoidal timestep embeddings.
@@ -164,6 +166,7 @@ class Diffusion_MLP(nn.Module):
         
         # Create sinusoidal time embedding and expand to match input dimensions
         t_emb = self.get_timestep_embedding(t)  # [batch_size, d_model]
+        std = torch.clamp(torch.exp(self.sigma(t_emb)), 0, 1e-2)
         t_emb = t_emb.unsqueeze(1).expand(batch_size, seq_len, self.d_model)
         
         # Now both x and t_emb have shape [batch_size, seq_len, d_model]
@@ -171,24 +174,26 @@ class Diffusion_MLP(nn.Module):
         
         mean_x_t = self.mlp(x_t) + x
         # Process through MLP and add residual connection
-        return mean_x_t
+        return mean_x_t, std.view(batch_size, 1, 1).expand(batch_size, seq_len, self.d_model), mean_x_t + std.view(batch_size, 1, 1) * torch.randn_like(mean_x_t)
 
     def forward(self, x, train=False):
         if not train:
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
-                x = self.forward_step(x, t_tensor)
+                x = self.forward_step(x, t_tensor)[-1]
             return x
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
             
-            outputs = []
+            means = []
+            stds = []
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
-                out = self.forward_step(x[t], t_tensor)
-                outputs.append(out)
-            return outputs
+                mean, std, _ = self.forward_step(x[t], t_tensor)
+                means.append(mean)
+                stds.append(std)
+            return means, stds
 
 # class Diffusion_MLP(nn.Module):
 #     def __init__(self, d_model=384, hdim1=384*2, hdim2=384*4, hdim3=384*2, dropout=0.1, ViT_depth=7):

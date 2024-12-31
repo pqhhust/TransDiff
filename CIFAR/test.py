@@ -13,7 +13,7 @@ import torchvision.transforms
 import wandb
 
 def process_results(args, loader, model, metrics, logger, method_name, results_storage):
-    res = val.validation(loader, model, args)
+    res = val.validation(loader, model, args, method_name)
     for metric in metrics:
         results_storage[metric].append(res[metric])
     log = [f"{key}: {res[key]:.3f}" for key in res]
