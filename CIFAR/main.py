@@ -16,7 +16,7 @@ import utils.train_utils
 from utils.seed_utils import set_seed
 
 import warmup_scheduler
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371') #(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2') #
 
 def main(args):
     if args.attn_type == 'softmax':
@@ -32,7 +32,7 @@ def main(args):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    wandb.init(project='Testing_Difformer', 
+    wandb.init(project='Difformer', 
                group=group,
                name=f"Seed_{args.seed}",
                config=vars(args))
@@ -119,6 +119,7 @@ def main_diffusion(args):
     if args.attn_type == 'softmax':
         save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
         pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
+        group = "VIT"
     elif args.attn_type == 'kep_svgp':
         save_path = os.path.join(
             args.save_dir,
@@ -128,11 +129,15 @@ def main_diffusion(args):
             args.pretrained_dir,
             f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}"
         )
+        group = "KEP-SVGP"
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    wandb.init(project='Diffusion-KEP-SVGP', config=vars(args))
+    wandb.init(project='Difformer', 
+               group=group,
+               name=f"Seed_{args.seed}",
+               config=vars(args))
 
     # Set seed everything
     set_seed(args.seed)
