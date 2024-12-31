@@ -3,9 +3,20 @@ import torch.nn.functional as F
 import utils.metrics
 import numpy as np  
 import sklearn.metrics as skm
+import datasets.cifar_loader as cifar_loader
+from utils.temperature_scaling import ModelWithTemperature
+from utils.mc_dropout import mc_dropout
 
 @torch.no_grad()
-def validation(loader, net, args):
+def validation(loader, net, args, method=None):
+    if method == "temperature_scaling":
+        _, valid_loader, _, _ = cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
+                                                                       args.test_dir, args.batch_size)
+        net = ModelWithTemperature(net)
+        net.set_temperature(valid_loader)
+    elif method == "mc_dropout":
+        net = mc_dropout(net, num_estimators=10, last_layer=False, on_batch=False)
+
     net.eval()
     
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
@@ -13,7 +24,12 @@ def validation(loader, net, args):
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         if args.attn_type == "softmax":
-            output = net(inputs)
+            if method == "mc_dropout":
+                output = net(inputs)
+                B, C = inputs.size(0), output.size(1)
+                output = output.view(B, 10, C).mean(1)
+            else:
+                output = net(inputs)
             
         elif args.attn_type == "kep_svgp":
             results = []
@@ -134,6 +150,9 @@ def validation_diffusion(loader, net, args, pretrained_vit):
         output = pretrained_vit.emb(output)
         output = output + pretrained_vit.pos_emb
         output = net(output)
+        h = pretrained_vit.enc[args.depth - 1].la2(output)
+        h = pretrained_vit.enc[args.depth - 1].mlp(h)
+        output = output + h
         output = pretrained_vit.fc(output.mean(1))
 
         # if args.attn_type == "softmax":

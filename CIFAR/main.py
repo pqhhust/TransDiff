@@ -16,7 +16,7 @@ import utils.train_utils
 from utils.seed_utils import set_seed
 
 import warmup_scheduler
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def main(args):
     if args.attn_type == 'softmax':
@@ -32,7 +32,7 @@ def main(args):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    wandb.init(project='Difformer', 
+    wandb.init(project='Testing_Difformer', 
                group=group,
                name=f"Seed_{args.seed}",
                config=vars(args))
@@ -117,16 +117,16 @@ def main(args):
 
 def main_diffusion(args):
     if args.attn_type == 'softmax':
-        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}")
-        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_{args.model}")
+        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
+        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
     elif args.attn_type == 'kep_svgp':
         save_path = os.path.join(
             args.save_dir,
-            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}"
+            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}"
         )
         pretrained_path = os.path.join(
             args.pretrained_dir,
-            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}"
+            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}"
         )
 
     if not os.path.exists(save_path):
@@ -217,7 +217,6 @@ def main_diffusion(args):
                 best_aurc = aurc
                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
 
-    wandb.finish()
 
 def main_diffusion_stage2(args):
     if args.attn_type == 'softmax':

@@ -47,7 +47,7 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 main.py \
 --model vit_cifar \
 --lr 1e-3 \
 --weight-decay 5e-5 \
---save-dir ../experiments/CIFAR10_out/vit_out_cat \
+--save-dir ./results/CIFAR10_out/vit_out_cat \
 Cifar10
 
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test.py \
@@ -59,10 +59,10 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test.py \
 --hdim 384 \
 --eta-ksvd 10 \
 --batch-size 128 \
---gpu 1 \
+--gpu 2 \
 --nb-run 1 \
 --model vit_cifar \
---save-dir ../experiments/CIFAR10_out/vit_out_cat \
+--save-dir ./results/CIFAR10_out/vit_out_cat \
 --seed 0 \
 Cifar10
 # --ood-data cifar100 \
@@ -117,9 +117,9 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 main.py \
 --model diffusion \
 --lr 1e-3 \
 --weight-decay 5e-5 \
---save-dir ../experiments/CIFAR10_out/diffusion \
---pretrained_dir ../experiments/CIFAR10_out/vit_out_cat \
---backbone mlp_mixer \
+--save-dir ./results/CIFAR10_out/diffusion \
+--pretrained_dir ./results/CIFAR10_out/vit_out_cat \
+--backbone mlp \
 Cifar10
 
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test.py \
@@ -132,8 +132,8 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test.py \
 --nb-run 1 \
 --model diffusion \
 --backbone mlp \
---save-dir ../experiments/CIFAR10_out/diffusion \
---pretrained_dir ../experiments/CIFAR10_out/vit_out_cat \
+--save-dir ./results/CIFAR10_out/diffusion \
+--pretrained_dir ./results/CIFAR10_out/vit_out_cat \
 --seed 0 \
 Cifar10
 

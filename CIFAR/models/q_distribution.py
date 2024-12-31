@@ -82,19 +82,31 @@ class KEP_SVGPAttention(nn.Module):
         ## samples from the approximate posterior
         if self.concate:
             samples = mean + (v2 @ torch.randn(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze().permute(0, 1, 3, 2)
+            covariance = (v2 @ torch.ones(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze().permute(0, 1, 3, 2)
         else:
             samples = mean + (v2.permute(0,1,3,2,4) @ torch.randn(B, self.num_heads, N, mean.shape[3], 1).to(x.device)).squeeze()
         attn_out = self.final_weight(samples)
         mean = self.final_weight(mean)
+        covariance = self.final_weight(covariance)
         if self.concate:
             attn_out = self.embed_len_weight(attn_out.permute(0,1,3,2)).permute(0,1,3,2)
             mean = self.embed_len_weight(mean.permute(0,1,3,2)).permute(0,1,3,2)
+            covariance = self.embed_len_weight(covariance.permute(0,1,3,2)).permute(0,1,3,2)
         attn_out = attn_out.transpose(1, 2).reshape(B, N, C)
         mean = mean.transpose(1, 2).reshape(B, N, C)
-        attn_out = attn_out + torch.randn_like(attn_out) * (1e-5)
+        covariance = covariance.transpose(1, 2).reshape(B, N, C)
         # attn_out = self.proj(attn_out)
         attn_out = self.proj_drop(attn_out)
         mean = self.proj_drop(mean)
+        covariance = self.proj_drop(covariance)
+
+        # covariance = v2 @ v2.transpose(-2, -1) # (batch_size, num_heads, low_rank, 2 * seq_len, 2 * seq_len)
+        # if self.concate:
+        #     covariance = self.embed_len_weight.weight @ covariance @ self.embed_len_weight.weight.transpose(-2, -1) # (batch_size, num_heads, low_rank, seq_len, seq_len)
+        # covariance = self.final_weight.weight.view(1, 1, 1, 1, self.head_dim, self.low_rank) * covariance.permute(0, 1, 3, 4, 2).view(B, self.num_heads, N, N, 1, self.low_rank) @ self.final_weight.weight.view(1, 1, 1, 1, self.head_dim, self.low_rank).permute(0, 1, 2, 3, 5, 4)
+        # # (batch_size, num_heads, seq_len, seq_len, head_dim, head_dim), cross-covariance matrix between two tokens
+        # covariance = covariance.permute(0, 1, 2, 4, 3, 5).reshape(B, self.num_heads, N * self.head_dim, N * self.head_dim)
+        # covariance = torch.diag(covariance, dim1=-2, dim2=-1).reshape(B, self.num_heads, N, self.head_dim)
 
         ## compute the KL divergence 
         # Tr(\Lambda^{-2}S_{uu}) term 
@@ -110,7 +122,7 @@ class KEP_SVGPAttention(nn.Module):
         # s term, which is a constant
         kl -= 0.5 * self.low_rank * self.low_rank * self.num_heads
 
-        return attn_out, [escore, rscore, self.we, self.wr], lambda_sqrt_inv_diag, kl, mean
+        return attn_out, [escore, rscore, self.we, self.wr], lambda_sqrt_inv_diag, kl, mean, covariance
 
 class TransformerEncoder(nn.Module):
     def __init__(self, args, attn_type, feats, mlp_hidden=128, head=8, dropout=0., embed_len=64, \
@@ -137,18 +149,21 @@ class TransformerEncoder(nn.Module):
         out = self.la1(x)
         if self.attn_type == "softmax":
             out = self.msa(out)
+            mean = out
+            cov = torch.zeros_like(out)
         elif self.attn_type == "kep_svgp":
-            out, scores, Lambda_inv, kl, mean = self.msa(out)
+            out, scores, Lambda_inv, kl, mean, cov = self.msa(out)
 
         out = out + x
+        x_t_trans = out
         out = self.mlp(self.la2(out)) + out
         mean = mean + x
-        mean = self.mlp(self.la2(mean)) + mean
+        # mean = self.mlp(self.la2(mean)) + mean
 
         if self.attn_type == "softmax":
-            return out, out
+            return out, x_t_trans, mean, cov
         elif self.attn_type == "kep_svgp":
-            return out, scores, Lambda_inv, kl, mean
+            return out, scores, Lambda_inv, kl, x_t_trans, mean, cov
 
 
 class MultiHeadSelfAttention(nn.Module):
@@ -218,6 +233,7 @@ class ViT(nn.Module):
         Lambda_inv_list = []
         kl_list = []
         means = []
+        covariances = []
         out = self._to_words(x)
         out = self.emb(out)
         if self.is_cls_token:
@@ -226,16 +242,18 @@ class ViT(nn.Module):
         x_t.append(out)
         for enc in self.enc:
             if enc.attn_type == "softmax":
-                out = enc(out)
-                x_t.append(out)
-                means.append(out)
+                out, x_t_trans, mean, cov = enc(out)
+                x_t_trans.append(out)
+                means.append(mean)
+                covariances.append(cov)
             elif enc.attn_type == "kep_svgp":
-                out, scores, Lambda_inv, kl, mean = enc(out)
+                out, scores, Lambda_inv, kl, x_t_trans, mean, cov = enc(out)
                 score_list.append(scores)
                 Lambda_inv_list.append(Lambda_inv)
                 kl_list.append(kl)
-                x_t.append(out)
+                x_t.append(x_t_trans)
                 means.append(mean)
+                covariances.append(cov)
         
         if self.is_cls_token:
             out = out[:,0]
@@ -243,10 +261,7 @@ class ViT(nn.Module):
             out = out.mean(1)
         out = self.fc(out)
 
-        if self.attn_type == "softmax":
-            return out
-        elif self.attn_type == "kep_svgp":
-            return out, score_list, Lambda_inv_list, kl_list, x_t, means
+        return out, x_t, means, covariances
 
 def vit_cifar(args, attn_type, num_classes, ksvd_layers, low_rank, rank_multi):
     return ViT(args=args, attn_type=attn_type, ksvd_layers=ksvd_layers, num_classes=num_classes, low_rank=low_rank, rank_multi=rank_multi, \
