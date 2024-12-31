@@ -112,7 +112,7 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 main.py \
 --eta-ksvd 10 \
 --batch-size 128 \
 --gpu 1 \
---nb-epochs 300 \
+--nb-epochs 1 \
 --nb-run 1 \
 --model diffusion \
 --lr 1e-3 \

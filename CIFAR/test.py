@@ -34,7 +34,7 @@ def process_results_diffusion(args, loader, model, metrics, logger, method_name,
     logger.info(f'################## \n ---> Test {method_name} results：\t' + '\t'.join(log))
 
 
-def test_cifar_c_corruptions(dataset, model, corruption_dir, transform_test, batch_size, metrics, logger):
+def test_cifar_c_corruptions(dataset, model, corruption_dir, transform_test, batch_size, metrics, logger, args):
     if dataset == "cifar10":
         cor_results_storage = {corruption: {severity: {metric: [] for metric in metrics} for severity in range(1, 6)} for
                            corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
@@ -51,7 +51,7 @@ def test_cifar_c_corruptions(dataset, model, corruption_dir, transform_test, bat
 
     return cor_results_storage
 
-def test_cifar_c_corruptions_diffusion(dataset, model, corruption_dir, transform_test, batch_size, metrics, logger, vit_model):
+def test_cifar_c_corruptions_diffusion(dataset, model, corruption_dir, transform_test, batch_size, metrics, logger, vit_model, args):
     if dataset == "cifar10":
         cor_results_storage = {corruption: {severity: {metric: [] for metric in metrics} for severity in range(1, 6)} for
                            corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
@@ -131,7 +131,7 @@ def test(args):
             ])
 
             cor_results_storage = test_cifar_c_corruptions(args.dataset, net, args.corruption_dir, transform_test, args.batch_size,
-                                                            metrics, logger)
+                                                            metrics, logger, args)
             cor_results = {corruption: {
                 severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
                 in range(1, 6)} for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
@@ -152,10 +152,10 @@ def test_diffusion(args):
 
     if args.attn_type == 'softmax':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
-        pretrained_path = args.pretrained_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model
+        pretrained_path = args.pretrained_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
     elif args.attn_type == 'kep_svgp':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + 'vit_cifar' + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.seed)
-        pretrained_path = args.pretrained_dir + '/' + args.dataset + '_' + args.attn_type + '_' + 'vit_cifar' + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl)
+        pretrained_path = args.pretrained_dir + '/' + args.dataset + '_' + args.attn_type + '_' + 'vit_cifar' + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.seed)
     logger = utils.utils.get_logger(save_path)
 
     for r in range(args.nb_run):
@@ -178,7 +178,7 @@ def test_diffusion(args):
             ])
 
             cor_results_storage = test_cifar_c_corruptions_diffusion(args.dataset, net, args.corruption_dir, transform_test, args.batch_size,
-                                                            metrics, logger, pretrained_ViT)
+                                                            metrics, logger, pretrained_ViT, args)
             cor_results = {corruption: {
                 severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
                 in range(1, 6)} for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
