@@ -101,6 +101,6 @@ def save_cifar_c_results_to_csv(dataset, attn_type, save_path, metrics, cor_resu
                     #         f"CIFAR-C/{model_name}/{corruption}/Severity_{severity}/{metric}": results[metric]
                     #     })
         
-        artifact = wandb.Artifact('cifar_c_results', type='dataset')
-        artifact.add_file(csv_file_path, name=os.path.basename(csv_file_path))
-        wandb.log_artifact(artifact)
+    artifact = wandb.Artifact('cifar_c_results', type='dataset')
+    artifact.add_file(csv_file_path, name=os.path.basename(csv_file_path))
+    wandb.log_artifact(artifact)
