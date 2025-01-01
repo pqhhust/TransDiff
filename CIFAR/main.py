@@ -118,7 +118,7 @@ def main(args):
 def main_diffusion(args):
     if args.attn_type == 'softmax':
         save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
-        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
+        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.seed}")
         group = "VIT"
     elif args.attn_type == 'kep_svgp':
         save_path = os.path.join(
@@ -136,7 +136,7 @@ def main_diffusion(args):
 
     wandb.init(project='Difformer', 
                group=group,
-               name=f"Seed_{args.seed}",
+               name=f"Diffusion_seed_{args.seed}",
                config=vars(args))
 
     # Set seed everything

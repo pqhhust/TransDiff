@@ -106,8 +106,9 @@ class Diffusion_UNet1D(Unet1D):
         
 
 class Diffusion_MLP(nn.Module):
-    def __init__(self, d_model=384, hdim1=128*4, hdim2=128*8, hdim3=128*4, dropout=0.1, ViT_depth=7):
+    def __init__(self, args, d_model=384, hdim1=128, hdim2=128*8, hdim3=128*4, dropout=0, ViT_depth=7):
         super().__init__()
+        self.args = args
         self.d_model = d_model
         self.hdim1 = hdim1
         self.hdim2 = hdim2
@@ -118,16 +119,16 @@ class Diffusion_MLP(nn.Module):
         # Main MLP - processes concatenated input and time embedding
         self.mlp = nn.Sequential(
             nn.Linear(d_model, hdim1),  # d_model for x, d_model for time
-            nn.GELU(),
+            nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim1, hdim2),
-            nn.GELU(),
+            nn.Linear(hdim1, hdim1),
+            nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim2, hdim3),
-            nn.GELU(),
+            nn.Linear(hdim1, hdim1),
+            nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim3, d_model),
-            nn.GELU(),
+            nn.Linear(hdim1, d_model),
+            nn.ReLU(),
             nn.Dropout(dropout)
         )
 
@@ -166,7 +167,10 @@ class Diffusion_MLP(nn.Module):
         
         # Create sinusoidal time embedding and expand to match input dimensions
         t_emb = self.get_timestep_embedding(t)  # [batch_size, d_model]
-        std = torch.clamp(torch.exp(self.sigma(t_emb)), 0, 1e-2)
+        if self.args.attn_type == 'softmax':
+            std = 0
+        else:
+            std = torch.clamp(torch.exp(self.sigma(t_emb)), 0, 1e-2)
         t_emb = t_emb.unsqueeze(1).expand(batch_size, seq_len, self.d_model)
         
         # Now both x and t_emb have shape [batch_size, seq_len, d_model]
