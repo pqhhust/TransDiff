@@ -12,7 +12,7 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 main.py \
 --lr 1e-3 \
 --weight-decay 5e-5 \
 --save-dir ../experiments/CIFAR10_out/vit_out \
-Cifar10
+Cifar10 \
 
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test.py \
 --depth 5 \
@@ -100,9 +100,9 @@ Cifar10
 
 ################## KEP-SVGP-Diffusion ##################
 ########## Training Diffusion Model ##########
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 main.py \
+python3 main.py \
+--model diffusion \
 --seed 0 \
---wandb-key 6cf7b84d1bd52c9eb1e5eade43f583a8059231f2 \
 --depth 7 \
 --attn-type kep_svgp \
 --concate \
@@ -111,16 +111,22 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 main.py \
 --hdim 384 \
 --eta-ksvd 10 \
 --batch-size 128 \
---gpu 1 \
+--gpu 0 \
 --nb-epochs 1 \
 --nb-run 1 \
---model diffusion \
 --lr 1e-3 \
 --weight-decay 5e-5 \
 --save-dir ./results/CIFAR10_out/diffusion \
---pretrained_dir ./results/CIFAR10_out/vit_out_cat \
 --backbone mlp \
+--pretrained_dir ./results/CIFAR10_out/vit_out_cat \
+--ema_decay 0.999 \
+--ema_update_every 1 \
+--clip 0.01 \
+--mlp_hdim 512 \
+--pretrained_seed 0 \
+--mlp_dropout 0.1 \
 Cifar10
+
 
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test.py \
 --attn-type kep_svgp \

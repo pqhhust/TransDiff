@@ -14,9 +14,13 @@ import models.get_model
 import datasets.cifar_loader
 import utils.train_utils
 from utils.seed_utils import set_seed
+from ema_pytorch import EMA
 
 import warmup_scheduler
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2') #
+wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2') #(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
+
+import copy
+from ema_pytorch import EMA 
 
 def main(args):
     if args.attn_type == 'softmax':
@@ -118,16 +122,16 @@ def main(args):
 def main_diffusion(args):
     if args.attn_type == 'softmax':
         save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
-        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.seed}")
+        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
         group = "VIT"
     elif args.attn_type == 'kep_svgp':
         save_path = os.path.join(
             args.save_dir,
-            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}"
+            f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}"
         )
         pretrained_path = os.path.join(
             args.pretrained_dir,
-            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}"
+            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
         )
         group = "KEP-SVGP"
 
@@ -180,6 +184,10 @@ def main_diffusion(args):
             total_epoch=args.warmup_epoch,
             after_scheduler=base_scheduler
         )
+
+        ## Initialize EMA
+        ema = EMA(net, beta=args.ema_decay, update_every=args.ema_update_every)
+        ema.to(f'cuda:{args.gpu}')
         
         ## make logger
         best_acc, best_auroc, best_aurc = 0, 0, 1e6
@@ -187,12 +195,13 @@ def main_diffusion(args):
         ## start training
         for epoch in range(args.nb_epochs):
             train.train_diffusion(train_loader, net, optimizer, epoch, logger, args, pretrained_ViT)
-            
+
+            ema.update()
+
             scheduler.step()
-            # optimizer.step()
 
             # validation
-            net_val = net
+            net_val = ema.ema_model
             res = val.validation_diffusion(val_loader, net_val, args, pretrained_ViT) 
             log = [f"{key}: {res[key]:.3f}" for key in res]
             msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)

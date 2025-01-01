@@ -152,10 +152,10 @@ def test_diffusion(args):
 
     if args.attn_type == 'softmax':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
-        pretrained_path = args.pretrained_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
+        pretrained_path = args.pretrained_dir + '/' + args.dataset + '_' + args.attn_type + '_' + 'vit_cifar' + '_' + str(args.pretrained_seed)
     elif args.attn_type == 'kep_svgp':
-        save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + 'vit_cifar' + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.seed)
-        pretrained_path = args.pretrained_dir + '/' + args.dataset + '_' + args.attn_type + '_' + 'vit_cifar' + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.seed)
+        save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.seed)
+        pretrained_path = args.pretrained_dir + '/' + args.dataset + '_' + args.attn_type + '_' + 'vit_cifar' + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.pretrained_seed)
     logger = utils.utils.get_logger(save_path)
 
     for r in range(args.nb_run):

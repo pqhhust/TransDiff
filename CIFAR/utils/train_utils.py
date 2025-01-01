@@ -41,8 +41,6 @@ def get_args_parser():
     parser.add_argument('--gpu', default='0', type=str, help='GPU id to use')
 
     ## diffusion
-    parser.add_argument('--backbone', type=str, default=None, choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer'], help='Backbone name')
-    parser.add_argument('--pretrained_dir', default=None, type=str, help='Pretrained diffusion model directory')
     # parser.add_argument('--stage', default=1, type=int, help='Stage of the training')
 
     ## dataset setting
@@ -69,6 +67,15 @@ def get_args_parser():
     Cifar100.add_argument("--val-dir", type=str, default='./data/CIFAR100/val', help="Cifar100 val directory")
     Cifar100.add_argument("--test-dir", type=str, default='./data/CIFAR100/test', help="Cifar100 test directory")
     Cifar100.add_argument("--nb-cls", type=int, default=100, help="number of classes in Cifar100")
+
+    parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer'], help='Backbone name')
+    parser.add_argument('--pretrained_dir', default=None, type=str, help='Pretrained diffusion model directory')
+    parser.add_argument('--ema_decay', default=0.999, type=float, help='Exponential moving average decay')
+    parser.add_argument('--ema_update_every', default=1, type=int, help='Update EMA every n steps')
+    parser.add_argument('--clip', default=0, type=float, help='std error clipping value')
+    parser.add_argument('--mlp_hdim', default=64, type=int, help='hidden dimension for diffusion mlp')
+    parser.add_argument('--pretrained_seed', default=0, type=int, help='seed for pretraining ViT')
+    parser.add_argument('--mlp_dropout', default=0.1, type=float, help='dropout rate for diffusion mlp')
 
     # diffusion setting
     # Diffusion = subparsers.add_parser("Diffusion",

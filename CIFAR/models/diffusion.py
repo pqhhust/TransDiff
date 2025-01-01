@@ -106,28 +106,27 @@ class Diffusion_UNet1D(Unet1D):
         
 
 class Diffusion_MLP(nn.Module):
-    def __init__(self, args, d_model=384, hdim1=128, hdim2=128*8, hdim3=128*4, dropout=0, ViT_depth=7):
+    def __init__(self, args, d_model=384, hdim=64, dropout=0, clip=0.01, ViT_depth=7):
         super().__init__()
         self.args = args
         self.d_model = d_model
-        self.hdim1 = hdim1
-        self.hdim2 = hdim2
-        self.hdim3 = hdim3
+        self.hdim = hdim
         self.dropout = dropout
+        self.clip = clip
         self.ViT_depth = ViT_depth
         self.ln = nn.LayerNorm(d_model)
         # Main MLP - processes concatenated input and time embedding
         self.mlp = nn.Sequential(
-            nn.Linear(d_model, hdim1),  # d_model for x, d_model for time
+            nn.Linear(d_model, hdim),  # d_model for x, d_model for time
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim1, hdim1),
+            nn.Linear(hdim, hdim),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim1, hdim1),
+            nn.Linear(hdim, hdim),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim1, d_model),
+            nn.Linear(hdim, d_model),
             nn.ReLU(),
             nn.Dropout(dropout)
         )
@@ -170,7 +169,7 @@ class Diffusion_MLP(nn.Module):
         if self.args.attn_type == 'softmax':
             std = 0
         else:
-            std = torch.clamp(torch.exp(self.sigma(t_emb)), 0, 1e-2)
+            std = torch.clamp(torch.exp(self.sigma(t_emb)), 0, self.clip)
         t_emb = t_emb.unsqueeze(1).expand(batch_size, seq_len, self.d_model)
         
         # Now both x and t_emb have shape [batch_size, seq_len, d_model]
