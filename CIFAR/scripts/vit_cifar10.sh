@@ -36,12 +36,12 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 main.py \
 --depth 7 \
 --attn-type kep_svgp \
 --concate \
---ksvd-layers 7 \
+--ksvd-layers 1 \
 --num_heads 12 \
 --hdim 384 \
 --eta-ksvd 10 \
 --batch-size 128 \
---gpu 1 \
+--gpu 0 \
 --nb-epochs 300 \
 --nb-run 1 \
 --model vit_cifar \
@@ -106,7 +106,7 @@ python3 main.py \
 --depth 7 \
 --attn-type kep_svgp \
 --concate \
---ksvd-layers 7 \
+--ksvd-layers 1 \
 --num_heads 12 \
 --hdim 384 \
 --eta-ksvd 10 \

@@ -17,10 +17,7 @@ from utils.seed_utils import set_seed
 from ema_pytorch import EMA
 
 import warmup_scheduler
-wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2') #(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
-
-import copy
-from ema_pytorch import EMA 
+wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2') #(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
 
 def main(args):
     if args.attn_type == 'softmax':
@@ -140,7 +137,7 @@ def main_diffusion(args):
 
     wandb.init(project='Difformer', 
                group=group,
-               name=f"Diffusion_seed_{args.seed}",
+               name=f"Diffusion_seed_{args.seed}_lr_{args.lr}_hdim_{args.mlp_hdim}_clip_{args.clip}_pretrained_seed_{args.pretrained_seed}_mlp_dropout_{args.mlp_dropout}_ksvd_layers_{args.ksvd_layers}",
                config=vars(args))
 
     # Set seed everything
