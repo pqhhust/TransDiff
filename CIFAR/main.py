@@ -17,7 +17,7 @@ from utils.seed_utils import set_seed
 from ema_pytorch import EMA
 
 import warmup_scheduler
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2') #(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
+wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
 
 def main(args):
     if args.attn_type == 'softmax':
@@ -118,13 +118,13 @@ def main(args):
 
 def main_diffusion(args):
     if args.attn_type == 'softmax':
-        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
+        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim}_{args.mlp_dropout}_{args.lr}_{args.clip}")
         pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
         group = "VIT"
     elif args.attn_type == 'kep_svgp':
         save_path = os.path.join(
             args.save_dir,
-            f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}"
+            f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.mlp_hdim}_{args.mlp_dropout}_{args.lr}_{args.clip}"
         )
         pretrained_path = os.path.join(
             args.pretrained_dir,
