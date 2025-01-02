@@ -106,27 +106,29 @@ class Diffusion_UNet1D(Unet1D):
         
 
 class Diffusion_MLP(nn.Module):
-    def __init__(self, args, d_model=384, hdim=64, dropout=0, clip=0.01, ViT_depth=7):
+    def __init__(self, args, d_model=384, hdim1=64, hdim2=64, hdim3=64, dropout=0, clip=0.01, ViT_depth=7):
         super().__init__()
         self.args = args
         self.d_model = d_model
-        self.hdim = hdim
+        self.hdim1 = hdim1
+        self.hdim2 = hdim2
+        self.hdim3 = hdim3
         self.dropout = dropout
         self.clip = clip
         self.ViT_depth = ViT_depth
         self.ln = nn.LayerNorm(d_model)
         # Main MLP - processes concatenated input and time embedding
         self.mlp = nn.Sequential(
-            nn.Linear(d_model, hdim),  # d_model for x, d_model for time
+            nn.Linear(d_model, hdim1),  # d_model for x, d_model for time
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim, hdim),
+            nn.Linear(hdim1, hdim2),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim, hdim),
+            nn.Linear(hdim2, hdim3),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim, d_model),
+            nn.Linear(hdim3, d_model),
             nn.ReLU(),
             nn.Dropout(dropout)
         )

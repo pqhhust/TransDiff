@@ -151,11 +151,17 @@ def test_diffusion(args):
     cor_results_all_models = {}
 
     if args.attn_type == 'softmax':
-        save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed) + '_' + str(args.backbone) + '_' + str(args.mlp_hdim) + '_' + str(args.mlp_dropout) + '_' + str(args.lr) + '_' + str(args.clip)
-        pretrained_path = args.pretrained_dir + '/' + args.dataset + '_' + args.attn_type + '_' + 'vit_cifar' + '_' + str(args.pretrained_seed)
+        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}")
+        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
     elif args.attn_type == 'kep_svgp':
-        save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.seed) + '_' + str(args.backbone) + '_' + str(args.mlp_hdim) + '_' + str(args.mlp_dropout) + '_' + str(args.lr) + '_' + str(args.clip)
-        pretrained_path = args.pretrained_dir + '/' + args.dataset + '_' + args.attn_type + '_' + 'vit_cifar' + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.pretrained_seed)
+        save_path = os.path.join(
+            args.save_dir,
+            f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}"
+        )
+        pretrained_path = os.path.join(
+            args.pretrained_dir,
+            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
+        )
     logger = utils.utils.get_logger(save_path)
 
     for r in range(args.nb_run):

@@ -14,10 +14,20 @@ import models.get_model
 import datasets.cifar_loader
 import utils.train_utils
 from utils.seed_utils import set_seed
-from ema_pytorch import EMA
+from utils.ema import EMA
 
 import warmup_scheduler
 wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
+
+def step_ema(args, ema, net, epoch):
+        with_decay = False if epoch < args.start_ema_step else True
+        ema.update(net, with_decay=with_decay)
+def apply_ema(args, ema, net):
+    if args.use_ema:
+        ema.apply_shadow(net)
+def restore_ema(args, ema, net):
+    if args.use_ema:
+        ema.restore(net)
 
 def main(args):
     if args.attn_type == 'softmax':
@@ -118,13 +128,13 @@ def main(args):
 
 def main_diffusion(args):
     if args.attn_type == 'softmax':
-        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim}_{args.mlp_dropout}_{args.lr}_{args.clip}")
+        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}")
         pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
         group = "VIT"
     elif args.attn_type == 'kep_svgp':
         save_path = os.path.join(
             args.save_dir,
-            f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.mlp_hdim}_{args.mlp_dropout}_{args.lr}_{args.clip}"
+            f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}"
         )
         pretrained_path = os.path.join(
             args.pretrained_dir,
@@ -137,7 +147,7 @@ def main_diffusion(args):
 
     wandb.init(project='Difformer', 
                group=group,
-               name=f"Diffusion_seed_{args.seed}_lr_{args.lr}_hdim_{args.mlp_hdim}_clip_{args.clip}_pretrained_seed_{args.pretrained_seed}_mlp_dropout_{args.mlp_dropout}_ksvd_layers_{args.ksvd_layers}",
+               name=f"Diffusion_seed_{args.seed}_lr_{args.lr}_clip_{args.clip}_pretrained_seed_{args.pretrained_seed}_mlp_dropout_{args.mlp_dropout}_ksvd_layers_{args.ksvd_layers}",
                config=vars(args))
 
     # Set seed everything
@@ -183,8 +193,11 @@ def main_diffusion(args):
         )
 
         ## Initialize EMA
-        ema = EMA(net, beta=args.ema_decay, update_every=args.ema_update_every)
-        ema.to(f'cuda:{args.gpu}')
+        # ema = EMA(net, beta=args.ema_decay, update_every=args.ema_update_every)
+        # ema.to(f'cuda:{args.gpu}')
+
+        ema = EMA(args.ema_decay)
+        ema.register(net)
         
         ## make logger
         best_acc, best_auroc, best_aurc = 0, 0, 1e6
@@ -193,13 +206,21 @@ def main_diffusion(args):
         for epoch in range(args.nb_epochs):
             train.train_diffusion(train_loader, net, optimizer, epoch, logger, args, pretrained_ViT)
 
-            ema.update()
+            if epoch % args.update_ema_interval == 0:
+                step_ema(args, ema, net, epoch)
+            
+            #validate
 
             scheduler.step()
 
             # validation
-            net_val = ema.ema_model
+            # net_val = ema.ema_model
+            if epoch % args.update_ema_interval == 0:
+                apply_ema(args, ema, net)
+            net_val = net
             res = val.validation_diffusion(val_loader, net_val, args, pretrained_ViT) 
+            if epoch % args.update_ema_interval == 0:
+                restore_ema(args, ema, net)
             log = [f"{key}: {res[key]:.3f}" for key in res]
             msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
             logger.info(msg)

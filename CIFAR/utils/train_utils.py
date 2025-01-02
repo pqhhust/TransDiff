@@ -70,10 +70,14 @@ def get_args_parser():
 
     parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer'], help='Backbone name')
     parser.add_argument('--pretrained_dir', default=None, type=str, help='Pretrained diffusion model directory')
-    parser.add_argument('--ema_decay', default=0.999, type=float, help='Exponential moving average decay')
-    parser.add_argument('--ema_update_every', default=1, type=int, help='Update EMA every n steps')
+    parser.add_argument('--use_ema', type=bool, default=True, help='Whether to use EMA')
+    parser.add_argument('--ema_decay', default=0.995, type=float, help='Exponential moving average decay')
+    parser.add_argument('--update_ema_interval', default=8, type=int, help='Update EMA every n steps')
+    parser.add_argument('--start_ema_step', default=40, type=int, help='Start EMA step')
     parser.add_argument('--clip', default=0, type=float, help='std error clipping value')
-    parser.add_argument('--mlp_hdim', default=64, type=int, help='hidden dimension for diffusion mlp')
+    parser.add_argument('--mlp_hdim1', default=64, type=int, help='hidden dimension 1 for diffusion mlp')
+    parser.add_argument('--mlp_hdim2', default=64, type=int, help='hidden dimension 2 for diffusion mlp')
+    parser.add_argument('--mlp_hdim3', default=64, type=int, help='hidden dimension 3 for diffusion mlp')
     parser.add_argument('--pretrained_seed', default=0, type=int, help='seed for pretraining ViT')
     parser.add_argument('--mlp_dropout', default=0.1, type=float, help='dropout rate for diffusion mlp')
 

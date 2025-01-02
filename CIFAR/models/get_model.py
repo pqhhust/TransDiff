@@ -9,7 +9,7 @@ def get_model(model_name, nb_cls, logger, args):
         net = models.vit_cifar.vit_cifar(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
     if model_name == "diffusion":
         if args.backbone == 'mlp':
-            net = models.diffusion.Diffusion_MLP(args=args, d_model=args.hdim, hdim=args.mlp_hdim, dropout=args.mlp_dropout, clip=args.clip, ViT_depth=args.depth)
+            net = models.diffusion.Diffusion_MLP(args=args, d_model=args.hdim, hdim1=args.mlp_hdim1, hdim2=args.mlp_hdim2, hdim3=args.mlp_hdim3, dropout=args.mlp_dropout, clip=args.clip, ViT_depth=args.depth)
         if args.backbone == 'unet1d':
             net = models.diffusion.Diffusion_UNet1D()
         if args.backbone == 'transformer':

@@ -59,7 +59,7 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 test.py \
 --hdim 384 \
 --eta-ksvd 10 \
 --batch-size 128 \
---gpu 2 \
+--gpu 0 \
 --nb-run 1 \
 --model vit_cifar \
 --save-dir ./results/CIFAR10_out/vit_out_cat \
@@ -106,23 +106,21 @@ python3 main.py \
 --depth 7 \
 --attn-type kep_svgp \
 --concate \
---ksvd-layers 1 \
+--ksvd-layers 7 \
 --num_heads 12 \
 --hdim 384 \
 --eta-ksvd 10 \
 --batch-size 128 \
 --gpu 0 \
---nb-epochs 1 \
+--nb-epochs 300 \
 --nb-run 1 \
 --lr 1e-3 \
 --weight-decay 5e-5 \
 --save-dir ./results/CIFAR10_out/diffusion \
 --backbone mlp \
 --pretrained_dir ./results/CIFAR10_out/vit_out_cat \
---ema_decay 0.999 \
---ema_update_every 1 \
 --clip 0.01 \
---mlp_hdim 512 \
+--mlp_hdim 768 \
 --pretrained_seed 0 \
 --mlp_dropout 0.1 \
 Cifar10
