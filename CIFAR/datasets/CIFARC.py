@@ -8,8 +8,6 @@ from torchvision.datasets.utils import (
     download_and_extract_archive,
 )
 
-from pathlib import Path
-
 import numpy as np
 
 class CIFAR10C(VisionDataset):
@@ -34,7 +32,7 @@ class CIFAR10C(VisionDataset):
         perturbations. Dan Hendrycks and Thomas Dietterich. In ICLR, 2019.
     """
 
-    base_folder = Path(__file__).parent.parent.parent / "data/CIFAR-10-C"
+    base_folder = "CIFAR-10-C"
     tgz_md5 = "56bf5dcef84df0e2308c6dcbcbbd8499"
     cifarc_subsets = [
         "brightness",
