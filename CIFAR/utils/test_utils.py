@@ -32,7 +32,6 @@ def get_args_parser():
     parser.add_argument('--num_heads', type=int, default=12)
     
     ## diffusion
-    subparsers = parser.add_subparsers(title="diffusion setting", dest="subcommand")
 
     parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer'], help='Backbone name')
     parser.add_argument('--pretrained_dir', default=None, type=str, help='Pretrained diffusion model directory')
