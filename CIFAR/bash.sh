@@ -157,127 +157,71 @@
 
 
 ### Test
-python3 test.py \
---seed 0 \
---attn-type softmax \
---batch-size 128 \
---gpu 0 \
---nb-run 1 \
---model vit_cifar \
---save-dir ./results/vit_out \
-Cifar10 \
-&python3 test.py \
---seed 1 \
---attn-type softmax \
---batch-size 128 \
---gpu 0 \
---nb-run 1 \
---model vit_cifar \
---save-dir ./results/vit_out \
-Cifar10 \
-&python3 test.py \
---seed 2 \
---attn-type softmax \
---batch-size 128 \
---gpu 0 \
---nb-run 1 \
---model vit_cifar \
---save-dir ./results/vit_out \
-Cifar10 \
-&python3 test.py \
---seed 3 \
---attn-type softmax \
---batch-size 128 \
---gpu 0 \
---nb-run 1 \
---model vit_cifar \
---save-dir ./results/vit_out \
-Cifar10 \
-&python3 test.py \
---seed 4 \
---attn-type softmax \
---batch-size 128 \
---gpu 0 \
---nb-run 1 \
---model vit_cifar \
---save-dir ./results/vit_out \
-Cifar10
-
 # python3 test.py \
-# --depth 7 \
-# --attn-type kep_svgp \
-# --concate \
-# --ksvd-layers 7 \
-# --num_heads 12 \
-# --hdim 384 \
-# --eta-ksvd 10 \
-# --batch-size 128 \
-# --gpu 0 \
-# --nb-run 1 \
-# --model vit_cifar \
-# --save-dir ./results/vit_out_cat \
 # --seed 0 \
-# Cifar10 \
-# &python3 test.py \
-# --depth 7 \
-# --attn-type kep_svgp \
-# --concate \
-# --ksvd-layers 7 \
-# --num_heads 12 \
-# --hdim 384 \
-# --eta-ksvd 10 \
+# --attn-type softmax \
 # --batch-size 128 \
 # --gpu 0 \
 # --nb-run 1 \
 # --model vit_cifar \
-# --save-dir ./results/vit_out_cat \
+# --save-dir ./results/vit_out \
+# Cifar10 \
+# &python3 test.py \
 # --seed 1 \
-# Cifar10 \
-# &python3 test.py \
-# --depth 7 \
-# --attn-type kep_svgp \
-# --concate \
-# --ksvd-layers 7 \
-# --num_heads 12 \
-# --hdim 384 \
-# --eta-ksvd 10 \
+# --attn-type softmax \
 # --batch-size 128 \
 # --gpu 0 \
 # --nb-run 1 \
 # --model vit_cifar \
-# --save-dir ./results/vit_out_cat \
+# --save-dir ./results/vit_out \
+# Cifar10 \
+# &python3 test.py \
 # --seed 2 \
-# Cifar10 \
-# &python3 test.py \
-# --depth 7 \
-# --attn-type kep_svgp \
-# --concate \
-# --ksvd-layers 7 \
-# --num_heads 12 \
-# --hdim 384 \
-# --eta-ksvd 10 \
+# --attn-type softmax \
 # --batch-size 128 \
 # --gpu 0 \
 # --nb-run 1 \
 # --model vit_cifar \
-# --save-dir ./results/vit_out_cat \
+# --save-dir ./results/vit_out \
+# Cifar10 \
+# &python3 test.py \
 # --seed 3 \
-# Cifar10 \
-# &python3 test.py \
-# --depth 7 \
-# --attn-type kep_svgp \
-# --concate \
-# --ksvd-layers 7 \
-# --num_heads 12 \
-# --hdim 384 \
-# --eta-ksvd 10 \
+# --attn-type softmax \
 # --batch-size 128 \
 # --gpu 0 \
 # --nb-run 1 \
 # --model vit_cifar \
-# --save-dir ./results/vit_out_cat \
+# --save-dir ./results/vit_out \
+# Cifar10 \
+# &python3 test.py \
 # --seed 4 \
+# --attn-type softmax \
+# --batch-size 128 \
+# --gpu 0 \
+# --nb-run 1 \
+# --model vit_cifar \
+# --save-dir ./results/vit_out \
 # Cifar10
+
+python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 1 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 0 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 1 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 1 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 1 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 2 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 1 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 3 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 1 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 4 Cifar10 
+
+python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 2 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 0 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 2 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 1 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 2 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 2 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 2 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 3 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 2 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 4 Cifar10 
+
+python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 7 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 0 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 7 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 1 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 7 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 2 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 7 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 3 Cifar10 \
+&python3 test.py --depth 7 --attn-type kep_svgp --concate --ksvd-layers 7 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-run 1 --model vit_cifar --save-dir ./results/vit_out_cat --seed 4 Cifar10 
+
+
 
 ### Train Diffusion
 # python3 main.py \
