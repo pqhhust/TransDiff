@@ -193,7 +193,16 @@ def test_diffusion(args):
 
 
 if __name__ == '__main__':
+    wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
     args = utils.test_utils.get_args_parser()
+    if args.attn_type == 'kep_svgp':
+        group = 'KEP-SVGP'
+    else:
+        group = 'VIT'
+    wandb.init(project='Difformer',     
+               group=group,
+               name=f"Seed_{args.seed}",
+               config=vars(args))
     print(args)
     set_seed(args.seed)
     if args.ood_data is None and args.model == 'diffusion':
