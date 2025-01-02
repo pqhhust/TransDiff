@@ -118,12 +118,12 @@ def compute_loss_diffusion(mse_criterion, means_from_diffusion, means_x_minus, s
     for layer_idx, (mean_diff_out, mean_vit_out) in enumerate(zip(means_from_diffusion, means_x_minus)):
         # Compute MSE loss between Diffusion output and ViT output
         mean_loss = mse_criterion(mean_diff_out, mean_vit_out)
-        means_mse += mean_loss / len(means_from_diffusion)
+        means_mse += mean_loss #/ len(means_from_diffusion)
     
     for layer_idx, (std_diff_out, cov_vit_out) in enumerate(zip(stds_from_diffusion, covariances_x_minus)):
         # Compute MSE loss between Diffusion output and ViT output
         std_loss = mse_criterion(std_diff_out, cov_vit_out)
-        stds_mse += std_loss / len(stds_from_diffusion)
+        stds_mse += std_loss #/ len(stds_from_diffusion)
     
     return means_mse, stds_mse, means_mse + stds_mse
 
