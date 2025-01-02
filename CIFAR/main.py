@@ -14,9 +14,10 @@ import models.get_model
 import datasets.cifar_loader
 import utils.train_utils
 from utils.seed_utils import set_seed
+from ema_pytorch import EMA
 
 import warmup_scheduler
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
 
 def main(args):
     if args.attn_type == 'softmax':
@@ -117,22 +118,27 @@ def main(args):
 
 def main_diffusion(args):
     if args.attn_type == 'softmax':
-        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}")
-        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_{args.model}")
+        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim}_{args.mlp_dropout}_{args.lr}_{args.clip}")
+        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
+        group = "VIT"
     elif args.attn_type == 'kep_svgp':
         save_path = os.path.join(
             args.save_dir,
-            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}"
+            f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.mlp_hdim}_{args.mlp_dropout}_{args.lr}_{args.clip}"
         )
         pretrained_path = os.path.join(
             args.pretrained_dir,
-            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}"
+            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
         )
+        group = "KEP-SVGP"
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    wandb.init(project='Diffusion-KEP-SVGP', config=vars(args))
+    wandb.init(project='Difformer', 
+               group=group,
+               name=f"Diffusion_seed_{args.seed}_lr_{args.lr}_hdim_{args.mlp_hdim}_clip_{args.clip}_pretrained_seed_{args.pretrained_seed}_mlp_dropout_{args.mlp_dropout}_ksvd_layers_{args.ksvd_layers}",
+               config=vars(args))
 
     # Set seed everything
     set_seed(args.seed)
@@ -175,6 +181,10 @@ def main_diffusion(args):
             total_epoch=args.warmup_epoch,
             after_scheduler=base_scheduler
         )
+
+        ## Initialize EMA
+        ema = EMA(net, beta=args.ema_decay, update_every=args.ema_update_every)
+        ema.to(f'cuda:{args.gpu}')
         
         ## make logger
         best_acc, best_auroc, best_aurc = 0, 0, 1e6
@@ -182,12 +192,13 @@ def main_diffusion(args):
         ## start training
         for epoch in range(args.nb_epochs):
             train.train_diffusion(train_loader, net, optimizer, epoch, logger, args, pretrained_ViT)
-            
+
+            ema.update()
+
             scheduler.step()
-            # optimizer.step()
 
             # validation
-            net_val = net
+            net_val = ema.ema_model
             res = val.validation_diffusion(val_loader, net_val, args, pretrained_ViT) 
             log = [f"{key}: {res[key]:.3f}" for key in res]
             msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
@@ -217,7 +228,6 @@ def main_diffusion(args):
                 best_aurc = aurc
                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
 
-    wandb.finish()
 
 def main_diffusion_stage2(args):
     if args.attn_type == 'softmax':
@@ -326,6 +336,8 @@ if __name__ == '__main__':
     args = utils.train_utils.get_args_parser()
     if args.model == 'diffusion':
         main_diffusion(args)
+        test.test_diffusion(args)
+        wandb.finish()
     # elif args.model == 'diffusion' and args.stage == 2:
     #     main_diffusion_stage2(args)
     else:

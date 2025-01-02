@@ -80,25 +80,26 @@ def save_cifar_c_results_to_csv(dataset, attn_type, save_path, metrics, cor_resu
     elif dataset == "cifar100":
         csv_file_path = os.path.join(save_path, 'cifar100c_results_{}.csv'.format(attn_type))
 
+    headers = ["Model", "Corruption", "Severity"] + metrics
+
+    table = wandb.Table(columns=headers)
+
     with open(csv_file_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
         writer = csv.writer(csvfile)
-
-        # Write headers
-        headers = ["Model", "Corruption", "Severity"] + metrics
         writer.writerow(headers)
 
         # Iterate over all models, corruptions, and severities
         for model_name, cor_results in cor_results_all_models.items():
             for corruption, severities in cor_results.items():
                 for severity, results in severities.items():
-                    values = [model_name, corruption, severity]
-                    for metric in metrics:
-                        values.append(f"{results[metric]:.2f}")
-                        for metric in metrics:
-                            wandb.log({
-                                "cifar_c_model": model_name,
-                                "corruption": corruption,
-                                "severity": severity,
-                                f"{metric}": results[metric]
-                            })
-                    writer.writerow(values)
+                    row = [model_name, corruption, severity]
+                    metric_values = [f"{results.get(metric, 0.0):.2f}" for metric in metrics]
+                    row.extend(metric_values)
+
+                    writer.writerow(row)  # Write row to CSV
+                    table.add_data(*row)   # Add row to wandb Table
+        
+    artifact = wandb.Artifact('cifar_c_results', type='dataset')
+    artifact.add_file(csv_file_path, name=os.path.basename(csv_file_path))
+    wandb.log_artifact(artifact)
+    wandb.log({"CIFAR-C Results Table": table})

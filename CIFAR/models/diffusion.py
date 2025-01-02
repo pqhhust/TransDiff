@@ -104,31 +104,34 @@ class Diffusion_UNet1D(Unet1D):
                 outputs.append(out.transpose(1, 2))
             return outputs
         
+
 class Diffusion_MLP(nn.Module):
-    def __init__(self, d_model=384, hdim1=128*4, hdim2=128*8, hdim3=128*4, dropout=0.1, ViT_depth=7):
+    def __init__(self, args, d_model=384, hdim=64, dropout=0, clip=0.01, ViT_depth=7):
         super().__init__()
+        self.args = args
         self.d_model = d_model
-        self.hdim1 = hdim1
-        self.hdim2 = hdim2
-        self.hdim3 = hdim3
+        self.hdim = hdim
         self.dropout = dropout
+        self.clip = clip
         self.ViT_depth = ViT_depth
         self.ln = nn.LayerNorm(d_model)
         # Main MLP - processes concatenated input and time embedding
         self.mlp = nn.Sequential(
-            nn.Linear(d_model, hdim1),  # d_model for x, d_model for time
-            nn.GELU(),
+            nn.Linear(d_model, hdim),  # d_model for x, d_model for time
+            nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim1, hdim2),
-            nn.GELU(),
+            nn.Linear(hdim, hdim),
+            nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim2, hdim3),
-            nn.GELU(),
+            nn.Linear(hdim, hdim),
+            nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim3, d_model),
-            nn.GELU(),
+            nn.Linear(hdim, d_model),
+            nn.ReLU(),
             nn.Dropout(dropout)
         )
+
+        self.sigma = nn.Linear(d_model, 1)
 
     def get_timestep_embedding(self, timesteps, dim=None):
         """
@@ -163,30 +166,135 @@ class Diffusion_MLP(nn.Module):
         
         # Create sinusoidal time embedding and expand to match input dimensions
         t_emb = self.get_timestep_embedding(t)  # [batch_size, d_model]
+        if self.args.attn_type == 'softmax':
+            std = 0
+        else:
+            std = torch.clamp(torch.exp(self.sigma(t_emb)), 0, self.clip)
         t_emb = t_emb.unsqueeze(1).expand(batch_size, seq_len, self.d_model)
         
         # Now both x and t_emb have shape [batch_size, seq_len, d_model]
         x_t = x + t_emb
         
+        mean_x_t = self.mlp(x_t) + x
         # Process through MLP and add residual connection
-        return self.mlp(x_t) + x
+        return mean_x_t, std.view(batch_size, 1, 1).expand(batch_size, seq_len, self.d_model), mean_x_t + std.view(batch_size, 1, 1) * torch.randn_like(mean_x_t)
 
     def forward(self, x, train=False):
         if not train:
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
-                x = self.forward_step(x, t_tensor)
+                x = self.forward_step(x, t_tensor)[-1]
             return x
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
             
-            outputs = []
+            means = []
+            stds = []
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
-                out = self.forward_step(x[t], t_tensor)
-                outputs.append(out)
-            return outputs
+                mean, std, _ = self.forward_step(x[t], t_tensor)
+                means.append(mean)
+                stds.append(std)
+            return means, stds
+
+# class Diffusion_MLP(nn.Module):
+#     def __init__(self, d_model=384, hdim1=384*2, hdim2=384*4, hdim3=384*2, dropout=0.1, ViT_depth=7):
+#         super().__init__()
+#         self.d_model = d_model
+#         self.hdim1 = hdim1
+#         self.hdim2 = hdim2
+#         self.hdim3 = hdim3
+#         self.dropout = dropout
+#         self.ViT_depth = ViT_depth
+#         self.ln = nn.LayerNorm(d_model)
+#         # Main MLP - processes concatenated input and time embedding
+#         self.mlp = nn.Sequential(
+#             nn.Linear(d_model, hdim1),  # d_model for x, d_model for time
+#             nn.GELU(),
+#             nn.Dropout(dropout),
+#             nn.Linear(hdim1, hdim2),
+#             nn.GELU(),
+#             nn.Dropout(dropout),
+#             nn.Linear(hdim2, hdim3),
+#             nn.GELU(),
+#             nn.Dropout(dropout),
+#             nn.Linear(hdim3, d_model),
+#             nn.GELU(),
+#             nn.Dropout(dropout)
+#         )
+#         self.mlp_mean = nn.Sequential(
+#             nn.Linear(d_model, d_model),
+#             nn.GELU(),
+#             nn.Dropout(dropout)
+#         )
+#         self.mlp_std = nn.Sequential(
+#             nn.Linear(d_model, d_model),
+#             nn.GELU(),
+#             nn.Dropout(dropout)
+#         )
+
+#     def get_timestep_embedding(self, timesteps, dim=None):
+#         """
+#         Create sinusoidal timestep embeddings.
+        
+#         :param timesteps: tensor of shape [N] with integer timesteps
+#         :param dim: embedding dimension (defaults to self.d_model)
+#         :return: tensor of shape [N, dim]
+#         """
+#         if dim is None:
+#             dim = self.d_model
+            
+#         half_dim = dim // 2
+#         # Create log-spaced frequencies
+#         freqs = torch.exp(
+#             -math.log(10000) * torch.arange(start=0, end=half_dim, dtype=torch.float32) / half_dim
+#         ).to(device=timesteps.device)
+        
+#         # Create timestep embeddings
+#         args = timesteps[:, None].float() * freqs[None]
+#         embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
+        
+#         # Handle odd dimensions
+#         if dim % 2:
+#             embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim=-1)
+            
+#         return embedding
+
+#     def forward_step(self, x, t):
+#         # Get batch size and sequence length
+#         batch_size, seq_len, _ = x.shape
+        
+#         # Create sinusoidal time embedding and expand to match input dimensions
+#         t_emb = self.get_timestep_embedding(t)  # [batch_size, d_model]
+#         t_emb = t_emb.unsqueeze(1).expand(batch_size, seq_len, self.d_model)
+        
+#         # Now both x and t_emb have shape [batch_size, seq_len, d_model]
+#         x_t = x + t_emb
+        
+#         # Process through MLP and add residual connection
+#         h = self.mlp(x_t) + x
+#         mean = self.mlp_mean(h)
+#         std = torch.clamp(torch.exp(self.mlp_std(h)), 0, 1e-3)
+#         return mean + std * torch.randn_like(h), mean, std
+
+#     def forward(self, x, train=False):
+#         if not train:
+#             for t in range(self.ViT_depth):
+#                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
+#                 x = self.forward_step(x, t_tensor)[0]
+#             return x
+#         else:
+#             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
+#                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
+            
+#             means, stds = [], []
+#             for t in range(self.ViT_depth):
+#                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
+#                 _, mean, std = self.forward_step(x[t], t_tensor)
+#                 means.append(mean)
+#                 stds.append(std)
+#             return means, stds
 
 class MLPMixerLayer(nn.Module):
     def __init__(self, seq_len, d_model, token_mixing_dim, channel_mixing_dim, dropout=0.1):

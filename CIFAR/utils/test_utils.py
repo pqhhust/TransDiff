@@ -32,8 +32,16 @@ def get_args_parser():
     parser.add_argument('--num_heads', type=int, default=12)
     
     ## diffusion
+    subparsers = parser.add_subparsers(title="diffusion setting", dest="subcommand")
+
     parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer'], help='Backbone name')
     parser.add_argument('--pretrained_dir', default=None, type=str, help='Pretrained diffusion model directory')
+    parser.add_argument('--ema_decay', default=0.999, type=float, help='Exponential moving average decay')
+    parser.add_argument('--ema_update_every', default=1, type=int, help='Update EMA every n steps')
+    parser.add_argument('--clip', default=0, type=float, help='std error clipping value')
+    parser.add_argument('--mlp_hdim', default=64, type=int, help='hidden dimension for diffusion mlp')
+    parser.add_argument('--pretrained_seed', default=0, type=int, help='seed for pretraining ViT')
+    parser.add_argument('--mlp_dropout', default=0.1, type=float, help='dropout rate for diffusion mlp')
 
     subparsers = parser.add_subparsers(title="dataset setting", dest="subcommand")
     Cifar10 = subparsers.add_parser("Cifar10",
