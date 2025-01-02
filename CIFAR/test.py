@@ -193,7 +193,7 @@ def test_diffusion(args):
 
 
 if __name__ == '__main__':
-    wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+    wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
     args = utils.test_utils.get_args_parser()
     if args.attn_type == 'kep_svgp':
         group = 'KEP-SVGP'
