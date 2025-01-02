@@ -124,8 +124,8 @@ def main(args):
                 logger.info(msg)
                 best_aurc = aurc
                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth'))
-
-
+                
+       
 def main_diffusion(args):
     if args.attn_type == 'softmax':
         save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}")
@@ -157,7 +157,7 @@ def main_diffusion(args):
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-    train_loader, val_loader, _, nb_cls = datasets.cifar_loader.get_loader(
+    train_loader, val_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(
         args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
     )
 
@@ -219,6 +219,7 @@ def main_diffusion(args):
                 apply_ema(args, ema, net)
             net_val = net
             res = val.validation_diffusion(val_loader, net_val, args, pretrained_ViT) 
+            test_results = val.validation_diffusion(test_loader, net_val, args, pretrained_ViT)
             if epoch % args.update_ema_interval == 0:
                 restore_ema(args, ema, net)
             log = [f"{key}: {res[key]:.3f}" for key in res]
@@ -226,6 +227,10 @@ def main_diffusion(args):
             logger.info(msg)
 
             wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
+            log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
+            msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+            logger.info(msg)
+            wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
 
             if res['Acc.'] > best_acc:
                 acc = res['Acc.']
