@@ -248,6 +248,8 @@ def main_diffusion(args):
                 logger.info(msg)
                 best_aurc = aurc
                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
+        
+        torch.save(net.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
 
 
 def main_diffusion_stage2(args):
