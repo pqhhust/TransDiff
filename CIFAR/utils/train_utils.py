@@ -74,13 +74,13 @@ def get_args_parser():
     parser.add_argument('--ema_decay', default=0.995, type=float, help='Exponential moving average decay')
     parser.add_argument('--update_ema_interval', default=5, type=int, help='Update EMA every n steps')
     parser.add_argument('--start_ema_step', default=50, type=int, help='Start EMA step')
-    parser.add_argument('--clip', default=0.1, type=float, help='std error clipping value')
+    parser.add_argument('--clip', default=0, type=float, help='std error clipping value')
     parser.add_argument('--mlp_hdim1', default=64, type=int, help='hidden dimension 1 for diffusion mlp')
     parser.add_argument('--mlp_hdim2', default=64, type=int, help='hidden dimension 2 for diffusion mlp')
     parser.add_argument('--mlp_hdim3', default=64, type=int, help='hidden dimension 3 for diffusion mlp')
     parser.add_argument('--pretrained_seed', default=0, type=int, help='seed for pretraining ViT')
     parser.add_argument('--mlp_dropout', default=0.1, type=float, help='dropout rate for diffusion mlp')
-    parser.add_argument('--mlp_gamma', default=0.1, type=int, help='weight of stds_loss')
+    parser.add_argument('--mlp_gamma', default=1, type=int, help='weight of stds_loss')
 
     # diffusion setting
     # Diffusion = subparsers.add_parser("Diffusion",
