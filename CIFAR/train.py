@@ -99,7 +99,7 @@ def train(train_loader, net, optimizer, epoch, logger, args):
     # Replace writer.add_scalar with wandb.log
     wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
 
-def compute_loss_diffusion(mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus):
+def compute_loss_diffusion(mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus, gamma):
     """
     Compute the total loss as the sum of MSE losses between Diffusion and ViT outputs.
     
@@ -125,7 +125,7 @@ def compute_loss_diffusion(mse_criterion, means_from_diffusion, means_x_minus, s
         std_loss = mse_criterion(std_diff_out, cov_vit_out)
         stds_mse += std_loss #/ len(stds_from_diffusion)
     
-    return means_mse, stds_mse, means_mse + stds_mse
+    return means_mse, stds_mse, means_mse + gamma * stds_mse
 
 def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, args, vit_model):
     """
@@ -184,7 +184,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
         means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_ViT, train=True)
         # print(x_t_from_diffusion[0].shape) # for debug only
         # print(means_x_minus[0].shape) # for debug only
-        means_loss, stds_loss, loss = compute_loss_diffusion(mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus)#to be uncomment
+        means_loss, stds_loss, loss = compute_loss_diffusion(mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus, args.mlp_gamma)#to be uncomment
         loss.backward()
         optimizer.step()
 

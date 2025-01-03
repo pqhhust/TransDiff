@@ -168,15 +168,14 @@ class Diffusion_MLP(nn.Module):
         
         # Create sinusoidal time embedding and expand to match input dimensions
         t_emb = self.get_timestep_embedding(t)  # [batch_size, d_model]
-        if self.args.attn_type == 'softmax':
-            std = 0
-        else:
-            std = torch.clamp(torch.exp(self.sigma(t_emb)), 0, self.clip)
         t_emb = t_emb.unsqueeze(1).expand(batch_size, seq_len, self.d_model)
         
         # Now both x and t_emb have shape [batch_size, seq_len, d_model]
         x_t = x + t_emb
-        
+        if self.args.attn_type == 'softmax':
+            std = 0
+        else:
+            std = torch.clamp(torch.exp(self.sigma(x_t.mean(1))), 0, self.clip)
         mean_x_t = self.mlp(x_t) + x
         # Process through MLP and add residual connection
         return mean_x_t, std.view(batch_size, 1, 1).expand(batch_size, seq_len, self.d_model), mean_x_t + std.view(batch_size, 1, 1) * torch.randn_like(mean_x_t)
