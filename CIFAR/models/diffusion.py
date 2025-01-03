@@ -133,7 +133,7 @@ class Diffusion_MLP(nn.Module):
             nn.Dropout(dropout)
         )
 
-        self.sigma = nn.Linear(d_model, 1)
+        self.sigma = nn.Sequential(nn.Linear(d_model, 1), nn.ReLU(), nn.Dropout(dropout))
 
     def get_timestep_embedding(self, timesteps, dim=None):
         """
@@ -175,7 +175,7 @@ class Diffusion_MLP(nn.Module):
         if self.args.attn_type == 'softmax':
             std = 0
         else:
-            std = torch.clamp(torch.exp(self.sigma(x_t.mean(1))), 0, self.clip)
+            std = torch.clamp(self.sigma(x_t.mean(1)), -self.clip, self.clip)
         mean_x_t = self.mlp(x_t) + x
         # Process through MLP and add residual connection
         return mean_x_t, std.view(batch_size, 1, 1).expand(batch_size, seq_len, self.d_model), mean_x_t + std.view(batch_size, 1, 1) * torch.randn_like(mean_x_t)
