@@ -156,10 +156,11 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     # Define loss function
     mse_criterion = nn.MSELoss() #to be uncomment
 
-    # ce_criterion = nn.CrossEntropyLoss()
+    ce_criterion = nn.CrossEntropyLoss()
 
     # Initialize training logs
     train_log = {
+        'CE Loss': utils.utils.AverageMeter(),
         'Mean Loss': utils.utils.AverageMeter(),
         'Var Loss': utils.utils.AverageMeter(),
         'Tot. Loss': utils.utils.AverageMeter(),
@@ -175,16 +176,16 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
         output = vit_model._to_words(inputs)
         output = vit_model.emb(output)
         output = output + vit_model.pos_emb
-        # output = diffusion_model(output)
-        # output = vit_model.fc(output.mean(1))
+        output = diffusion_model(output)
 
-        # loss = ce_criterion(output, targets)
+        ce_loss = ce_criterion(output, targets)
         with torch.no_grad(): #to be uncomment
             _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs)
         means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_ViT, train=True)
         # print(x_t_from_diffusion[0].shape) # for debug only
         # print(means_x_minus[0].shape) # for debug only
         means_loss, stds_loss, loss = compute_loss_diffusion(mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus, args.mlp_gamma)#to be uncomment
+        loss += ce_loss
         loss.backward()
         optimizer.step()
 
@@ -192,6 +193,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
             lr = param_group["lr"]
             break
         
+        train_log['CE Loss'].update(ce_loss.item(), inputs.size(0))
         train_log['Mean Loss'].update(means_loss.item(), inputs.size(0))
         train_log['Var Loss'].update(stds_loss.item(), inputs.size(0))
         train_log['Tot. Loss'].update(loss.item(), inputs.size(0))

@@ -150,10 +150,10 @@ def validation_diffusion(loader, net, args, pretrained_vit):
         output = pretrained_vit.emb(output)
         output = output + pretrained_vit.pos_emb
         output = net(output)
-        h = pretrained_vit.enc[args.depth - 1].la2(output)
-        h = pretrained_vit.enc[args.depth - 1].mlp(h)
-        output = output + h
-        output = pretrained_vit.fc(output.mean(1))
+        # h = pretrained_vit.enc[args.depth - 1].la2(output)
+        # h = pretrained_vit.enc[args.depth - 1].mlp(h)
+        # output = output + h
+        # output = pretrained_vit.fc(output.mean(1))
 
         # if args.attn_type == "softmax":
         #     output = net(inputs)

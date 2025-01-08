@@ -117,7 +117,6 @@ class Diffusion_MLP(nn.Module):
         self.dropout = dropout
         self.clip = clip
         self.ViT_depth = ViT_depth
-        self.ln = nn.LayerNorm(d_model)
         # Main MLP - processes concatenated input and time embedding
         # self.mlp = nn.Sequential(
         #     nn.Linear(d_model, hdim1),  # d_model for x, d_model for time
@@ -134,6 +133,7 @@ class Diffusion_MLP(nn.Module):
         #     nn.Dropout(dropout)
         # )
         self.share_params = nn.Sequential(
+            nn.LayerNorm(d_model),
             nn.Linear(d_model, hdim1),  # d_model for x, d_model for time
             nn.ReLU(),
             nn.Dropout(dropout),
@@ -165,6 +165,20 @@ class Diffusion_MLP(nn.Module):
             # nn.Dropout(dropout),
         )
         
+        self.ln = nn.LayerNorm(d_model)
+        self.solution_head_1 = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Dropout(dropout),
+        )
+
+        self.solution_head_2 = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, 10)
+        )
 
         # self.sigma = nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Dropout(dropout))
         # self.sigma = nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Dropout(dropout))
@@ -256,7 +270,8 @@ class Diffusion_MLP(nn.Module):
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 x = self.forward_step(x, t_tensor)[-1]
-            return x
+                x = self.solution_head_1(self.ln(x)) + x
+                return self.solution_head_2(x.mean(1))
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
