@@ -117,7 +117,9 @@ class Diffusion_MLP(nn.Module):
         self.dropout = dropout
         self.clip = clip
         self.ViT_depth = ViT_depth
-
+        self.patch = 8
+        self.patch_size = 4
+        
         self.emb = nn.Linear(48, d_model)
         self.pos_emb = nn.Parameter(torch.randn(1, 64, d_model))
         # Main MLP - processes concatenated input and time embedding
