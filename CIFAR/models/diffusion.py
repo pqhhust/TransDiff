@@ -106,19 +106,34 @@ class Diffusion_UNet1D(Unet1D):
         
 
 class Diffusion_MLP(nn.Module):
-    def __init__(self, args, d_model=384, hdim1=64, hdim2=64, hdim3=64, dropout=0, clip=0.01, ViT_depth=7):
+    def __init__(self, args, d_model=384, hdim1=64, hdim2=64, hdim3=64, hdim4=64, dropout=0, clip=0.01, ViT_depth=7):
         super().__init__()
         self.args = args
         self.d_model = d_model
         self.hdim1 = hdim1
         self.hdim2 = hdim2
         self.hdim3 = hdim3
+        self.hdim4 = hdim4
         self.dropout = dropout
         self.clip = clip
         self.ViT_depth = ViT_depth
         self.ln = nn.LayerNorm(d_model)
         # Main MLP - processes concatenated input and time embedding
-        self.mlp = nn.Sequential(
+        # self.mlp = nn.Sequential(
+        #     nn.Linear(d_model, hdim1),  # d_model for x, d_model for time
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout),
+        #     nn.Linear(hdim1, hdim2),
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout),
+        #     nn.Linear(hdim2, hdim3),
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout),
+        #     nn.Linear(hdim3, 2*d_model),
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout)
+        # )
+        self.share_params = nn.Sequential(
             nn.Linear(d_model, hdim1),  # d_model for x, d_model for time
             nn.ReLU(),
             nn.Dropout(dropout),
@@ -128,13 +143,46 @@ class Diffusion_MLP(nn.Module):
             nn.Linear(hdim2, hdim3),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hdim3, d_model),
-            nn.ReLU(),
-            nn.Dropout(dropout)
+            # nn.Linear(hdim3, 2*d_model),
+            # nn.ReLU(),
+            # nn.Dropout(dropout)
         )
+        self.mean_model = nn.Sequential(
+            nn.Linear(hdim3, d_model),  
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            # nn.Linear(hdim4, d_model),  
+            # nn.ReLU(),
+            # nn.Dropout(dropout),
+        )
+        
+        self.var_model = nn.Sequential(
+            nn.Linear(hdim3, d_model),  
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            # nn.Linear(hdim4, d_model),  
+            # nn.ReLU(),
+            # nn.Dropout(dropout),
+        )
+        
 
-        self.sigma = nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Dropout(dropout))
-
+        # self.sigma = nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Dropout(dropout))
+        # self.sigma = nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Dropout(dropout))
+        # self.sigma = nn.Sequential(
+        #     nn.Linear(d_model, hdim1),  # d_model for x, d_model for time
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout),
+        #     nn.Linear(hdim1, hdim2),
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout),
+        #     nn.Linear(hdim2, hdim3),
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout),
+        #     nn.Linear(hdim3, d_model),
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout)
+        # )
+         
     def get_timestep_embedding(self, timesteps, dim=None):
         """
         Create sinusoidal timestep embeddings.
@@ -172,12 +220,35 @@ class Diffusion_MLP(nn.Module):
         
         # Now both x and t_emb have shape [batch_size, seq_len, d_model]
         x_t = x + t_emb
+        
+        ### 2 separate models for mean and var
+        # if self.args.attn_type == 'softmax':
+        #     std = 0
+        # else:
+        #     std = self.sigma(x_t)
+        # mean_x_t = self.mlp(x_t) + x
+        
+        ### An unified MLP for mean and var
+        # output = self.mlp(x_t)  # [batch_size, seq_len, 2 * d_model]
+
+        # # Split the output into mean and std
+        # mean, std = torch.split(output, self.d_model, dim=-1)
+
+        # if self.args.attn_type == 'softmax':
+        #     std = 0
+            
+        # # Add residual connection to mean
+        # mean_x_t = mean + x
+        
+        ### Share and private branches for mean and var
+        latent = self.share_params(x_t)
+        
+        mean_x_t = self.mean_model(latent) + x
         if self.args.attn_type == 'softmax':
             std = 0
         else:
-            std = self.sigma(x_t)
-        mean_x_t = self.mlp(x_t) + x
-        # Process through MLP and add residual connection
+            std = self.var_model(latent)
+            
         return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
 
     def forward(self, x, train=False):

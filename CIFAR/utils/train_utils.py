@@ -78,9 +78,10 @@ def get_args_parser():
     parser.add_argument('--mlp_hdim1', default=64, type=int, help='hidden dimension 1 for diffusion mlp')
     parser.add_argument('--mlp_hdim2', default=64, type=int, help='hidden dimension 2 for diffusion mlp')
     parser.add_argument('--mlp_hdim3', default=64, type=int, help='hidden dimension 3 for diffusion mlp')
+    parser.add_argument('--mlp_hdim4', default=64, type=int, help='hidden dimension 4 for diffusion mlp')
     parser.add_argument('--pretrained_seed', default=0, type=int, help='seed for pretraining ViT')
     parser.add_argument('--mlp_dropout', default=0.1, type=float, help='dropout rate for diffusion mlp')
-    parser.add_argument('--mlp_gamma', default=1, type=int, help='weight of stds_loss')
+    parser.add_argument('--mlp_gamma', default=1., type=float, help='weight of stds_loss')
 
     # diffusion setting
     # Diffusion = subparsers.add_parser("Diffusion",
