@@ -117,6 +117,9 @@ class Diffusion_MLP(nn.Module):
         self.dropout = dropout
         self.clip = clip
         self.ViT_depth = ViT_depth
+
+        self.emb = nn.Linear(48, d_model)
+        self.pos_emb = nn.Parameter(torch.randn(1, 64, d_model))
         # Main MLP - processes concatenated input and time embedding
         # self.mlp = nn.Sequential(
         #     nn.Linear(d_model, hdim1),  # d_model for x, d_model for time
@@ -224,6 +227,14 @@ class Diffusion_MLP(nn.Module):
             
         return embedding
 
+    def _to_words(self, x):
+        """
+        (b, c, h, w) -> (b, n, f)
+        """
+        out = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size).permute(0,2,3,4,5,1)
+        out = out.reshape(x.size(0), self.patch**2 ,-1)
+        return out
+
     def forward_step(self, x, t):
         # Get batch size and sequence length
         batch_size, seq_len, _ = x.shape
@@ -267,6 +278,9 @@ class Diffusion_MLP(nn.Module):
 
     def forward(self, x, train=False):
         if not train:
+            x = self._to_words(x)
+            x = self.emb(x)
+            x = x + self.pos_emb
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 x = self.forward_step(x, t_tensor)[-1]

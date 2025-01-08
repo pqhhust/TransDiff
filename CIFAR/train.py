@@ -173,10 +173,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     for i, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         optimizer.zero_grad()
-        output = vit_model._to_words(inputs)
-        output = vit_model.emb(output)
-        output = output + vit_model.pos_emb
-        output = diffusion_model(output)
+        output = diffusion_model(inputs)
 
         ce_loss = ce_criterion(output, targets)
         with torch.no_grad(): #to be uncomment

@@ -146,10 +146,10 @@ def validation_diffusion(loader, net, args, pretrained_vit):
 
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
-        output = pretrained_vit._to_words(inputs)
-        output = pretrained_vit.emb(output)
-        output = output + pretrained_vit.pos_emb
-        output = net(output)
+        # output = pretrained_vit._to_words(inputs)
+        # output = pretrained_vit.emb(output)
+        # output = output + pretrained_vit.pos_emb
+        output = net(inputs)
         # h = pretrained_vit.enc[args.depth - 1].la2(output)
         # h = pretrained_vit.enc[args.depth - 1].mlp(h)
         # output = output + h
