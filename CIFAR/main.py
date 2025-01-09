@@ -17,7 +17,7 @@ from utils.seed_utils import set_seed
 from utils.ema import EMA
 
 import warmup_scheduler
-wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
+wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#
 
 def step_ema(args, ema, net, epoch):
         with_decay = False if epoch < args.start_ema_step else True
@@ -175,7 +175,7 @@ def main_diffusion(args):
         pretrained_ViT.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_acc_net_{run + 1}.pth')))
         pretrained_ViT.cuda()
         net.emb.load_state_dict(pretrained_ViT.emb.state_dict())
-        net.pos_emb.load_state_dict(pretrained_ViT.pos_emb.state_dict())
+        net.pos_emb.data.copy_(pretrained_ViT.pos_emb.data)
         net.ln.load_state_dict(pretrained_ViT.enc[args.depth - 1].la2.state_dict())
         net.solution_head_1.load_state_dict(pretrained_ViT.enc[args.depth - 1].mlp.state_dict())
         net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
