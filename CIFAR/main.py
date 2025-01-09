@@ -219,7 +219,7 @@ def main_diffusion(args):
             # net_val = ema.ema_model
             # if epoch % args.update_ema_interval == 0:
             #     apply_ema(args, ema, net)
-            # net_val = net
+            net_val = net
             res = val.validation_diffusion(val_loader, net_val, args, pretrained_ViT) 
             test_results = val.validation_diffusion(test_loader, net_val, args, pretrained_ViT)
             # if epoch % args.update_ema_interval == 0:
