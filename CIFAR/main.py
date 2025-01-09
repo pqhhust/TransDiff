@@ -208,8 +208,8 @@ def main_diffusion(args):
         for epoch in range(args.nb_epochs):
             train.train_diffusion(train_loader, net, optimizer, epoch, logger, args, pretrained_ViT)
 
-            if epoch % args.update_ema_interval == 0:
-                step_ema(args, ema, net, epoch)
+            # if epoch % args.update_ema_interval == 0:
+            #     step_ema(args, ema, net, epoch)
             
             #validate
 
