@@ -198,11 +198,8 @@ def main_diffusion(args):
         )
 
         ## Initialize EMA
-        # ema = EMA(net, beta=args.ema_decay, update_every=args.ema_update_every)
-        # ema.to(f'cuda:{args.gpu}')
-
-        ema = EMA(args.ema_decay)
-        ema.register(net)
+        # ema = EMA(args.ema_decay)
+        # ema.register(net)
         
         ## make logger
         best_acc, best_auroc, best_aurc = 0, 0, 1e6
@@ -211,22 +208,21 @@ def main_diffusion(args):
         for epoch in range(args.nb_epochs):
             train.train_diffusion(train_loader, net, optimizer, epoch, logger, args, pretrained_ViT)
 
-            if epoch % args.update_ema_interval == 0:
-                step_ema(args, ema, net, epoch)
+            # if epoch % args.update_ema_interval == 0:
+            #     step_ema(args, ema, net, epoch)
             
             #validate
 
             scheduler.step()
 
             # validation
-            # net_val = ema.ema_model
-            if epoch % args.update_ema_interval == 0:
-                apply_ema(args, ema, net)
+            # if epoch % args.update_ema_interval == 0:
+            #     apply_ema(args, ema, net)
             net_val = net
             res = val.validation_diffusion(val_loader, net_val, args, pretrained_ViT) 
             test_results = val.validation_diffusion(test_loader, net_val, args, pretrained_ViT)
-            if epoch % args.update_ema_interval == 0:
-                restore_ema(args, ema, net)
+            # if epoch % args.update_ema_interval == 0:
+            #     restore_ema(args, ema, net)
             log = [f"{key}: {res[key]:.3f}" for key in res]
             msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
             logger.info(msg)
