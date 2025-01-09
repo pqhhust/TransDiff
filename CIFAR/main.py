@@ -216,7 +216,6 @@ def main_diffusion(args):
             scheduler.step()
 
             # validation
-            # net_val = ema.ema_model
             # if epoch % args.update_ema_interval == 0:
             #     apply_ema(args, ema, net)
             net_val = net
