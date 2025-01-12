@@ -99,7 +99,7 @@ def train(train_loader, net, optimizer, epoch, logger, args):
     # Replace writer.add_scalar with wandb.log
     wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
 
-def compute_loss_diffusion(mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus, gamma):
+def compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus):
     """
     Compute the total loss as the sum of MSE losses between Diffusion and ViT outputs.
     
@@ -122,10 +122,20 @@ def compute_loss_diffusion(mse_criterion, means_from_diffusion, means_x_minus, s
     
     for layer_idx, (std_diff_out, cov_vit_out) in enumerate(zip(stds_from_diffusion, covariances_x_minus)):
         # Compute MSE loss between Diffusion output and ViT output
-        std_loss = mse_criterion(std_diff_out, cov_vit_out)
-        stds_mse += std_loss #/ len(stds_from_diffusion)
+        if args.attn_type == 'softmax':
+            break
+        else:
+            if args.depth == args.ksvd_layers:
+                std_loss = mse_criterion(std_diff_out, cov_vit_out)
+                stds_mse += std_loss #/ len(stds_from_diffusion)
+            else: 
+                if layer_idx < (args.depth - args.ksvd_layers):
+                    continue
+                else:
+                    std_loss = mse_criterion(std_diff_out, cov_vit_out)
+                    stds_mse += std_loss 
     
-    return means_mse, stds_mse, means_mse + gamma * stds_mse
+    return means_mse, stds_mse
 
 def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, args, vit_model):
     """
@@ -181,8 +191,8 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
         means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_ViT, train=True)
         # print(x_t_from_diffusion[0].shape) # for debug only
         # print(means_x_minus[0].shape) # for debug only
-        means_loss, stds_loss, loss = compute_loss_diffusion(mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus, args.mlp_gamma)#to be uncomment
-        loss += ce_loss
+        means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus)#to be uncomment
+        loss = args.lambda_mean*means_loss + args.lambda_var*stds_loss + args.lambda_ce*ce_loss
         loss.backward()
         optimizer.step()
 
@@ -192,7 +202,10 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
         
         train_log['CE Loss'].update(ce_loss.item(), inputs.size(0))
         train_log['Mean Loss'].update(means_loss.item(), inputs.size(0))
-        train_log['Var Loss'].update(stds_loss.item(), inputs.size(0))
+        if args.attn_type == "softmax":
+            train_log['Var Loss'].update(stds_loss, inputs.size(0))
+        else: 
+            train_log['Var Loss'].update(stds_loss.item(), inputs.size(0))
         train_log['Tot. Loss'].update(loss.item(), inputs.size(0))
         train_log['LR'].update(lr, inputs.size(0))
 
