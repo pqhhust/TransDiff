@@ -243,7 +243,7 @@ class ViT(nn.Module):
         for enc in self.enc:
             if enc.attn_type == "softmax":
                 out, x_t_trans, mean, cov = enc(out)
-                x_t.append(out)
+                x_t.append(x_t_trans)
                 means.append(mean)
                 covariances.append(cov)
             elif enc.attn_type == "kep_svgp":
