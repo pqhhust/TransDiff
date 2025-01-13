@@ -272,7 +272,7 @@ class Diffusion_MLP(nn.Module):
         
         mean_x_t = self.mean_model(latent) + x
         if self.args.attn_type == 'softmax':
-            std = torch.zeros_like(self.var_model(latent))
+            std = torch.zeros_like(mean_x_t)
         else:
             std = self.var_model(latent)
             
