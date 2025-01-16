@@ -201,7 +201,14 @@ class Diffusion_MLP(nn.Module):
         #     nn.ReLU(),
         #     nn.Dropout(dropout)
         # )
-         
+    #     self.apply(self._init_weights)
+
+    # def _init_weights(self, module):
+    #     if isinstance(module, nn.Linear):
+    #         nn.init.orthogonal_(module.weight)
+    #         if module.bias is not None:
+    #             module.bias.data.zero_()
+
     def get_timestep_embedding(self, timesteps, dim=None):
         """
         Create sinusoidal timestep embeddings.
@@ -286,8 +293,8 @@ class Diffusion_MLP(nn.Module):
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 x = self.forward_step(x, t_tensor)[-1]
-                x = self.solution_head_1(self.ln(x)) + x
-                return self.solution_head_2(x.mean(1))
+            x = self.solution_head_1(self.ln(x)) + x
+            return self.solution_head_2(x.mean(1))
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
