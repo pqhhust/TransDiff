@@ -281,8 +281,9 @@ class Diffusion_MLP(nn.Module):
         # if self.args.attn_type == 'softmax':
         #     # std = torch.zeros_like(mean_x_t)
         #     std = self.var_model(latent)
-        # else:
-        std = torch.clip(self.var_model(latent), min=-self.clip, max=self.clip)
+        # # else:
+        std = self.var_model(latent)
+        # std = torch.clip(self.var_model(latent), min=-self.clip, max=self.clip)
             
         return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
 
