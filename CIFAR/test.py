@@ -170,9 +170,7 @@ def test_diffusion(args):
                                                                        args.test_dir, args.batch_size)
         print(nb_cls)
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
-        pretrained_ViT = models.get_model.get_model('q_distribution', nb_cls, logger, args)
-        pretrained_ViT.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_acc_net_{r + 1}.pth')))
-        pretrained_ViT.cuda()
+        pretrained_ViT = None
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_diffusion_{args.backbone}.pth')))
         net = net.cuda()
         process_results_diffusion(args, test_loader, net, metrics, logger, "MSP", results_storage, pretrained_ViT)

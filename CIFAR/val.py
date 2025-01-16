@@ -141,7 +141,7 @@ def validation_ood(loader, ood_loader, net, args):
 @torch.no_grad()
 def validation_diffusion(loader, net, args, pretrained_vit):
     net.eval()
-    pretrained_vit.eval()
+    # pretrained_vit.eval()
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
 
     for batch_idx, (inputs, targets) in enumerate(loader):
