@@ -271,10 +271,11 @@ class Diffusion_MLP(nn.Module):
         latent = self.share_params(x_t)
         
         mean_x_t = self.mean_model(latent) + x
-        if self.args.attn_type == 'softmax':
-            std = torch.zeros_like(mean_x_t)
-        else:
-            std = self.var_model(latent)
+        # if self.args.attn_type == 'softmax':
+        #     # std = torch.zeros_like(mean_x_t)
+        #     std = self.var_model(latent)
+        # else:
+        std = torch.clip(self.var_model(latent), min=-self.clip, max=self.clip)
             
         return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
 
@@ -296,8 +297,11 @@ class Diffusion_MLP(nn.Module):
             stds = []
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
-                mean, std, _ = self.forward_step(x[t], t_tensor)
-                means.append(mean)
+                mean, std, mean_plus_std = self.forward_step(x[t], t_tensor)
+                if self.args.attn_type == 'softmax':
+                    means.append(mean_plus_std)
+                else:
+                    means.append(mean)
                 stds.append(std)
             return means, stds
 
