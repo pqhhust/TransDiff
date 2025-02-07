@@ -309,7 +309,10 @@ class Diffusion_MLP(nn.Module):
                 if self.args.attn_type == 'softmax':
                     means.append(mean_plus_std)
                 else:
-                    means.append(mean)
+                    if t < (self.args.depth - self.args.ksvd_layers):
+                        means.append(mean_plus_std)
+                    else:
+                        means.append(mean)
                 stds.append(std)
             return means, stds
 
