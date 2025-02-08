@@ -128,6 +128,7 @@ class TransformerEncoder(nn.Module):
     def __init__(self, args, attn_type, feats, mlp_hidden=128, head=8, dropout=0., embed_len=64, \
                 low_rank=10, rank_multi=10, attn_drop=0.):
         super(TransformerEncoder, self).__init__()
+        self.args = args
         self.attn_type = attn_type
         self.la1 = nn.LayerNorm(feats)
         if self.attn_type == "softmax":
@@ -147,7 +148,7 @@ class TransformerEncoder(nn.Module):
 
     def forward(self, x):
         if self.attn_type == "softmax":
-            noise_std = 0.01  # adjust as needed
+            noise_std = self.args.adversarial_noise # adjust as needed
             # Process original input
             la_x = self.la1(x)
             out_original = self.msa(la_x)
@@ -156,9 +157,9 @@ class TransformerEncoder(nn.Module):
             x_t_trans = out_original + x  # residual for original input
             out_final = self.mlp(self.la2(x_t_trans)) + x_t_trans
 
-            # Generate four adversarial inputs and compute aggregated mean/variance
+            # Generate adversarial_samples adversarial inputs and compute aggregated mean/variance
             means_list = [mean_original]
-            for _ in range(4):
+            for _ in range(self.args.adversarial_samples):
                 adv_x = x + torch.randn_like(x) * noise_std
                 la_adv = self.la1(adv_x)
                 out_adv = self.msa(la_adv)
