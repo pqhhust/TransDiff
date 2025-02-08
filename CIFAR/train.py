@@ -122,18 +122,20 @@ def compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_mi
     
     for layer_idx, (std_diff_out, cov_vit_out) in enumerate(zip(stds_from_diffusion, covariances_x_minus)):
         # Compute MSE loss between Diffusion output and ViT output
-        if args.attn_type == 'softmax':
-            break
-        else:
-            if args.depth == args.ksvd_layers:
-                std_loss = mse_criterion(std_diff_out, cov_vit_out)
-                stds_mse += std_loss #/ len(stds_from_diffusion)
-            else: 
-                if layer_idx < (args.depth - args.ksvd_layers):
-                    continue
-                else:
-                    std_loss = mse_criterion(std_diff_out, cov_vit_out)
-                    stds_mse += std_loss 
+        # if args.attn_type == 'softmax':
+        #     break
+        # else:
+        #     if args.depth == args.ksvd_layers:
+        #         std_loss = mse_criterion(std_diff_out, cov_vit_out)
+        #         stds_mse += std_loss #/ len(stds_from_diffusion)
+        #     else: 
+        #         if layer_idx < (args.depth - args.ksvd_layers):
+        #             continue
+        #         else:
+        #             std_loss = mse_criterion(std_diff_out, cov_vit_out)
+        #             stds_mse += std_loss
+        std_loss = mse_criterion(std_diff_out, cov_vit_out)
+        stds_mse += std_loss 
     
     return means_mse, stds_mse
 
