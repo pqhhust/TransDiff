@@ -128,14 +128,23 @@ def main(args):
        
 def main_diffusion(args):
     if args.attn_type == 'softmax':
-        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}")
+        if args.backbone == 'mlp':
+            save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}")
+        elif args.backbone == 'lstm' or args.backbone == 'gru':
+            save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.lr}_{args.nb_epochs}")
         pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
         group = "VIT-fix"
     elif args.attn_type == 'kep_svgp':
-        save_path = os.path.join(
-            args.save_dir,
-            f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}"
-        )
+        if args.backbone == 'mlp':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}"
+            )
+        elif args.backbone == 'lstm' or args.backbone == 'gru':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.lr}_{args.nb_epochs}"
+            )
         pretrained_path = os.path.join(
             args.pretrained_dir,
             f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
@@ -220,14 +229,16 @@ def main_diffusion(args):
             #     apply_ema(args, ema, net)
             net_val = net
             res = val.validation_diffusion(val_loader, net_val, args, pretrained_ViT) 
-            test_results = val.validation_diffusion(test_loader, net_val, args, pretrained_ViT)
-            # if epoch % args.update_ema_interval == 0:
-            #     restore_ema(args, ema, net)
             log = [f"{key}: {res[key]:.3f}" for key in res]
             msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
             logger.info(msg)
 
             wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
+
+            test_results = val.validation_diffusion(test_loader, net_val, args, pretrained_ViT)
+            # if epoch % args.update_ema_interval == 0:
+            #     restore_ema(args, ema, net)
+    
             log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
             msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
             logger.info(msg)

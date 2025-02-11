@@ -16,6 +16,8 @@ def get_model(model_name, nb_cls, logger, args):
             net = models.diffusion.Diffusion_Transformer()
         if args.backbone == 'mlp_mixer':
             net = models.diffusion.Diffusion_MLPMixer()
+        if args.backbone == 'lstm' or args.backbone == 'gru':
+            net = models.diffusion.Diffusion_RNN(args=args, rnn_hidden=args.rnn_hidden, rnn_num_layers=args.rnn_num_layers, dropout=args.rnn_dropout, ViT_depth=args.depth)
     msg = 'Using {} ...'.format(model_name)
     logger.info(msg)
     return net
