@@ -166,7 +166,7 @@ class TransformerEncoder(nn.Module):
                 means_list.append(out_adv)
             means_stack = torch.stack(means_list, dim=0)  # shape: (5, B, seq_len, d_model)
             aggregated_mean = torch.mean(means_stack, dim=0) + x
-            aggregated_std = torch.std(means_stack, dim=0, unbiased=False)
+            aggregated_std = torch.std(means_stack, dim=0)
 
             return out_final, x_t_trans, aggregated_mean, aggregated_std
 

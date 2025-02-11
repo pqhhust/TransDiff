@@ -135,7 +135,7 @@ def compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_mi
         #             std_loss = mse_criterion(std_diff_out, cov_vit_out)
         #             stds_mse += std_loss
         std_loss = mse_criterion(std_diff_out, cov_vit_out)
-        stds_mse += std_loss 
+        stds_mse += std_loss / len(stds_from_diffusion)
     
     return means_mse, stds_mse
 
