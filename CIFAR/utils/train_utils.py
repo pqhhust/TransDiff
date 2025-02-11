@@ -68,7 +68,7 @@ def get_args_parser():
     Cifar100.add_argument("--test-dir", type=str, default='./data/CIFAR100/test', help="Cifar100 test directory")
     Cifar100.add_argument("--nb-cls", type=int, default=100, help="number of classes in Cifar100")
 
-    parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer'], help='Backbone name')
+    parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer', 'lstm', 'gru'], help='Backbone name')
     parser.add_argument('--pretrained_dir', default=None, type=str, help='Pretrained diffusion model directory')
     parser.add_argument('--use_ema', type=bool, default=True, help='Whether to use EMA')
     parser.add_argument('--ema_decay', default=0.995, type=float, help='Exponential moving average decay')
@@ -86,8 +86,11 @@ def get_args_parser():
     parser.add_argument('--lambda_ce', default=1., type=float, help='weight of ce_loss')
     parser.add_argument('--run_name', default=None, type=str, help='name of wandb run')
     parser.add_argument('--adversarial_noise', default=0.01, type=float, help='std of adversarial noise')
-    parser.add_argument('--adversarial_samples', default=4, type=int, help='number of adversarial samples')
+    parser.add_argument('--adversarial_samples', default=0, type=int, help='number of adversarial samples')
 
+    parser.add_argument('--rnn_hidden', type=int, help='hidden dimension of rnn backbone')
+    parser.add_argument('--rnn_num_layers', type=int, help='number of layers of rnn backbone')
+    parser.add_argument('--rnn_dropout', type=float, help='dropout rate for rnn backbone')
     # diffusion setting
     # Diffusion = subparsers.add_parser("Diffusion",
     #                                  description='Dataset parser for training on Diffusion',
