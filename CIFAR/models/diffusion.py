@@ -445,13 +445,14 @@ class Diffusion_RNN(nn.Module):
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
                 mean, std, mean_plus_std = self.forward_step(x[t], t_tensor)
-                if self.args.attn_type == 'softmax':
-                    means.append(mean_plus_std)
-                else:
-                    if t < (self.args.depth - self.args.ksvd_layers):
-                        means.append(mean_plus_std)
-                    else:
-                        means.append(mean)
+                # if self.args.attn_type == 'softmax':
+                #     means.append(mean_plus_std)
+                # else:
+                #     if t < (self.args.depth - self.args.ksvd_layers):
+                #         means.append(mean_plus_std)
+                #     else:
+                        # means.append(mean)
+                means.append(mean)
                 stds.append(std)
             return means, stds
 
