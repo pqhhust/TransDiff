@@ -91,6 +91,7 @@ def get_args_parser():
     parser.add_argument('--rnn_hidden', type=int, help='hidden dimension of rnn backbone')
     parser.add_argument('--rnn_num_layers', type=int, help='number of layers of rnn backbone')
     parser.add_argument('--rnn_dropout', type=float, help='dropout rate for rnn backbone')
+    parser.add_argument('--rnn_low_dim', type=int, help='low dimension of rnn backbone')
     # diffusion setting
     # Diffusion = subparsers.add_parser("Diffusion",
     #                                  description='Dataset parser for training on Diffusion',

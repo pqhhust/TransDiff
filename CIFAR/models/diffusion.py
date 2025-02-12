@@ -319,7 +319,7 @@ class Diffusion_MLP(nn.Module):
 
 class Diffusion_RNN(nn.Module):
     def __init__(self, args, d_model=384, rnn_hidden=384, rnn_num_layers=1, dropout=0.1, 
-                 ViT_depth=7):
+                 ViT_depth=7, low_dim=10):
         super().__init__()
         self.args = args
         self.d_model = d_model
@@ -327,7 +327,8 @@ class Diffusion_RNN(nn.Module):
         self.num_layers = rnn_num_layers
         self.dropout = dropout
         self.ViT_depth = ViT_depth
-        
+        self.low_dim = low_dim
+        self.seq_len = 64
         # For image-to-token conversion
         self.patch = 8
         self.patch_size = 4
@@ -336,21 +337,35 @@ class Diffusion_RNN(nn.Module):
         
         # LSTM backbone (processing tokens, with time token concatenated)
         if args.backbone == 'lstm':
-            self.rnn = nn.LSTM(input_size=d_model, hidden_size=rnn_hidden, 
-                            num_layers=rnn_num_layers, batch_first=True, dropout=dropout)
+            self.rnn = nn.LSTM(input_size=self.low_dim*64, hidden_size=rnn_hidden,   
+                            num_layers=rnn_num_layers, dropout=dropout)
         elif args.backbone == 'gru':
-            self.rnn = nn.GRU(input_size=d_model, hidden_size=rnn_hidden, 
-                            num_layers=rnn_num_layers, batch_first=True, dropout=dropout)
+            self.rnn = nn.GRU(input_size=self.low_dim*64, hidden_size=rnn_hidden, 
+                            num_layers=rnn_num_layers, dropout=dropout)
+        self.proj_in = nn.Sequential(
+            nn.Linear(d_model, low_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(low_dim, low_dim),
+            nn.Dropout(dropout),
+            nn.Flatten(-2, -1)
+        )
         # Separate branches for mean and variance predictions
         self.mean_model = nn.Sequential(
-            nn.Linear(rnn_hidden, d_model),
+            nn.Linear(rnn_hidden // self.seq_len, d_model),
             nn.ReLU(),
             nn.Dropout(dropout),
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, d_model),
+            nn.Dropout(dropout)
         )
         self.var_model = nn.Sequential(
-            nn.Linear(rnn_hidden, d_model),
+            nn.Linear(rnn_hidden // self.seq_len, d_model),
             nn.ReLU(),
             nn.Dropout(dropout),
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, d_model),
+            nn.Dropout(dropout)
         )
         
         self.ln = nn.LayerNorm(d_model)
@@ -403,57 +418,44 @@ class Diffusion_RNN(nn.Module):
         out = out.reshape(x.size(0), self.patch**2 ,-1)
         return out
 
-    def forward_step(self, x, t):
+    def forward_step(self, x, h_c):
         # x shape: [batch_size, seq_len, d_model]
-        batch_size, seq_len, _ = x.shape
-        
-        # Get sinusoidal time embedding and use it as a separate token.
-        t_emb = self.get_timestep_embedding(t)            # [batch_size, d_model]
-        t_token = t_emb.unsqueeze(1)                        # [batch_size, 1, d_model]
-        
-        # Concatenate the time token with image tokens: [B, seq_len+1, d_model]
-        x_cat = torch.cat([t_token, x], dim=1)
-        
-        # Process with the LSTM backbone.
-        rnn_out, _ = self.rnn(x_cat)  # rnn_out: [B, seq_len+1, rnn_hidden]
-        
-        # Discard the time token's output; use only image tokens.
-        out_img = rnn_out[:, 1:, :]   # [B, seq_len, rnn_hidden]
-        
-        # Compute mean and variance predictions for each image token.
-        mean_img = self.mean_model(out_img) + x  # residual connection
-        std = self.var_model(out_img)
-        sampled = mean_img + std * torch.randn_like(mean_img)
-        return mean_img, std, sampled
+        # t = torch.tensor([t], device=x.device).expand(x.shape[0])
+        # t_emb = self.get_timestep_embedding(t)  # [batch_size, d_model]
+        # t_emb = t_emb.unsqueeze(1).expand(x.shape[0], x.shape[1], self.d_model)
+        # x = x + t_emb
+        latent, h_c = self.rnn(self.proj_in(x).unsqueeze(0), h_c) # shape of latent [1, batch_size, rnn_hidden]
+        latent = latent.view(latent.shape[1], self.seq_len, self.rnn_hidden // self.seq_len)
+        mean = self.mean_model(latent)
+        std = self.var_model(latent)
+        x_t = mean + std * torch.randn_like(mean)
+        return mean, std, x_t, h_c
 
     def forward(self, x, train=False):
         if not train:
+            B = x.shape[0]
             x = self._to_words(x)
             x = self.emb(x)
             x = x + self.pos_emb
+            h_c = None
             for t in range(self.ViT_depth):
-                t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
-                x = self.forward_step(x, t_tensor)[-1]
+                x, h_c = self.forward_step(x, h_c)[-2:]
             x = self.solution_head_1(self.ln(x)) + x
             return self.solution_head_2(x.mean(1))
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
+            x = torch.stack(x, dim=0)
+            # t = torch.tensor(list(range(self.ViT_depth + 1)), device=x.device)
+            # t = self.get_timestep_embedding(t) # shape: [ViT_depth + 1, d_model]
+            # x = x + t.unsqueeze(1).unsqueeze(1).expand(self.ViT_depth + 1, x.shape[1], x.shape[2], self.d_model)
+            x = self.proj_in(x)
+            x = x[:-1] # shape: [ViT_depth, B, seq_len * low_dim]
             
-            means = []
-            stds = []
-            for t in range(self.ViT_depth):
-                t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
-                mean, std, mean_plus_std = self.forward_step(x[t], t_tensor)
-                # if self.args.attn_type == 'softmax':
-                #     means.append(mean_plus_std)
-                # else:
-                #     if t < (self.args.depth - self.args.ksvd_layers):
-                #         means.append(mean_plus_std)
-                #     else:
-                        # means.append(mean)
-                means.append(mean)
-                stds.append(std)
+            out, _ = self.rnn(x)   # shape of out: [ViT_depth, B, rnn_hidden]
+            out = out.view(out.shape[0], out.shape[1], self.seq_len, self.rnn_hidden // self.seq_len)
+            means = self.mean_model(out)
+            stds = self.var_model(out)
             return means, stds
 
 # class Diffusion_MLP(nn.Module):
