@@ -321,19 +321,12 @@ class Diffusion_RNN(nn.Module):
         
         # LSTM backbone (processing tokens, with time token concatenated)
         if args.backbone == 'lstm':
-            self.rnn = nn.LSTM(input_size=self.low_dim*64, hidden_size=rnn_hidden,   
+            self.rnn = nn.LSTM(input_size=rnn_hidden, hidden_size=rnn_hidden,   
                             num_layers=rnn_num_layers, dropout=dropout)
         elif args.backbone == 'gru':
-            self.rnn = nn.GRU(input_size=self.low_dim*64, hidden_size=rnn_hidden, 
+            self.rnn = nn.GRU(input_size=rnn_hidden, hidden_size=rnn_hidden, 
                             num_layers=rnn_num_layers, dropout=dropout)
-        self.proj_in = nn.Sequential(
-            nn.Linear(d_model, low_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(low_dim, low_dim),
-            nn.Dropout(dropout),
-            nn.Flatten(-2, -1)
-        )
+        self.proj_in = nn.Linear(d_model, rnn_hidden // self.seq_len)
         self.proj_out = nn.Sequential(
             nn.Linear(rnn_hidden // self.seq_len, d_model),
             nn.ReLU(),
@@ -407,7 +400,7 @@ class Diffusion_RNN(nn.Module):
         # t_emb = self.get_timestep_embedding(t)  # [batch_size, d_model]
         # t_emb = t_emb.unsqueeze(1).expand(x.shape[0], x.shape[1], self.d_model)
         # x = x + t_emb
-        latent, h_c = self.rnn(self.proj_in(x).unsqueeze(0), h_c) # shape of latent [1, batch_size, rnn_hidden]
+        latent, h_c = self.rnn(self.proj_in(x).flatten(-2, -1).unsqueeze(0), h_c) # shape of latent [1, batch_size, rnn_hidden]
         latent = latent.view(latent.shape[1], self.seq_len, self.rnn_hidden // self.seq_len)
         latent = self.proj_out(latent)
         mean = self.mean_model(latent)
@@ -433,7 +426,7 @@ class Diffusion_RNN(nn.Module):
             # t = torch.tensor(list(range(self.ViT_depth + 1)), device=x.device)
             # t = self.get_timestep_embedding(t) # shape: [ViT_depth + 1, d_model]
             # x = x + t.unsqueeze(1).unsqueeze(1).expand(self.ViT_depth + 1, x.shape[1], x.shape[2], self.d_model)
-            x = self.proj_in(x)
+            x = self.proj_in(x).flatten(-2, -1)
             x = x[:-1] # shape: [ViT_depth, B, seq_len * low_dim]
             
             out, _ = self.rnn(x)   # shape of out: [ViT_depth, B, rnn_hidden]
