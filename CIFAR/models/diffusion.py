@@ -327,13 +327,13 @@ class Diffusion_RNN(nn.Module):
             self.rnn = nn.GRU(input_size=rnn_hidden, hidden_size=rnn_hidden, 
                             num_layers=rnn_num_layers, dropout=dropout)
         self.proj_in = nn.Linear(d_model, rnn_hidden // self.seq_len)
-        self.proj_out = nn.Sequential(
-            nn.Linear(rnn_hidden // self.seq_len, d_model),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(d_model, d_model),
-            nn.Dropout(dropout)
-        )
+        # self.proj_out = nn.Sequential(
+        #     nn.Linear(rnn_hidden // self.seq_len, d_model),
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout),
+        #     nn.Linear(d_model, d_model),
+        #     nn.Dropout(dropout)
+        # )
         # Separate branches for mean and variance predictions
         self.mean_model = nn.Sequential(
             nn.LayerNorm(d_model),
@@ -402,7 +402,7 @@ class Diffusion_RNN(nn.Module):
         # x = x + t_emb
         latent, h_c = self.rnn(self.proj_in(x).flatten(-2, -1).unsqueeze(0), h_c) # shape of latent [1, batch_size, rnn_hidden]
         latent = latent.view(latent.shape[1], self.seq_len, self.rnn_hidden // self.seq_len)
-        latent = self.proj_out(latent)
+        latent = latent @ self.proj_in.weight.unsqueeze(0)
         mean = self.mean_model(latent)
         std = self.var_model(latent)
         x_t = mean + std * torch.randn_like(mean)
@@ -431,7 +431,7 @@ class Diffusion_RNN(nn.Module):
             
             out, _ = self.rnn(x)   # shape of out: [ViT_depth, B, rnn_hidden]
             out = out.view(out.shape[0], out.shape[1], self.seq_len, self.rnn_hidden // self.seq_len)
-            out = self.proj_out(out)
+            out = out @ self.proj_in.weight.unsqueeze(0)
             means = self.mean_model(out)
             stds = self.var_model(out)
             return means, stds
