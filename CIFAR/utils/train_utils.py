@@ -92,6 +92,11 @@ def get_args_parser():
     parser.add_argument('--rnn_num_layers', type=int, help='number of layers of rnn backbone')
     parser.add_argument('--rnn_dropout', type=float, help='dropout rate for rnn backbone')
     parser.add_argument('--rnn_low_dim', type=int, help='low dimension of rnn backbone')
+
+    parser.add_argument('--trans_depth', type=int, help='number of DiTBlock')
+    parser.add_argument('--trans_num_heads', type=int, help='number of heads of a DiTBlock')
+    parser.add_argument('--trans_mlp_ratio', type=float, help='ratio between mlp hidden dimension of a transformer layer and d_model')
+    parser.add_argument('--trans_dropout', type=float, help='dropout rate for transformer backbone')
     # diffusion setting
     # Diffusion = subparsers.add_parser("Diffusion",
     #                                  description='Dataset parser for training on Diffusion',
