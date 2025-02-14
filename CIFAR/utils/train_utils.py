@@ -88,10 +88,10 @@ def get_args_parser():
     parser.add_argument('--adversarial_noise', default=0.01, type=float, help='std of adversarial noise')
     parser.add_argument('--adversarial_samples', default=0, type=int, help='number of adversarial samples')
 
-    parser.add_argument('--rnn_hidden', type=int, help='hidden dimension of rnn backbone')
-    parser.add_argument('--rnn_num_layers', type=int, help='number of layers of rnn backbone')
-    parser.add_argument('--rnn_dropout', type=float, help='dropout rate for rnn backbone')
-    parser.add_argument('--rnn_low_dim', type=int, help='low dimension of rnn backbone')
+    parser.add_argument('--rnn_hidden', default=384, type=int, help='hidden dimension of rnn backbone')
+    parser.add_argument('--rnn_num_layers', default=1, type=int, help='number of layers of rnn backbone')
+    parser.add_argument('--rnn_dropout', default=0.1, type=float, help='dropout rate for rnn backbone')
+    parser.add_argument('--rnn_low_dim', default=6, type=int, help='low dimension of rnn backbone')
     # diffusion setting
     # Diffusion = subparsers.add_parser("Diffusion",
     #                                  description='Dataset parser for training on Diffusion',
