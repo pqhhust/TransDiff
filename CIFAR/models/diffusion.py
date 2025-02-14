@@ -6,52 +6,117 @@ from models.UNet1D import Unet1D
 
 import math
 
-class Diffusion_Transformer(DiT):
+class Diffusion_Transformer(nn.Module):
     def __init__(
         self,
-        input_size=32,
-        patch_size=2,
-        in_channels=4,
-        hidden_size=128,
-        depth=2,
-        num_heads=4,
-        mlp_ratio=2.0,
-        class_dropout_prob=0.1,
-        num_classes=10,
-        learn_sigma=False,
+        d_model=384,
+        depth=1,
+        num_heads=12,
+        mlp_ratio=1.0,
+        dropout=0.1,
         ViT_depth=7,
+        nb_cls=10
     ):
-        super().__init__(input_size=input_size,
-            patch_size=patch_size,
-            in_channels=in_channels,
-            hidden_size=hidden_size,
-            depth=depth,
-            num_heads=num_heads,
-            mlp_ratio=mlp_ratio,
-            class_dropout_prob=class_dropout_prob,
-            num_classes=num_classes,
-            learn_sigma=learn_sigma,
-        )
+        super().__init__()
         self.ViT_depth = ViT_depth
+        self.patch = 8
+        self.patch_size = 4
         
+        self.emb = nn.Linear(48, d_model)
+        self.pos_emb = nn.Parameter(torch.randn(1, 64, d_model))
+        self.share_params = DiT(hidden_size=d_model, depth=depth, num_heads=num_heads, mlp_ratio=mlp_ratio)
+        self.mean_model = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Dropout(dropout)
+        )
+        self.var_model = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Dropout(dropout)
+        )
+        self.ln = nn.LayerNorm(d_model)
+        self.solution_head_1 = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Dropout(dropout),
+        )
+
+        self.solution_head_2 = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, nb_cls)
+        )
+
+    def get_timestep_embedding(self, timesteps, dim=None):
+        """
+        Create sinusoidal timestep embeddings.
+        
+        :param timesteps: tensor of shape [N] with integer timesteps
+        :param dim: embedding dimension (defaults to self.d_model)
+        :return: tensor of shape [N, dim]
+        """
+        if dim is None:
+            dim = self.d_model
+            
+        half_dim = dim // 2
+        # Create log-spaced frequencies
+        freqs = torch.exp(
+            -math.log(10000) * torch.arange(start=0, end=half_dim, dtype=torch.float32) / half_dim
+        ).to(device=timesteps.device)
+        
+        # Create timestep embeddings
+        args = timesteps[:, None].float() * freqs[None]
+        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
+        
+        # Handle odd dimensions
+        if dim % 2:
+            embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim=-1)
+            
+        return embedding
+
+    def _to_words(self, x):
+        """
+        (b, c, h, w) -> (b, n, f)
+        """
+        out = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size).permute(0,2,3,4,5,1)
+        out = out.reshape(x.size(0), self.patch**2 ,-1)
+        return out
+
+    def forward_step(self, x, t):
+        x = self.share_params(x, t)
+        
+        mean_x_t = self.mean_model(x) + x
+        std = self.var_model(x)
+            
+        return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
+
     def forward(self, x, train=False):
         if not train:
+            x = self._to_words(x)
+            x = self.emb(x)
+            x = x + self.pos_emb
             for t in range(self.ViT_depth):
-                t = self.t_embedder(torch.tensor([t], device=x.device))
-                for block in self.blocks:
-                    x = block(x, t)
-            # x = self.classification_head(x.mean(1))
-            return x
+                t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
+                x = self.forward_step(x, t_tensor)[-1]
+            x = self.solution_head_1(self.ln(x)) + x
+            return self.solution_head_2(x.mean(1))
         else:
-            assert len(x) - 1 == self.ViT_depth
-            outputs = []
+            assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
+                f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
+            
+            means = []
+            stds = []
             for t in range(self.ViT_depth):
-                out = x[t]
-                t = self.t_embedder(torch.tensor([t], device=out.device))
-                for block in self.blocks:
-                    out = block(out, t)
-                outputs.append(out)
-            return outputs
+                t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
+                mean, std, mean_plus_std = self.forward_step(x[t], t_tensor)
+                means.append(mean)
+                stds.append(std)
+            return means, stds
 
 class Diffusion_UNet1D(Unet1D):
     def __init__(
@@ -88,6 +153,7 @@ class Diffusion_UNet1D(Unet1D):
             attn_heads = attn_heads
         )
         self.ViT_depth = ViT_depth
+        
     
     def forward(self, x, train=False):
         if not train:
