@@ -3,6 +3,7 @@ import torch.nn as nn
 from models.layers import TransformerEncoder  # Adjust if necessary
 from models.DiT import DiT
 from models.UNet1D import Unet1D
+from torchvision.models.vision_transformer import MLPBlock
 
 import math
 
@@ -19,11 +20,14 @@ class Diffusion_Transformer(nn.Module):
     ):
         super().__init__()
         self.ViT_depth = ViT_depth
-        self.patch = 8
-        self.patch_size = 4
-        
-        self.emb = nn.Linear(48, d_model)
-        self.pos_emb = nn.Parameter(torch.randn(1, 64, d_model))
+        self.d_model = d_model
+        self.patch_size = 16
+        self.image_size = 224
+        self.conv_proj = nn.Conv2d(
+            in_channels=3, out_channels=d_model, kernel_size=self.patch_size, stride=self.patch_size
+        )
+        self.class_token = nn.Parameter(torch.zeros(1, 1, d_model))
+        self.pos_embedding = nn.Parameter(torch.empty(1, 197, d_model).normal_(std=0.02)) 
         self.share_params = DiT(hidden_size=d_model, depth=depth, num_heads=num_heads, mlp_ratio=mlp_ratio)
         self.mean_model = nn.Sequential(
             nn.LayerNorm(d_model),
@@ -37,55 +41,31 @@ class Diffusion_Transformer(nn.Module):
             nn.GELU(),
             nn.Dropout(dropout)
         )
-        self.ln = nn.LayerNorm(d_model)
-        self.solution_head_1 = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(d_model, d_model),
-            nn.GELU(),
-            nn.Dropout(dropout),
-        )
+        self.ln_1 = nn.LayerNorm(d_model)
+        self.solution_head_1 = MLPBlock(in_dim=d_model, mlp_dim=d_model * 4, dropout=dropout)
+        self.ln_2 = nn.LayerNorm(d_model)
+        self.solution_head_2 = nn.Linear(d_model, nb_cls)
 
-        self.solution_head_2 = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, nb_cls)
-        )
+    def _process_input(self, x: torch.Tensor) -> torch.Tensor:
+        n, c, h, w = x.shape
+        p = self.patch_size
+        torch._assert(h == self.image_size, f"Wrong image height! Expected {self.image_size} but got {h}!")
+        torch._assert(w == self.image_size, f"Wrong image width! Expected {self.image_size} but got {w}!")
+        n_h = h // p
+        n_w = w // p
 
-    def get_timestep_embedding(self, timesteps, dim=None):
-        """
-        Create sinusoidal timestep embeddings.
-        
-        :param timesteps: tensor of shape [N] with integer timesteps
-        :param dim: embedding dimension (defaults to self.d_model)
-        :return: tensor of shape [N, dim]
-        """
-        if dim is None:
-            dim = self.d_model
-            
-        half_dim = dim // 2
-        # Create log-spaced frequencies
-        freqs = torch.exp(
-            -math.log(10000) * torch.arange(start=0, end=half_dim, dtype=torch.float32) / half_dim
-        ).to(device=timesteps.device)
-        
-        # Create timestep embeddings
-        args = timesteps[:, None].float() * freqs[None]
-        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
-        
-        # Handle odd dimensions
-        if dim % 2:
-            embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim=-1)
-            
-        return embedding
+        # (n, c, h, w) -> (n, hidden_dim, n_h, n_w)
+        x = self.conv_proj(x)
+        # (n, hidden_dim, n_h, n_w) -> (n, hidden_dim, (n_h * n_w))
+        x = x.reshape(n, self.d_model, n_h * n_w)
 
-    def _to_words(self, x):
-        """
-        (b, c, h, w) -> (b, n, f)
-        """
-        out = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size).permute(0,2,3,4,5,1)
-        out = out.reshape(x.size(0), self.patch**2 ,-1)
-        return out
+        # (n, hidden_dim, (n_h * n_w)) -> (n, (n_h * n_w), hidden_dim)
+        # The self attention layer expects inputs in the format (N, S, E)
+        # where S is the source sequence length, N is the batch size, E is the
+        # embedding dimension
+        x = x.permute(0, 2, 1)
+
+        return x
 
     def forward_step(self, x, t):
         x = self.share_params(x, t)
@@ -97,14 +77,16 @@ class Diffusion_Transformer(nn.Module):
 
     def forward(self, x, train=False):
         if not train:
-            x = self._to_words(x)
-            x = self.emb(x)
-            x = x + self.pos_emb
+            x = self._process_input(x)
+            n = x.shape[0]
+            batch_class_token = self.class_token.expand(n, -1, -1)
+            x = torch.cat([batch_class_token, x], dim=1)
+            x = x + self.pos_embedding
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 x = self.forward_step(x, t_tensor)[-1]
-            x = self.solution_head_1(self.ln(x)) + x
-            return self.solution_head_2(x.mean(1))
+            x = self.solution_head_1(self.ln_1(x)) + x
+            return self.solution_head_2(self.ln_2(x)[:, 0])
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"

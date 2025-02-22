@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.models import vit_b_16
+from torchvision.models import ViT_B_16_Weights
+from torchvision.models import VisionTransformer
 
 class KEP_SVGPAttention(nn.Module):
     def __init__(self, dim, num_heads=8, embed_len=64, low_rank=10, rank_multi=10, concate=False, \
@@ -276,6 +279,37 @@ class ViT(nn.Module):
         out = self.fc(out)
 
         return out, x_t, means, covariances
+    
+class ViT_ImageNet(nn.Module):
+    def __init__(self, weights=ViT_B_16_Weights.DEFAULT, seq_length=197, hidden_dim=768):
+        super().__init__()
+        self.model = vit_b_16(weights=weights)
+    
+    def forward(self, x):
+        x = self.model._process_input(x)
+        n = x.shape[0]
+
+        # Expand the class token to the full batch
+        batch_class_token = self.model.class_token.expand(n, -1, -1)
+        x = torch.cat([batch_class_token, x], dim=1)
+        x = x + self.model.encoder.pos_embedding
+        x_t = [x]
+        means = []
+        stds = []
+        for i, layer in enumerate(self.model.encoder.layers):
+            out = layer.ln_1(x)
+            out, _ = layer.self_attention(out, out, out, need_weights=False)
+            out = layer.dropout(x)
+            out = out + x
+            x_t.append(out)
+            means.append(out)
+            stds.append(torch.zeros_like(out))
+            x = layer.ln_2(out)
+            x = layer.mlp(x)
+            x = x + out
+        return None, x_t, means, stds
+            
+        
 
 def vit_cifar(args, attn_type, num_classes, ksvd_layers, low_rank, rank_multi):
     return ViT(args=args, attn_type=attn_type, ksvd_layers=ksvd_layers, num_classes=num_classes, low_rank=low_rank, rank_multi=rank_multi, \

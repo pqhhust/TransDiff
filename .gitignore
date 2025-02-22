@@ -1,6 +1,7 @@
 CIFAR/data/CIFAR10*
 CIFAR/data/CIFAR100*
 CIFAR/data/CIFAR-10-C*
+CIFAR/data/IMAGENET*
 CIFAR/wandb
 __pycache__
 # CIFAR10_out 

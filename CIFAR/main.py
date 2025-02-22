@@ -12,12 +12,14 @@ import test
 
 import models.get_model
 import datasets.cifar_loader
+import datasets.imagenet_loader
 import utils.train_utils
 from utils.seed_utils import set_seed
 from utils.ema import EMA
 
 import warmup_scheduler
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#
+wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def step_ema(args, ema, net, epoch):
         with_decay = False if epoch < args.start_ema_step else True
@@ -174,9 +176,14 @@ def main_diffusion(args):
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-    train_loader, val_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(
-        args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
-    )
+    if args.dataset == 'imagenet1k':
+        train_loader, val_loader, test_loader, nb_cls = datasets.imagenet_loader.get_loader(
+            args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
+        )
+    else:
+        train_loader, val_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(
+            args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
+        )
 
     for run in range(args.nb_run):
         prefix = f'{run + 1} / {args.nb_run} Running'
@@ -188,15 +195,24 @@ def main_diffusion(args):
         print(net)
         print(sum(p.numel() for p in net.parameters() if p.requires_grad))
         net.cuda()
-        pretrained_ViT = models.get_model.get_model('q_distribution', nb_cls, logger, args)
-        pretrained_ViT.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_acc_net_{run + 1}.pth')))
-        pretrained_ViT.cuda()
-        net.emb.load_state_dict(pretrained_ViT.emb.state_dict())
-        net.pos_emb.data.copy_(pretrained_ViT.pos_emb.data)
-        net.ln.load_state_dict(pretrained_ViT.enc[args.depth - 1].la2.state_dict())
-        net.solution_head_1.load_state_dict(pretrained_ViT.enc[args.depth - 1].mlp.state_dict())
-        net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
-        
+        if args.dataset == 'cifar10':
+            pretrained_ViT = models.get_model.get_model('q_distribution', nb_cls, logger, args)
+            pretrained_ViT.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_acc_net_{run + 1}.pth')))
+            pretrained_ViT.cuda()
+            net.emb.load_state_dict(pretrained_ViT.emb.state_dict())
+            net.pos_emb.data.copy_(pretrained_ViT.pos_emb.data)
+            net.ln.load_state_dict(pretrained_ViT.enc[args.depth - 1].la2.state_dict())
+            net.solution_head_1.load_state_dict(pretrained_ViT.enc[args.depth - 1].mlp.state_dict())
+            net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
+        elif args.dataset == 'imagenet1k':
+            pretrained_ViT = models.get_model.get_model('q_distribution_imagenet', nb_cls, logger, args)
+            net.conv_proj.load_state_dict(pretrained_ViT.model.conv_proj.state_dict())
+            net.class_token.data.copy_(pretrained_ViT.model.class_token.data)
+            net.pos_embedding.data.copy_(pretrained_ViT.model.encoder.pos_embedding.data)
+            net.ln_1.load_state_dict(pretrained_ViT.model.encoder.layers[-1].ln_2.state_dict())
+            net.solution_head_1.load_state_dict(pretrained_ViT.model.encoder.layers[-1].mlp.state_dict())
+            net.ln_2.load_state_dict(pretrained_ViT.model.encoder.ln.state_dict())
+            net.solution_head_2.load_state_dict(pretrained_ViT.model.heads[0]   .state_dict())
         ## define optimizer with warm-up
         optimizer = torch.optim.Adam(
             net.parameters(),
