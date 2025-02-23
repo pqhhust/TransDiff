@@ -137,7 +137,7 @@ def main_diffusion(args):
         elif args.backbone == 'transformer':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
         pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
-        group = "VIT-DiT"
+        group = "VIT-match-pretrain"
     elif args.attn_type == 'kep_svgp':
         if args.backbone == 'mlp':
             save_path = os.path.join(
