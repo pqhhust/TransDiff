@@ -2,6 +2,8 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from PIL import Image
+from functools import partial
+from torchvision.transforms._presets import ImageClassification
 
 # def TrainDataLoader(img_dir, transform_train, batch_size):
 #     train_set = ImageFolder(img_dir, transform_train)
@@ -78,7 +80,7 @@ def TestDataLoader(img_dir, transform_test, batch_size, synset_to_idx):
     return test_loader
 
 def get_loader(dataset, train_dir, val_dir, test_dir, batch_size):
-    with open('./data/IMAGENET1K_FULL/synset_words.txt', 'r') as f:
+    with open('./data/IMAGENET1K/synset_words.txt', 'r') as f:
         synsets = [line.split()[0] for line in f]
     synset_to_idx = {synset: idx for idx, synset in enumerate(synsets)}
     if dataset == 'imagenet1k':
@@ -87,33 +89,31 @@ def get_loader(dataset, train_dir, val_dir, test_dir, batch_size):
     else:
         raise ValueError("Unsupported dataset: " + dataset)
 
-    transform_train = transforms.Compose([
-        transforms.RandomResizedCrop(224),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(norm_mean, norm_std)
-    ])
+    # transform_train = transforms.Compose([
+    #     transforms.RandomResizedCrop(224),
+    #     transforms.RandomHorizontalFlip(),
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(norm_mean, norm_std)
+    # ])
 
-    transform_test = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(norm_mean, norm_std)
-    ])
+    # transform_test = transforms.Compose([
+    #     transforms.Resize(224),
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(norm_mean, norm_std)
+    # ])
+    transform = partial(ImageClassification, crop_size=224)
 
-    train_loader = TrainDataLoader(train_dir, transform_train, batch_size, synset_to_idx)
-    val_loader = TestDataLoader(val_dir, transform_test, batch_size, synset_to_idx)
-    test_loader = TestDataLoader(test_dir, transform_test, batch_size, synset_to_idx)
-    return train_loader, val_loader, test_loader, nb_cls
+    train_loader = TrainDataLoader(train_dir, transform(), batch_size, synset_to_idx)
+    val_loader = TestDataLoader(val_dir, transform(), batch_size, synset_to_idx)
+    # test_loader = TestDataLoader(test_dir, transform(), batch_size, synset_to_idx)
+    return train_loader, val_loader, None, nb_cls
 
 if __name__ == '__main__':
-    # Đường dẫn tới thư mục train và val với cấu trúc synset
-    train_dir = '../data/IMAGENET1K_FULL/train'  # ví dụ: IMAGENET1K/train/n01440764/...
-    val_dir = '../data/IMAGENET1K_FULL/val'      # ví dụ: IMAGENET1K/val/n01440764/...
-    test_dir = '../data/IMAGENET1K_FULL/test'    # nếu có
+    train_dir = '../data/IMAGENET1K/train'  
+    val_dir = '../data/IMAGENET1K/val'      
+    test_dir = '../data/IMAGENET1K/test'    
     batch_size = 64
 
-    # Tạo synset_to_idx
     with open('../data/synset_words.txt', 'r') as f:
         synsets = [line.split()[0] for line in f]
     synset_to_idx = {synset: idx for idx, synset in enumerate(synsets)}

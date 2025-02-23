@@ -74,9 +74,9 @@ def get_args_parser():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      help="Dataset parser for training on ImageNet")
     ImageNet.add_argument('--dataset', default='imagenet1k', type=str, help='Dataset name')
-    ImageNet.add_argument("--train-dir", type=str, default='./data/IMAGENET1K_FULL/train', help="ImageNet train directory")
-    ImageNet.add_argument("--val-dir", type=str, default='./data/IMAGENET1K_FULL/val', help="ImageNet val directory")
-    ImageNet.add_argument("--test-dir", type=str, default='./data/IMAGENET1K_FULL/val', help="ImageNet test directory")
+    ImageNet.add_argument("--train-dir", type=str, default='./data/IMAGENET1K/train', help="ImageNet train directory")
+    ImageNet.add_argument("--val-dir", type=str, default='./data/IMAGENET1K/val_dir', help="ImageNet val directory")
+    ImageNet.add_argument("--test-dir", type=str, default='./data/IMAGENET1K/val_dir', help="ImageNet test directory")
     ImageNet.add_argument("--nb-cls", type=int, default=1000, help="number of classes in ImageNet")
 
     parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer', 'lstm', 'gru'], help='Backbone name')

@@ -18,8 +18,8 @@ from utils.seed_utils import set_seed
 from utils.ema import EMA
 
 import warmup_scheduler
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def step_ema(args, ema, net, epoch):
         with_decay = False if epoch < args.start_ema_step else True
@@ -137,7 +137,7 @@ def main_diffusion(args):
         elif args.backbone == 'transformer':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
         pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
-        group = "VIT-DiT"
+        group = "VIT-match-pretrain"
     elif args.attn_type == 'kep_svgp':
         if args.backbone == 'mlp':
             save_path = os.path.join(
@@ -259,14 +259,14 @@ def main_diffusion(args):
 
             wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
 
-            test_results = val.validation_diffusion(test_loader, net_val, args, pretrained_ViT)
-            # if epoch % args.update_ema_interval == 0:
-            #     restore_ema(args, ema, net)
+            # test_results = val.validation_diffusion(test_loader, net_val, args, pretrained_ViT)
+            # # if epoch % args.update_ema_interval == 0:
+            # #     restore_ema(args, ema, net)
     
-            log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
-            msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
-            logger.info(msg)
-            wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
+            # log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
+            # msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+            # logger.info(msg)
+            # wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
 
             if res['Acc.'] > best_acc:
                 acc = res['Acc.']
@@ -297,7 +297,7 @@ if __name__ == '__main__':
     args = utils.train_utils.get_args_parser()
     if args.model == 'diffusion':
         main_diffusion(args)
-        test.test_diffusion(args)
+        # test.test_diffusion(args)
         wandb.finish()
     # elif args.model == 'diffusion' and args.stage == 2:
     #     main_diffusion_stage2(args)

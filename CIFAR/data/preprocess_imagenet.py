@@ -60,28 +60,34 @@
 import os
 import shutil
 
-val_dir = './val'  # Thư mục chứa ảnh val gốc
-val_txt = './val.txt'        # File ánh xạ ảnh -> nhãn
-output_val_dir = 'IMAGENET1K_FULL/val'  # Thư mục mới cho val với cấu trúc synset
+# Directory containing the original validation images
+val_dir = './IMAGENET1K/val'
+# File mapping image names to labels
+val_txt = './IMAGENET1K/val_labels.txt'
+# New directory to store validation data with synset structure
+output_val_dir = './IMAGENET1K/val_dir'
 os.makedirs(output_val_dir, exist_ok=True)
 
-# Đọc file synset_words.txt để lấy danh sách synset
-with open('./synset_words.txt', 'r') as f:
+# Read synset_words.txt to get the list of synsets
+with open('./IMAGENET1K/synset_words.txt', 'r') as f:
     synsets = [line.split()[0] for line in f]
 
-# Đọc val.txt để lấy mapping từ tên ảnh sang synset
+# Read val.txt to create a mapping from image names to synsets
 with open(val_txt, 'r') as f:
     lines = f.readlines()
     img_to_synset = {}
     for line in lines:
         img_name, label = line.strip().split()
-        synset = synsets[int(label)]  # Ánh xạ từ nhãn số sang synset
+        synset = synsets[int(label)]  # Map label number to synset
         img_to_synset[img_name] = synset
 
-# Tổ chức ảnh vào folder synset
+# Organize images into synset folders
 for img_name in os.listdir(val_dir):
     if img_name in img_to_synset:
         synset = img_to_synset[img_name]
         synset_dir = os.path.join(output_val_dir, synset)
         os.makedirs(synset_dir, exist_ok=True)
+        # Copy the image to the corresponding synset folder
         shutil.copy(os.path.join(val_dir, img_name), os.path.join(synset_dir, img_name))
+
+print("Validation data processing completed!")
