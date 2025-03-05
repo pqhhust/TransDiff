@@ -225,7 +225,7 @@
 ### Train Diffusion
 ## 7 layers KEP-SVGP
 ## dropout 0.1
-python3 main.py --model diffusion --seed 3 --depth 7 --attn-type kep_svgp --concate --ksvd-layers 7 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-epochs 100 --nb-run 1 --lr 5e-4 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone mlp --pretrained_dir ./results/vit_out_cat --clip 0.1 --mlp_hdim1 1024 --mlp_hdim2 1024 --mlp_hdim3 1024 --mlp_hdim4 64 --pretrained_seed 3 --mlp_dropout 0.1 --mlp_gamma 1.0 Cifar10 
+# python3 main.py --model diffusion --seed 3 --depth 7 --attn-type kep_svgp --concate --ksvd-layers 7 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-epochs 100 --nb-run 1 --lr 5e-4 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone mlp --pretrained_dir ./results/vit_out_cat --clip 0.1 --mlp_hdim1 1024 --mlp_hdim2 1024 --mlp_hdim3 1024 --mlp_hdim4 64 --pretrained_seed 3 --mlp_dropout 0.1 --mlp_gamma 1.0 Cifar10 
 
 # ## dropout 0
 # python3 main.py --model diffusion --seed 3 --depth 7 --attn-type kep_svgp --concate --ksvd-layers 7 --num_heads 12 --hdim 384 --eta-ksvd 10 --batch-size 128 --gpu 0 --nb-epochs 100 --nb-run 1 --lr 1e-3 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone mlp --pretrained_dir ./results/vit_out_cat --clip 0.1 --mlp_hdim1 64 --mlp_hdim2 64 --mlp_hdim3 64 --pretrained_seed 3 --mlp_dropout 0 Cifar10 \

@@ -4,6 +4,7 @@ from torchvision.datasets import ImageFolder
 from PIL import Image
 from functools import partial
 from torchvision.transforms._presets import ImageClassification
+import os
 
 # def TrainDataLoader(img_dir, transform_train, batch_size):
 #     train_set = ImageFolder(img_dir, transform_train)
@@ -52,42 +53,48 @@ from torchvision.transforms._presets import ImageClassification
 #         print(images.shape, labels)
 #         break
 
-class ImageNetFolder(ImageFolder):
-    def __init__(self, root, transform=None, target_transform=None, synset_to_idx=None):
-        super(ImageNetFolder, self).__init__(root, transform, target_transform)
-        self.synset_to_idx = synset_to_idx
+# class ImageNetFolder(ImageFolder):
+#     def __init__(self, root, transform=None, target_transform=None, synset_to_idx=None):
+#         super(ImageNetFolder, self).__init__(root, transform, target_transform)
+#         self.synset_to_idx = synset_to_idx
 
-    def __getitem__(self, index):
-        path, target = self.samples[index]
-        sample = self.loader(path)
-        if self.transform is not None:
-            sample = self.transform(sample)
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-        # Ánh xạ target từ synset sang nhãn số
-        synset = self.classes[target]
-        target = self.synset_to_idx[synset]
-        return sample, target
+#     def __getitem__(self, index):
+#         path, target = self.samples[index]
+#         sample = self.loader(path)
+#         if self.transform is not None:
+#             sample = self.transform(sample)
+#         if self.target_transform is not None:
+#             target = self.target_transform(target)
+
+#         synset = self.classes[target]
+#         target = self.synset_to_idx[synset]
+#         return sample, target
     
-def TrainDataLoader(img_dir, transform_train, batch_size, synset_to_idx):
-    train_set = ImageNetFolder(img_dir, transform=transform_train, synset_to_idx=synset_to_idx)
+def TrainDataLoader(img_dir, transform_train, batch_size):
+    train_set = ImageFolder(img_dir, transform=transform_train)
     train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
     return train_loader
 
-def TestDataLoader(img_dir, transform_test, batch_size, synset_to_idx):
-    test_set = ImageNetFolder(img_dir, transform=transform_test, synset_to_idx=synset_to_idx)
+def TestDataLoader(img_dir, transform_test, batch_size):
+    test_set = ImageFolder(img_dir, transform=transform_test)
     test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=False)
     return test_loader
 
 def get_loader(dataset, train_dir, val_dir, test_dir, batch_size):
-    with open('./data/IMAGENET1K/synset_words.txt', 'r') as f:
-        synsets = [line.split()[0] for line in f]
-    synset_to_idx = {synset: idx for idx, synset in enumerate(synsets)}
-    if dataset == 'imagenet1k':
-        norm_mean, norm_std = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
-        nb_cls = 1000
-    else:
-        raise ValueError("Unsupported dataset: " + dataset)
+    # with open('./data/IMAGENET1K/synset_words.txt', 'r') as f:
+    #     synsets = [line.split()[0] for line in f]
+    # synset_to_idx = {synset: idx for idx, synset in enumerate(synsets)}
+    
+    # synsets = os.listdir(train_dir)
+    # synset_to_idx = {synset: idx for idx, synset in enumerate(sorted(synsets))}
+    
+    nb_cls = 1000
+    
+    # if dataset == 'imagenet1k':
+    #     norm_mean, norm_std = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+    #     nb_cls = 1000
+    # else:
+    #     raise ValueError("Unsupported dataset: " + dataset)
 
     # transform_train = transforms.Compose([
     #     transforms.RandomResizedCrop(224),
@@ -103,9 +110,9 @@ def get_loader(dataset, train_dir, val_dir, test_dir, batch_size):
     # ])
     transform = partial(ImageClassification, crop_size=224)
 
-    train_loader = TrainDataLoader(train_dir, transform(), batch_size, synset_to_idx)
-    val_loader = TestDataLoader(val_dir, transform(), batch_size, synset_to_idx)
-    # test_loader = TestDataLoader(test_dir, transform(), batch_size, synset_to_idx)
+    train_loader = TrainDataLoader(train_dir, transform(), batch_size)
+    val_loader = TestDataLoader(val_dir, transform(), batch_size)
+    # test_loader = TestDataLoader(test_dir, transform(), batch_size)
     return train_loader, val_loader, None, nb_cls
 
 if __name__ == '__main__':

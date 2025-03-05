@@ -18,8 +18,8 @@ from utils.seed_utils import set_seed
 from utils.ema import EMA
 
 import warmup_scheduler
-# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def step_ema(args, ema, net, epoch):
         with_decay = False if epoch < args.start_ema_step else True
@@ -137,7 +137,7 @@ def main_diffusion(args):
         elif args.backbone == 'transformer':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
         pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
-        group = "VIT-match-pretrain"
+        group = "ViT-b-16-imagenet1k"
     elif args.attn_type == 'kep_svgp':
         if args.backbone == 'mlp':
             save_path = os.path.join(
@@ -212,7 +212,7 @@ def main_diffusion(args):
             net.ln_1.load_state_dict(pretrained_ViT.model.encoder.layers[-1].ln_2.state_dict())
             net.solution_head_1.load_state_dict(pretrained_ViT.model.encoder.layers[-1].mlp.state_dict())
             net.ln_2.load_state_dict(pretrained_ViT.model.encoder.ln.state_dict())
-            net.solution_head_2.load_state_dict(pretrained_ViT.model.heads[0]   .state_dict())
+            net.solution_head_2.load_state_dict(pretrained_ViT.model.heads[0].state_dict())
         ## define optimizer with warm-up
         optimizer = torch.optim.Adam(
             net.parameters(),
@@ -239,6 +239,9 @@ def main_diffusion(args):
 
         ## start training
         for epoch in range(args.nb_epochs):
+            if epoch == 0:
+                scheduler.step()
+                continue
             train.train_diffusion(train_loader, net, optimizer, epoch, logger, args, pretrained_ViT)
 
             # if epoch % args.update_ema_interval == 0:
