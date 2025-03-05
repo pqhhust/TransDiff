@@ -3,6 +3,7 @@ import models.diffusion
 import models.q_distribution
 from torchvision.models.vision_transformer import vit_b_16
 from torchvision.models.vision_transformer import ViT_B_16_Weights
+import torch.distributed as dist
 
 def get_model(model_name, nb_cls, logger, args):
     if model_name == "vit_image_net":
@@ -24,6 +25,8 @@ def get_model(model_name, nb_cls, logger, args):
             net = models.diffusion.Diffusion_MLPMixer()
         if args.backbone == 'lstm' or args.backbone == 'gru':
             net = models.diffusion.Diffusion_RNN(args=args, rnn_hidden=args.rnn_hidden, rnn_num_layers=args.rnn_num_layers, dropout=args.rnn_dropout, ViT_depth=args.depth, low_dim=args.rnn_low_dim)
-    msg = 'Using {} ...'.format(model_name)
-    logger.info(msg)
+    rank = dist.get_rank() if dist.is_initialized() else 0
+    if rank == 0:
+        msg = 'Using {} ...'.format(model_name)
+        logger.info(msg)
     return net

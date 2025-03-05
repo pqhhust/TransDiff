@@ -14,8 +14,13 @@ import models.get_model
 import datasets.cifar_loader
 import datasets.imagenet_loader
 import utils.train_utils
+import utils.seed_utils
 from utils.seed_utils import set_seed
 from utils.ema import EMA
+
+from torch.utils.data.distributed import DistributedSampler
+from torch.utils.data import DataLoader
+import torch.distributed as dist
 
 import warmup_scheduler
 wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
@@ -129,6 +134,7 @@ def main(args):
                 
        
 def main_diffusion(args):
+    # Determine save path based on attention type and backbone
     if args.attn_type == 'softmax':
         if args.backbone == 'mlp':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}")
@@ -140,170 +146,156 @@ def main_diffusion(args):
         group = "ViT-b-16-imagenet1k"
     elif args.attn_type == 'kep_svgp':
         if args.backbone == 'mlp':
-            save_path = os.path.join(
-                args.save_dir,
-                f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.rnn_low_dim}_{args.lr}_{args.clip}_{args.nb_epochs}"
-            )
+            save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.rnn_low_dim}_{args.lr}_{args.clip}_{args.nb_epochs}")
         elif args.backbone == 'lstm' or args.backbone == 'gru':
-            save_path = os.path.join(
-                args.save_dir,
-                f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}"
-            )
+            save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}")
         elif args.backbone == 'transformer':
-            save_path = os.path.join(
-                args.save_dir,
-                f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}"
-            )
-        pretrained_path = os.path.join(
-            args.pretrained_dir,
-            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
-        )
+            save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
+        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}")
         group = "KEP-SVGP-DiT"
 
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
+    # Get rank information from environment variables set by torchrun
+    local_rank = int(os.environ['LOCAL_RANK'])  # Rank within the local node
+    global_rank = int(os.environ['RANK'])       # Global rank across all nodes
 
-    wandb.init(project='Difformer', 
-               group=group,
-               name=f"Diffusion {args.run_name}: seed_{args.seed}_lr_{args.lr}_pretrained_seed_{args.pretrained_seed}_ksvd_layers_{args.ksvd_layers}_lambda_mean_{args.lambda_mean}_var_{args.lambda_var}_ce_{args.lambda_ce}_batchsize_{args.batch_size}_epochs_{args.nb_epochs}",
-            #    name=f"Diffusion {args.run_name}: seed_{args.seed}_lr_{args.lr}_clip_{args.clip}_pretrained_seed_{args.pretrained_seed}_mlp_dropout_{args.mlp_dropout}_ksvd_layers_{args.ksvd_layers}_lambda_mean_{args.lambda_mean}_var_{args.lambda_var}_ce_{args.lambda_ce}_batchsize_{args.batch_size}_architecture_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_epochs_{args.nb_epochs}_adversarial_noise_{args.adversarial_noise}_adversarial_samples_{args.adversarial_samples}_rnn_hidden_{args.rnn_hidden}_rnn_num_layers_{args.rnn_num_layers}_rnn_dropout_{args.rnn_dropout}",
-               config=vars(args))
+    # Initialize distributed process group with NCCL backend for GPU communication
+    dist.init_process_group(backend='nccl')
+    torch.cuda.set_device(local_rank)  # Set the current device to the local rank's GPU
+    
+    # Create save directory only on rank 0 to avoid race conditions
+    if global_rank == 0:
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
 
-    # Set seed everything
-    set_seed(args.seed)
+    # Initialize Weights & Biases logging only on rank 0
+    if global_rank == 0:
+        # wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+        wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+        wandb.init(project='Difformer', 
+                   group=group,
+                   name=f"Diffusion {args.run_name}: seed_{args.seed}_lr_{args.lr}_pretrained_seed_{args.pretrained_seed}_ksvd_layers_{args.ksvd_layers}_lambda_mean_{args.lambda_mean}_var_{args.lambda_var}_ce_{args.lambda_ce}_batchsize_{args.batch_size}_epochs_{args.nb_epochs}",
+                   config=vars(args))
 
-    logger = utils.utils.get_logger(save_path)
-    logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # Set random seed for reproducibility
+    utils.seed_utils.set_seed(args.seed)
 
+    # Initialize logger only on rank 0
+    logger = utils.utils.get_logger(save_path) if global_rank == 0 else None
+    if global_rank == 0:
+        logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
+
+    # Load data with DistributedSampler for distributed training
     if args.dataset == 'imagenet1k':
         train_loader, val_loader, test_loader, nb_cls = datasets.imagenet_loader.get_loader(
             args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
         )
+        train_sampler = DistributedSampler(train_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=True)
+        val_sampler = DistributedSampler(val_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=False)
+        train_loader = DataLoader(train_loader.dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, drop_last=True)
+        val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=val_sampler, num_workers=4, drop_last=False)
     else:
         train_loader, val_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(
             args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
         )
+        train_sampler = DistributedSampler(train_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=True)
+        val_sampler = DistributedSampler(val_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=False)
+        train_loader = DataLoader(train_loader.dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, drop_last=True)
+        val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=val_sampler, num_workers=4, drop_last=False)
 
     for run in range(args.nb_run):
-        prefix = f'{run + 1} / {args.nb_run} Running'
-        logger.info(100*'#' + '\n' + prefix)
+        if global_rank == 0:
+            prefix = f'{run + 1} / {args.nb_run} Running'
+            logger.info(100*'#' + '\n' + prefix)
 
-        ## define model
+        # Define and initialize the model
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
-        # net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{run + 1}_diffusion.pth')))
-        print(net)
-        print(sum(p.numel() for p in net.parameters() if p.requires_grad))
-        net.cuda()
-        if args.dataset == 'cifar10':
-            pretrained_ViT = models.get_model.get_model('q_distribution', nb_cls, logger, args)
-            pretrained_ViT.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_acc_net_{run + 1}.pth')))
-            pretrained_ViT.cuda()
-            net.emb.load_state_dict(pretrained_ViT.emb.state_dict())
-            net.pos_emb.data.copy_(pretrained_ViT.pos_emb.data)
-            net.ln.load_state_dict(pretrained_ViT.enc[args.depth - 1].la2.state_dict())
-            net.solution_head_1.load_state_dict(pretrained_ViT.enc[args.depth - 1].mlp.state_dict())
-            net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
-        elif args.dataset == 'imagenet1k':
-            pretrained_ViT = models.get_model.get_model('q_distribution_imagenet', nb_cls, logger, args)
-            net.conv_proj.load_state_dict(pretrained_ViT.model.conv_proj.state_dict())
-            net.class_token.data.copy_(pretrained_ViT.model.class_token.data)
-            net.pos_embedding.data.copy_(pretrained_ViT.model.encoder.pos_embedding.data)
-            net.ln_1.load_state_dict(pretrained_ViT.model.encoder.layers[-1].ln_2.state_dict())
-            net.solution_head_1.load_state_dict(pretrained_ViT.model.encoder.layers[-1].mlp.state_dict())
-            net.ln_2.load_state_dict(pretrained_ViT.model.encoder.ln.state_dict())
-            net.solution_head_2.load_state_dict(pretrained_ViT.model.heads[0].state_dict())
-        ## define optimizer with warm-up
-        optimizer = torch.optim.Adam(
-            net.parameters(),
-            lr=args.lr,
-            betas=(args.beta1, args.beta2),
-            weight_decay=args.weight_decay
-        )
-        base_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=args.nb_epochs, eta_min=args.min_lr
-        )
-        scheduler = warmup_scheduler.GradualWarmupScheduler(
-            optimizer,
-            multiplier=1.,
-            total_epoch=args.warmup_epoch,
-            after_scheduler=base_scheduler
-        )
+        net = net.cuda()
+        net = nn.parallel.DistributedDataParallel(net, device_ids=[local_rank])  # Wrap model with DDP
 
-        ## Initialize EMA
-        # ema = EMA(args.ema_decay)
-        # ema.register(net)
-        
-        ## make logger
+        # Print model info on rank 0
+        if global_rank == 0:
+            print(net)
+            print(sum(p.numel() for p in net.parameters() if p.requires_grad))
+
+        pretrained_ViT = models.get_model.get_model('q_distribution_imagenet', nb_cls, logger, args)
+        pretrained_ViT = nn.parallel.DistributedDataParallel(pretrained_ViT.cuda(), device_ids=[local_rank])
+        net.module.conv_proj.load_state_dict(pretrained_ViT.module.model.conv_proj.state_dict())
+        net.module.class_token.data.copy_(pretrained_ViT.module.model.class_token.data)
+        net.module.pos_embedding.data.copy_(pretrained_ViT.module.model.encoder.pos_embedding.data)
+        net.module.ln_1.load_state_dict(pretrained_ViT.module.model.encoder.layers[-1].ln_2.state_dict())
+        net.module.solution_head_1.load_state_dict(pretrained_ViT.module.model.encoder.layers[-1].mlp.state_dict())
+        net.module.ln_2.load_state_dict(pretrained_ViT.module.model.encoder.ln.state_dict())
+        net.module.solution_head_2.load_state_dict(pretrained_ViT.module.model.heads[0].state_dict())
+
+        # Define optimizer and scheduler
+        optimizer = torch.optim.Adam(net.parameters(), lr=args.min_lr, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
+        if args.warmup_epoch > 0:
+            warmup_lr_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=args.lr / args.min_lr, total_iters=args.warmup_epoch)
+            main_lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.nb_epochs - args.warmup_epoch, eta_min=args.min_lr)
+            lr_scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warmup_lr_scheduler, main_lr_scheduler], milestones=[args.warmup_epoch])
+        else:
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.nb_epochs, eta_min=args.min_lr)
+        # scheduler = warmup_scheduler.GradualWarmupScheduler(optimizer, multiplier=1., total_epoch=args.warmup_epoch, after_scheduler=base_scheduler)
+
+        # Track best metrics
         best_acc, best_auroc, best_aurc = 0, 0, 1e6
 
-        ## start training
+        # Training loop over epochs
         for epoch in range(args.nb_epochs):
-            if epoch == 0:
-                scheduler.step()
-                continue
+            # Set epoch for sampler to ensure shuffling is consistent across processes
+            if dist.get_world_size() > 1:
+                train_sampler.set_epoch(epoch)
+
+            # Train the model
             train.train_diffusion(train_loader, net, optimizer, epoch, logger, args, pretrained_ViT)
+            lr_scheduler.step()
 
-            # if epoch % args.update_ema_interval == 0:
-            #     step_ema(args, ema, net, epoch)
-            
-            #validate
-
-            scheduler.step()
-
-            # validation
-            # if epoch % args.update_ema_interval == 0:
-            #     apply_ema(args, ema, net)
-            net_val = net
-            res = val.validation_diffusion(val_loader, net_val, args, pretrained_ViT) 
-            log = [f"{key}: {res[key]:.3f}" for key in res]
-            msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
-            logger.info(msg)
-
-            wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
-
-            # test_results = val.validation_diffusion(test_loader, net_val, args, pretrained_ViT)
-            # # if epoch % args.update_ema_interval == 0:
-            # #     restore_ema(args, ema, net)
-    
-            # log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
-            # msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
-            # logger.info(msg)
-            # wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
-
-            if res['Acc.'] > best_acc:
-                acc = res['Acc.']
-                msg = f'Accuracy improved from {best_acc:.2f} to {acc:.2f}!!!'
+            # Validate the model
+            res = val.validation_diffusion(val_loader, net, args, pretrained_ViT)
+            if global_rank == 0:
+                log = [f"{key}: {res[key]:.3f}" for key in res]
+                msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
                 logger.info(msg)
-                best_acc = acc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}_diffusion_{args.backbone}.pth'))
-                # torch.save(pretrained_ViT.state_dict(), os.path.join(save_path, f'best_acc_net_{run + 1}_vit_fc.pth'))
-            
-            if res['AUROC'] > best_auroc:
-                auroc = res['AUROC']
-                msg = f'AUROC improved from {best_auroc:.2f} to {auroc:.2f}!!!'
-                logger.info(msg)
-                best_auroc = auroc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}_diffusion_{args.backbone}.pth'))
-        
-            if res['AURC'] < best_aurc:
-                aurc = res['AURC']
-                msg = f'AURC decreased from {best_aurc:.2f} to {aurc:.2f}!!!'
-                logger.info(msg)
-                best_aurc = aurc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
-        
-        torch.save(net.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
+                wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
+
+                # Save best models based on metrics
+                if res['Acc.'] > best_acc:
+                    acc = res['Acc.']
+                    msg = f'Accuracy improved from {best_acc:.2f} to {acc:.2f}!!!'
+                    logger.info(msg)
+                    best_acc = acc
+                    torch.save(net.module.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}_diffusion_{args.backbone}.pth'))
+
+                if res['AUROC'] > best_auroc:
+                    auroc = res['AUROC']
+                    msg = f'AUROC improved from {best_auroc:.2f} to {auroc:.2f}!!!'
+                    logger.info(msg)
+                    best_auroc = auroc
+                    torch.save(net.module.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}_diffusion_{args.backbone}.pth'))
+
+                if res['AURC'] < best_aurc:
+                    aurc = res['AURC']
+                    msg = f'AURC decreased from {best_aurc:.2f} to {aurc:.2f}!!!'
+                    logger.info(msg)
+                    best_aurc = aurc
+                    torch.save(net.module.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
+
+        # Save the last model state on rank 0
+        if global_rank == 0:
+            torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
+
+    # Clean up distributed process group
+    dist.destroy_process_group()
+
+    # Finish wandb logging on rank 0
+    if global_rank == 0:
+        wandb.finish()
 
 
 if __name__ == '__main__':
     args = utils.train_utils.get_args_parser()
     if args.model == 'diffusion':
         main_diffusion(args)
-        # test.test_diffusion(args)
-        wandb.finish()
-    # elif args.model == 'diffusion' and args.stage == 2:
-    #     main_diffusion_stage2(args)
     else:
         main(args)
         test.test(args)

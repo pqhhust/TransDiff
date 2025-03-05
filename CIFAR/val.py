@@ -6,6 +6,7 @@ import sklearn.metrics as skm
 import datasets.cifar_loader as cifar_loader
 from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
+import torch.distributed as dist
 
 @torch.no_grad()
 def validation(loader, net, args, method=None):
@@ -144,6 +145,8 @@ def validation_diffusion(loader, net, args, pretrained_vit):
     # pretrained_vit.eval()
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
 
+    rank = dist.get_rank() if dist.is_initialized() else 0
+
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         # output = pretrained_vit._to_words(inputs)
@@ -175,7 +178,19 @@ def validation_diffusion(loader, net, args, pretrained_vit):
         
     for key in val_log : 
         val_log[key] = np.concatenate(val_log[key])
-        
+
+    # Added: Synchronize validation logs across all processes in distributed mode
+    if dist.is_initialized():
+        for key in val_log:
+            # Convert to tensor for all_reduce
+            val_tensor = torch.tensor(val_log[key], dtype=torch.float32 if key != 'target' else torch.int64).cuda()
+            dist.all_reduce(val_tensor)
+            # Average across processes (except for target, which should be summed)
+            if key != 'target':
+                val_log[key] = (val_tensor / dist.get_world_size()).cpu().numpy()
+            else:
+                val_log[key] = val_tensor.cpu().numpy()
+
     ## acc
     acc = 100. * val_log['correct'].mean()
     
