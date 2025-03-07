@@ -182,9 +182,12 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     msg = '####### --- Training Epoch {:d} --- #######'.format(epoch)
     logger.info(msg)
 
+    accumulation_steps = 4
+    optimizer.zero_grad()
+
     for i, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.cuda(), targets.cuda()
-        optimizer.zero_grad()
+        # optimizer.zero_grad()
         output = diffusion_model(inputs)
 
         ce_loss = ce_criterion(output, targets)
@@ -194,9 +197,13 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
         # print(x_t_from_diffusion[0].shape) # for debug only
         # print(means_x_minus[0].shape) # for debug only
         means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus)#to be uncomment
-        loss = args.lambda_mean*means_loss + args.lambda_var*stds_loss + args.lambda_ce*ce_loss
+        loss = (args.lambda_mean*means_loss + args.lambda_var*stds_loss + args.lambda_ce*ce_loss) / accumulation_steps
         loss.backward()
-        optimizer.step()
+        # optimizer.step()
+        
+        if (i + 1) % accumulation_steps == 0:  # Update weights after accumulation
+            optimizer.step()
+            optimizer.zero_grad()
 
         for param_group in optimizer.param_groups:
             lr = param_group["lr"]

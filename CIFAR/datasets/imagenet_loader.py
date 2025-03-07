@@ -72,12 +72,12 @@ import os
     
 def TrainDataLoader(img_dir, transform_train, batch_size):
     train_set = ImageFolder(img_dir, transform=transform_train)
-    train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
+    train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
     return train_loader
 
 def TestDataLoader(img_dir, transform_test, batch_size):
     test_set = ImageFolder(img_dir, transform=transform_test)
-    test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=False)
+    test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False, num_workers=8, drop_last=False)
     return test_loader
 
 def get_loader(dataset, train_dir, val_dir, test_dir, batch_size):
