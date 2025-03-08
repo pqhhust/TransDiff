@@ -180,16 +180,16 @@ def validation_diffusion(loader, net, args, pretrained_vit):
         val_log[key] = np.concatenate(val_log[key])
 
     # Added: Synchronize validation logs across all processes in distributed mode
-    if dist.is_initialized():
-        world_size = dist.get_world_size()
-        for key in val_log:
-            # Convert to tensor for all_gather
-            val_tensor = torch.tensor(val_log[key], dtype=torch.float32 if key != 'target' else torch.int64).cuda()
-            # Gather arrays from all processes
-            gathered_tensors = [torch.zeros_like(val_tensor) for _ in range(world_size)]
-            dist.all_gather(gathered_tensors, val_tensor)
-            # Concatenate into a single array
-            val_log[key] = torch.cat(gathered_tensors).cpu().numpy()
+    # if dist.is_initialized():
+    #     world_size = dist.get_world_size()
+    #     for key in val_log:
+    #         # Convert to tensor for all_gather
+    #         val_tensor = torch.tensor(val_log[key], dtype=torch.float32 if key != 'target' else torch.int64).cuda()
+    #         # Gather arrays from all processes
+    #         gathered_tensors = [torch.zeros_like(val_tensor) for _ in range(world_size)]
+    #         dist.all_gather(gathered_tensors, val_tensor)
+    #         # Concatenate into a single array
+    #         val_log[key] = torch.cat(gathered_tensors).cpu().numpy()
 
     ## acc
     acc = 100. * val_log['correct'].mean()

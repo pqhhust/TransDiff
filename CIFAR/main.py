@@ -169,8 +169,8 @@ def main_diffusion(args):
 
     # Initialize Weights & Biases logging only on rank 0
     if global_rank == 0:
-        # wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-        wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+        wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+        # wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
         wandb.init(project='Difformer', 
                    group=group,
                    name=f"Diffusion {args.run_name}: seed_{args.seed}_lr_{args.lr}_pretrained_seed_{args.pretrained_seed}_ksvd_layers_{args.ksvd_layers}_lambda_mean_{args.lambda_mean}_var_{args.lambda_var}_ce_{args.lambda_ce}_batchsize_{args.batch_size}_epochs_{args.nb_epochs}",
@@ -192,7 +192,8 @@ def main_diffusion(args):
         train_sampler = DistributedSampler(train_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=True)
         val_sampler = DistributedSampler(val_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=False)
         train_loader = DataLoader(train_loader.dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, drop_last=True)
-        val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=val_sampler, num_workers=4, drop_last=False)
+        if global_rank == 0:
+            val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=None, num_workers=4, drop_last=False)
     else:
         train_loader, val_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(
             args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
@@ -200,7 +201,8 @@ def main_diffusion(args):
         train_sampler = DistributedSampler(train_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=True)
         val_sampler = DistributedSampler(val_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=False)
         train_loader = DataLoader(train_loader.dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, drop_last=True)
-        val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=val_sampler, num_workers=4, drop_last=False)
+        if global_rank == 0:
+            val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=None, num_workers=4, drop_last=False)
 
     for run in range(args.nb_run):
         if global_rank == 0:
@@ -228,9 +230,9 @@ def main_diffusion(args):
         net.module.solution_head_2.load_state_dict(pretrained_ViT.module.model.heads[0].state_dict())
 
         # Define optimizer and scheduler
-        optimizer = torch.optim.Adam(net.parameters(), lr=args.min_lr, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
+        optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
         if args.warmup_epoch > 0:
-            warmup_lr_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=args.lr / args.min_lr, total_iters=args.warmup_epoch)
+            warmup_lr_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=args.min_lr / args.lr, end_factor=1.0, total_iters=args.warmup_epoch)
             main_lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.nb_epochs - args.warmup_epoch, eta_min=args.min_lr)
             lr_scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warmup_lr_scheduler, main_lr_scheduler], milestones=[args.warmup_epoch])
         else:
@@ -249,10 +251,10 @@ def main_diffusion(args):
             # Train the model
             train.train_diffusion(train_loader, net, optimizer, epoch, logger, args, pretrained_ViT)
             lr_scheduler.step()
-
             # Validate the model
-            res = val.validation_diffusion(val_loader, net, args, pretrained_ViT)
+            # res = val.validation_diffusion(val_loader, net, args, pretrained_ViT)
             if global_rank == 0:
+                res = val.validation_diffusion(val_loader, net, args, pretrained_ViT)
                 log = [f"{key}: {res[key]:.3f}" for key in res]
                 msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
                 logger.info(msg)
