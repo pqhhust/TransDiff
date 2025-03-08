@@ -147,37 +147,24 @@ class TransformerEncoder(nn.Module):
         )
 
     def forward(self, x):
-        if self.attn_type == "softmax":
-            # noise_std = self.args.adversarial_noise # adjust as needed
-            # Process original input
-            la_x = self.la1(x)
-            out_original = self.msa(la_x)
-            mean_original = out_original
-            # cov_original = torch.zeros_like(out_original)
-            x_t_trans = out_original + x  # residual for original input
-            out_final = self.mlp(self.la2(x_t_trans)) + x_t_trans
-
-            # # Generate adversarial_samples adversarial inputs and compute aggregated mean/variance
-            # means_list = [mean_original]
-            # for _ in range(self.args.adversarial_samples):
-            #     adv_x = x + torch.randn_like(x) * noise_std
-            #     la_adv = self.la1(adv_x)
-            #     out_adv = self.msa(la_adv)
-            #     means_list.append(out_adv)
-            # means_stack = torch.stack(means_list, dim=0)  # shape: (5, B, seq_len, d_model)
-            # aggregated_mean = torch.mean(means_stack, dim=0) + x
-            # aggregated_std = torch.std(means_stack, dim=0, unbiased=False) 
-
-            # return out_final, x_t_trans, aggregated_mean, aggregated_std
-            return out_final, x_t_trans, x_t_trans, torch.zeros_like(x_t_trans)
-
-        else:
-            la_x = self.la1(x)
-            out, scores, Lambda_inv, kl, mean, cov = self.msa(la_x)
-            out = out + x
-            x_t_trans = out
-            out = self.mlp(self.la2(out)) + out
-            return out, scores, Lambda_inv, kl, x_t_trans, mean, cov
+         out = self.la1(x)
+         if self.attn_type == "softmax":
+             out = self.msa(out)
+             mean = out
+             cov = torch.zeros_like(out)
+         elif self.attn_type == "kep_svgp":
+             out, scores, Lambda_inv, kl, mean, cov = self.msa(out)
+ 
+         out = out + x
+         x_t_trans = out
+         out = self.mlp(self.la2(out)) + out
+         mean = mean + x
+         # mean = self.mlp(self.la2(mean)) + mean
+ 
+         if self.attn_type == "softmax":
+             return out, x_t_trans, mean, cov
+         elif self.attn_type == "kep_svgp":
+             return out, scores, Lambda_inv, kl, x_t_trans, mean, cov
 
 
 class MultiHeadSelfAttention(nn.Module):
