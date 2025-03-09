@@ -5,7 +5,7 @@ First, create a conda environment and download packages for experiments
 conda create -n diffomer python=3.8
 conda activate diffomer
 cd CIFAR
-pip install -r requirements.txt
+bash requirements.sh
 ```
 
 ## Cola
