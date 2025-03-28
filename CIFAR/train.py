@@ -103,6 +103,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
         loss = args.lambda_mean * means_loss + args.lambda_var * stds_loss + args.lambda_ce * ce_loss
 
         loss.backward()  
+        nn.utils.clip_grad_norm_(diffusion_model.parameters(), args.clip_grad_norm)
         optimizer.step()
 
         for param_group in optimizer.param_groups:
