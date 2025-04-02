@@ -88,7 +88,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
 
     for i, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.cuda(), targets.cuda()
-        optimizer.zero_grad()
+        # optimizer.zero_grad()
         output = diffusion_model(inputs)
 
         ce_loss = ce_criterion(output, targets)
@@ -101,10 +101,12 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
         means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus)
 
         loss = args.lambda_mean * means_loss + args.lambda_var * stds_loss + args.lambda_ce * ce_loss
-
-        loss.backward()  
-        nn.utils.clip_grad_value_(diffusion_model.parameters(), args.clip_grad_value)
-        optimizer.step()
+        loss /= args.accumulation_steps
+        loss.backward() 
+        if (i + 1) % args.accumulation_steps == 0: 
+            nn.utils.clip_grad_value_(diffusion_model.parameters(), args.clip_grad_value)
+            optimizer.step()
+            optimizer.zero_grad()
 
         for param_group in optimizer.param_groups:
             lr = param_group["lr"]

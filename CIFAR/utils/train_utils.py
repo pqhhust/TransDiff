@@ -36,6 +36,7 @@ def get_args_parser():
     parser.add_argument("--warmup-epoch", default=5, type=int)
     parser.add_argument("--clip-grad-norm", default=1.0, type=float)
     parser.add_argument("--clip-grad-value", default=10.0, type=float)
+    parser.add_argument("--accumulation-steps", default=1, type=int)
 
     ## nb of run 
     parser.add_argument('--nb-run', default=1, type=int, help='Run n times, in order to compute std')
