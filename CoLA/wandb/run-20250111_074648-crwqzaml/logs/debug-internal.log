@@ -1,0 +1,160 @@
+2025-01-11 07:46:48,758 INFO    MainThread:3185898 [internal.py:wandb_internal():93] W&B internal server running at pid: 3185898, started at: 2025-01-11 07:46:48.758211
+2025-01-11 07:46:48,760 INFO    WriterThread:3185898 [datastore.py:open_for_write():75] open: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/run-crwqzaml.wandb
+2025-01-11 07:46:48,762 DEBUG   SenderThread:3185898 [sender.py:send():236] send: header
+2025-01-11 07:46:48,762 DEBUG   SenderThread:3185898 [sender.py:send():236] send: run
+2025-01-11 07:46:49,231 INFO    SenderThread:3185898 [dir_watcher.py:__init__():216] watching files in: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files
+2025-01-11 07:46:49,231 INFO    SenderThread:3185898 [sender.py:_start_run_threads():818] run started: crwqzaml with start time 1736581608
+2025-01-11 07:46:49,232 DEBUG   SenderThread:3185898 [sender.py:send():236] send: summary
+2025-01-11 07:46:49,232 INFO    SenderThread:3185898 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2025-01-11 07:46:49,233 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: check_version
+2025-01-11 07:46:49,233 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: check_version
+2025-01-11 07:46:50,233 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/wandb-summary.json
+2025-01-11 07:46:52,400 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: run_start
+2025-01-11 07:46:52,440 DEBUG   HandlerThread:3185898 [meta.py:__init__():35] meta init
+2025-01-11 07:46:52,440 DEBUG   HandlerThread:3185898 [meta.py:__init__():49] meta init done
+2025-01-11 07:46:52,440 DEBUG   HandlerThread:3185898 [meta.py:probe():209] probe
+2025-01-11 07:46:52,452 DEBUG   HandlerThread:3185898 [meta.py:_setup_git():199] setup git
+2025-01-11 07:46:52,474 DEBUG   HandlerThread:3185898 [meta.py:_setup_git():206] setup git done
+2025-01-11 07:46:52,475 DEBUG   HandlerThread:3185898 [meta.py:_save_pip():53] save pip
+2025-01-11 07:46:52,475 DEBUG   HandlerThread:3185898 [meta.py:_save_pip():67] save pip done
+2025-01-11 07:46:52,475 DEBUG   HandlerThread:3185898 [meta.py:_save_conda():74] save conda
+2025-01-11 07:46:53,233 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/requirements.txt
+2025-01-11 07:46:53,234 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/conda-environment.yaml
+2025-01-11 07:46:55,394 DEBUG   HandlerThread:3185898 [meta.py:_save_conda():84] save conda done
+2025-01-11 07:46:55,394 DEBUG   HandlerThread:3185898 [meta.py:probe():247] probe done
+2025-01-11 07:46:55,562 DEBUG   SenderThread:3185898 [sender.py:send():236] send: files
+2025-01-11 07:46:55,563 INFO    SenderThread:3185898 [sender.py:_save_file():952] saving file wandb-metadata.json with policy now
+2025-01-11 07:46:55,594 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 07:46:55,594 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 07:46:55,992 DEBUG   SenderThread:3185898 [sender.py:send():236] send: telemetry
+2025-01-11 07:46:56,235 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/conda-environment.yaml
+2025-01-11 07:46:56,235 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/output.log
+2025-01-11 07:46:56,235 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/wandb-metadata.json
+2025-01-11 07:46:56,389 INFO    Thread-11 :3185898 [upload_job.py:push():138] Uploaded file /tmp/tmpzjfqc9l4wandb/2yvrjqc0-wandb-metadata.json
+2025-01-11 07:46:58,236 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/output.log
+2025-01-11 07:47:10,995 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 07:47:10,995 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 07:47:12,242 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/output.log
+2025-01-11 07:47:20,247 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/config.yaml
+2025-01-11 07:47:25,407 DEBUG   SenderThread:3185898 [sender.py:send():236] send: telemetry
+2025-01-11 07:47:26,250 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/output.log
+2025-01-11 07:47:28,151 DEBUG   SenderThread:3185898 [sender.py:send():236] send: exit
+2025-01-11 07:47:28,151 INFO    SenderThread:3185898 [sender.py:send_exit():372] handling exit code: 1
+2025-01-11 07:47:28,152 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:28,152 INFO    SenderThread:3185898 [sender.py:send_exit():374] handling runtime: 35
+2025-01-11 07:47:28,157 INFO    SenderThread:3185898 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2025-01-11 07:47:28,157 INFO    SenderThread:3185898 [sender.py:send_exit():380] send defer
+2025-01-11 07:47:28,157 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:28,158 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: defer
+2025-01-11 07:47:28,158 INFO    HandlerThread:3185898 [handler.py:handle_request_defer():163] handle defer: 0
+2025-01-11 07:47:28,159 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: defer
+2025-01-11 07:47:28,159 INFO    SenderThread:3185898 [sender.py:send_request_defer():389] handle sender defer: 0
+2025-01-11 07:47:28,159 INFO    SenderThread:3185898 [sender.py:transition_state():393] send defer: 1
+2025-01-11 07:47:28,159 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: defer
+2025-01-11 07:47:28,159 INFO    HandlerThread:3185898 [handler.py:handle_request_defer():163] handle defer: 1
+2025-01-11 07:47:28,159 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: defer
+2025-01-11 07:47:28,160 INFO    SenderThread:3185898 [sender.py:send_request_defer():389] handle sender defer: 1
+2025-01-11 07:47:28,160 INFO    SenderThread:3185898 [sender.py:transition_state():393] send defer: 2
+2025-01-11 07:47:28,160 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: defer
+2025-01-11 07:47:28,160 INFO    HandlerThread:3185898 [handler.py:handle_request_defer():163] handle defer: 2
+2025-01-11 07:47:28,160 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: defer
+2025-01-11 07:47:28,160 INFO    SenderThread:3185898 [sender.py:send_request_defer():389] handle sender defer: 2
+2025-01-11 07:47:28,160 INFO    SenderThread:3185898 [sender.py:transition_state():393] send defer: 3
+2025-01-11 07:47:28,161 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: defer
+2025-01-11 07:47:28,161 INFO    HandlerThread:3185898 [handler.py:handle_request_defer():163] handle defer: 3
+2025-01-11 07:47:28,161 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: defer
+2025-01-11 07:47:28,161 INFO    SenderThread:3185898 [sender.py:send_request_defer():389] handle sender defer: 3
+2025-01-11 07:47:28,161 INFO    SenderThread:3185898 [sender.py:transition_state():393] send defer: 4
+2025-01-11 07:47:28,162 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: defer
+2025-01-11 07:47:28,162 INFO    HandlerThread:3185898 [handler.py:handle_request_defer():163] handle defer: 4
+2025-01-11 07:47:28,162 DEBUG   SenderThread:3185898 [sender.py:send():236] send: summary
+2025-01-11 07:47:28,163 INFO    SenderThread:3185898 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2025-01-11 07:47:28,163 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: defer
+2025-01-11 07:47:28,163 INFO    SenderThread:3185898 [sender.py:send_request_defer():389] handle sender defer: 4
+2025-01-11 07:47:28,163 INFO    SenderThread:3185898 [sender.py:transition_state():393] send defer: 5
+2025-01-11 07:47:28,164 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: defer
+2025-01-11 07:47:28,164 INFO    HandlerThread:3185898 [handler.py:handle_request_defer():163] handle defer: 5
+2025-01-11 07:47:28,164 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: defer
+2025-01-11 07:47:28,164 INFO    SenderThread:3185898 [sender.py:send_request_defer():389] handle sender defer: 5
+2025-01-11 07:47:28,251 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/wandb-summary.json
+2025-01-11 07:47:28,252 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/output.log
+2025-01-11 07:47:28,260 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:28,531 INFO    SenderThread:3185898 [sender.py:transition_state():393] send defer: 6
+2025-01-11 07:47:28,531 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:28,532 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: defer
+2025-01-11 07:47:28,532 INFO    HandlerThread:3185898 [handler.py:handle_request_defer():163] handle defer: 6
+2025-01-11 07:47:28,532 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: defer
+2025-01-11 07:47:28,533 INFO    SenderThread:3185898 [sender.py:send_request_defer():389] handle sender defer: 6
+2025-01-11 07:47:28,533 INFO    SenderThread:3185898 [dir_watcher.py:finish():353] shutting down directory watcher
+2025-01-11 07:47:28,633 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:29,252 INFO    Thread-7  :3185898 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/config.yaml
+2025-01-11 07:47:29,253 INFO    SenderThread:3185898 [dir_watcher.py:finish():383] scan: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files
+2025-01-11 07:47:29,254 INFO    SenderThread:3185898 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/requirements.txt requirements.txt
+2025-01-11 07:47:29,254 INFO    SenderThread:3185898 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/wandb-summary.json wandb-summary.json
+2025-01-11 07:47:29,254 INFO    SenderThread:3185898 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/output.log output.log
+2025-01-11 07:47:29,263 INFO    SenderThread:3185898 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/wandb-metadata.json wandb-metadata.json
+2025-01-11 07:47:29,263 INFO    SenderThread:3185898 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/conda-environment.yaml conda-environment.yaml
+2025-01-11 07:47:29,268 INFO    SenderThread:3185898 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/config.yaml config.yaml
+2025-01-11 07:47:29,268 INFO    SenderThread:3185898 [sender.py:transition_state():393] send defer: 7
+2025-01-11 07:47:29,272 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:29,278 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: defer
+2025-01-11 07:47:29,279 INFO    HandlerThread:3185898 [handler.py:handle_request_defer():163] handle defer: 7
+2025-01-11 07:47:29,279 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: defer
+2025-01-11 07:47:29,279 INFO    SenderThread:3185898 [sender.py:send_request_defer():389] handle sender defer: 7
+2025-01-11 07:47:29,279 INFO    SenderThread:3185898 [file_pusher.py:finish():171] shutting down file pusher
+2025-01-11 07:47:29,380 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:29,380 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:29,482 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:29,483 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:29,585 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:29,585 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:29,689 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:29,695 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:29,799 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:29,799 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:29,901 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:29,902 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:29,953 INFO    Thread-13 :3185898 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/wandb-summary.json
+2025-01-11 07:47:29,976 INFO    Thread-12 :3185898 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/requirements.txt
+2025-01-11 07:47:30,004 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:30,004 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:30,067 INFO    Thread-15 :3185898 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/conda-environment.yaml
+2025-01-11 07:47:30,105 INFO    Thread-14 :3185898 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/output.log
+2025-01-11 07:47:30,107 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:30,107 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:30,142 INFO    Thread-16 :3185898 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/files/config.yaml
+2025-01-11 07:47:30,209 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:30,209 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:30,311 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:30,312 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:30,342 INFO    Thread-6  :3185898 [sender.py:transition_state():393] send defer: 8
+2025-01-11 07:47:30,343 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: defer
+2025-01-11 07:47:30,343 INFO    HandlerThread:3185898 [handler.py:handle_request_defer():163] handle defer: 8
+2025-01-11 07:47:30,343 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: defer
+2025-01-11 07:47:30,344 INFO    SenderThread:3185898 [sender.py:send_request_defer():389] handle sender defer: 8
+2025-01-11 07:47:30,413 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:31,120 INFO    SenderThread:3185898 [sender.py:transition_state():393] send defer: 9
+2025-01-11 07:47:31,121 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:31,121 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: defer
+2025-01-11 07:47:31,122 INFO    HandlerThread:3185898 [handler.py:handle_request_defer():163] handle defer: 9
+2025-01-11 07:47:31,122 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: defer
+2025-01-11 07:47:31,122 INFO    SenderThread:3185898 [sender.py:send_request_defer():389] handle sender defer: 9
+2025-01-11 07:47:31,122 INFO    SenderThread:3185898 [sender.py:transition_state():393] send defer: 10
+2025-01-11 07:47:31,123 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: defer
+2025-01-11 07:47:31,123 DEBUG   SenderThread:3185898 [sender.py:send():236] send: final
+2025-01-11 07:47:31,124 INFO    HandlerThread:3185898 [handler.py:handle_request_defer():163] handle defer: 10
+2025-01-11 07:47:31,124 DEBUG   SenderThread:3185898 [sender.py:send():236] send: footer
+2025-01-11 07:47:31,124 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: defer
+2025-01-11 07:47:31,124 INFO    SenderThread:3185898 [sender.py:send_request_defer():389] handle sender defer: 10
+2025-01-11 07:47:31,223 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: poll_exit
+2025-01-11 07:47:31,223 DEBUG   SenderThread:3185898 [sender.py:send_request():250] send_request: poll_exit
+2025-01-11 07:47:31,223 INFO    SenderThread:3185898 [file_pusher.py:join():176] waiting for file pusher
+2025-01-11 07:47:31,966 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: sampled_history
+2025-01-11 07:47:31,968 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: get_summary
+2025-01-11 07:47:31,969 DEBUG   HandlerThread:3185898 [handler.py:handle_request():140] handle_request: shutdown
+2025-01-11 07:47:31,969 INFO    HandlerThread:3185898 [handler.py:finish():806] shutting down handler
+2025-01-11 07:47:32,124 INFO    WriterThread:3185898 [datastore.py:close():279] close: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_074648-crwqzaml/run-crwqzaml.wandb
+2025-01-11 07:47:32,865 INFO    SenderThread:3185898 [sender.py:finish():1114] shutting down sender
+2025-01-11 07:47:32,865 INFO    SenderThread:3185898 [file_pusher.py:finish():171] shutting down file pusher
+2025-01-11 07:47:32,865 INFO    SenderThread:3185898 [file_pusher.py:join():176] waiting for file pusher
+2025-01-11 07:47:32,869 INFO    MainThread:3185898 [internal.py:handle_exit():80] Internal process exited

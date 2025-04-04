@@ -1,0 +1,167 @@
+2025-02-20 11:10:38,321 INFO {
+    "attn_type": "softmax",
+    "backbone": "mlp",
+    "batch_size": 32,
+    "beta1": 0.9,
+    "beta2": 0.999,
+    "clip": 0,
+    "dataset": "cola",
+    "depth": 2,
+    "ema_decay": 0.995,
+    "emb_dim": 128,
+    "eta_kl": 1.0,
+    "eta_ksvd": 0.1,
+    "gpu": "0",
+    "hdim": 256,
+    "ksvd_layers": 1,
+    "low_rank": 5,
+    "lr": 0.0005,
+    "max_len": 100,
+    "min_lr": 1e-05,
+    "min_word_count": 0,
+    "mlp_dropout": 0.1,
+    "mlp_gamma": 1.0,
+    "mlp_hdim1": 64,
+    "mlp_hdim2": 64,
+    "mlp_hdim3": 64,
+    "mlp_hdim4": 64,
+    "model": "vit_cola",
+    "nb_epochs": 50,
+    "nb_run": 1,
+    "nb_worker": 4,
+    "num_classes": 2,
+    "num_heads": 4,
+    "pretrained_dir": null,
+    "pretrained_seed": 0,
+    "rank_multi": 2,
+    "save_dir": "./cola_out/vit_out",
+    "seed": 2,
+    "start_ema_step": 50,
+    "update_ema_interval": 5,
+    "use_ema": true,
+    "warmup_epoch": 5,
+    "weight_decay": 1e-05
+}
+2025-02-20 11:10:38,435 INFO ####################################################################################################
+1 / 1 Running
+2025-02-20 11:10:54,631 INFO Using vit_cola ...
+ViT(
+  (embedding): Embeddings(
+    (token_embeds): Embedding(7717, 128, padding_idx=0)
+    (pos_embeds): Embedding(100, 1152)
+    (layer_norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    (project): Linear(in_features=1152, out_features=256, bias=True)
+    (dropout): Dropout(p=0.1, inplace=False)
+    (elmo): Elmo(
+      (_elmo_lstm): _ElmoBiLm(
+        (_token_embedder): _ElmoCharacterEncoder(
+          (char_conv_0): Conv1d(16, 32, kernel_size=(1,), stride=(1,))
+          (char_conv_1): Conv1d(16, 32, kernel_size=(2,), stride=(1,))
+          (char_conv_2): Conv1d(16, 64, kernel_size=(3,), stride=(1,))
+          (char_conv_3): Conv1d(16, 128, kernel_size=(4,), stride=(1,))
+          (char_conv_4): Conv1d(16, 256, kernel_size=(5,), stride=(1,))
+          (char_conv_5): Conv1d(16, 512, kernel_size=(6,), stride=(1,))
+          (char_conv_6): Conv1d(16, 1024, kernel_size=(7,), stride=(1,))
+          (_highways): Highway(
+            (_layers): ModuleList(
+              (0): Linear(in_features=2048, out_features=4096, bias=True)
+              (1): Linear(in_features=2048, out_features=4096, bias=True)
+            )
+          )
+          (_projection): Linear(in_features=2048, out_features=512, bias=True)
+        )
+        (_elmo_lstm): ElmoLstm(
+          (forward_layer_0): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+          (backward_layer_0): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+          (forward_layer_1): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+          (backward_layer_1): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+        )
+      )
+      (_dropout): Dropout(p=0.0, inplace=False)
+      (scalar_mix_0): ScalarMix(
+        (scalar_parameters): ParameterList(
+            (0): Parameter containing: [torch.float32 of size 1]
+            (1): Parameter containing: [torch.float32 of size 1]
+            (2): Parameter containing: [torch.float32 of size 1]
+        )
+      )
+    )
+  )
+  (enc): Sequential(
+    (0): TransformerEncoder(
+      (la1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+      (msa): MultiHeadSelfAttention(
+        (q): Linear(in_features=256, out_features=256, bias=True)
+        (k): Linear(in_features=256, out_features=256, bias=True)
+        (v): Linear(in_features=256, out_features=256, bias=True)
+        (o): Linear(in_features=256, out_features=256, bias=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (la2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+      (mlp): Sequential(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): GELU(approximate='none')
+        (2): Dropout(p=0.1, inplace=False)
+        (3): Linear(in_features=256, out_features=256, bias=True)
+        (4): GELU(approximate='none')
+        (5): Dropout(p=0.1, inplace=False)
+      )
+    )
+    (1): TransformerEncoder(
+      (la1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+      (msa): MultiHeadSelfAttention(
+        (q): Linear(in_features=256, out_features=256, bias=True)
+        (k): Linear(in_features=256, out_features=256, bias=True)
+        (v): Linear(in_features=256, out_features=256, bias=True)
+        (o): Linear(in_features=256, out_features=256, bias=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (la2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+      (mlp): Sequential(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): GELU(approximate='none')
+        (2): Dropout(p=0.1, inplace=False)
+        (3): Linear(in_features=256, out_features=256, bias=True)
+        (4): GELU(approximate='none')
+        (5): Dropout(p=0.1, inplace=False)
+      )
+    )
+  )
+  (fc): Sequential(
+    (0): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    (1): Linear(in_features=256, out_features=2, bias=True)
+  )
+)
+2191238
+2025-02-20 11:11:02,150 INFO ####### --- Training Epoch 0 --- #######
+2025-02-20 11:11:33,581 INFO Epoch 0 	 Batch 99	LR : 0.00000	MCC: 0.65	Top1 Acc.: 70.09	Tot. Loss: 0.68
+2025-02-20 11:11:53,033 INFO Epoch 0 	 Batch 199	LR : 0.00000	MCC: 3.00	Top1 Acc.: 69.72	Tot. Loss: 0.69
+2025-02-20 11:12:08,074 INFO ##################
+ ---> Validation Epoch 0	Acc.: 68.062	MCC: 2.522	FPR: 90.172	AUROC: 52.797	AUPR: 35.860	AURC: 314.411	EAURC: 256.899	AUPR Succ.: 68.623	ECE: 16.027	NLL: 7.176	Brier: 48.537
+2025-02-20 11:12:08,075 INFO MCC improved from 0.00 to 2.52!!!
+2025-02-20 11:12:11,222 INFO AUROC improved from 0.00 to 52.80!!!
+2025-02-20 11:12:14,526 INFO AURC decreased from 1000000.00 to 314.41!!!
+2025-02-20 11:12:17,477 INFO ####### --- Training Epoch 1 --- #######
+2025-02-20 11:12:37,316 INFO Epoch 1 	 Batch 99	LR : 0.00010	MCC: 0.55	Top1 Acc.: 69.00	Tot. Loss: 0.64
+2025-02-20 11:12:56,975 INFO Epoch 1 	 Batch 199	LR : 0.00010	MCC: 1.43	Top1 Acc.: 70.91	Tot. Loss: 0.61
+2025-02-20 11:13:13,884 INFO ##################
+ ---> Validation Epoch 1	Acc.: 68.888	MCC: 0.000	FPR: 91.681	AUROC: 52.312	AUPR: 34.581	AURC: 295.640	EAURC: 241.257	AUPR Succ.: 70.489	ECE: 5.475	NLL: 6.255	Brier: 43.285
+2025-02-20 11:13:13,885 INFO AURC decreased from 314.41 to 295.64!!!
+2025-02-20 11:13:16,818 INFO ####### --- Training Epoch 2 --- #######
+2025-02-20 11:13:36,378 INFO Epoch 2 	 Batch 99	LR : 0.00020	MCC: 1.63	Top1 Acc.: 70.34	Tot. Loss: 0.61

@@ -1,0 +1,71 @@
+2025-01-11 06:07:30,120 INFO    MainThread:3077422 [internal.py:wandb_internal():93] W&B internal server running at pid: 3077422, started at: 2025-01-11 06:07:30.120400
+2025-01-11 06:07:30,123 INFO    WriterThread:3077422 [datastore.py:open_for_write():75] open: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/run-ueb5jatv.wandb
+2025-01-11 06:07:30,124 DEBUG   SenderThread:3077422 [sender.py:send():236] send: header
+2025-01-11 06:07:30,125 DEBUG   SenderThread:3077422 [sender.py:send():236] send: run
+2025-01-11 06:07:30,690 INFO    SenderThread:3077422 [dir_watcher.py:__init__():216] watching files in: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files
+2025-01-11 06:07:30,691 INFO    SenderThread:3077422 [sender.py:_start_run_threads():818] run started: ueb5jatv with start time 1736575649
+2025-01-11 06:07:30,699 DEBUG   SenderThread:3077422 [sender.py:send():236] send: summary
+2025-01-11 06:07:30,699 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: check_version
+2025-01-11 06:07:30,699 INFO    SenderThread:3077422 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2025-01-11 06:07:30,700 DEBUG   SenderThread:3077422 [sender.py:send_request():250] send_request: check_version
+2025-01-11 06:07:31,692 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/wandb-summary.json
+2025-01-11 06:07:35,709 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: run_start
+2025-01-11 06:07:35,749 DEBUG   HandlerThread:3077422 [meta.py:__init__():35] meta init
+2025-01-11 06:07:35,749 DEBUG   HandlerThread:3077422 [meta.py:__init__():49] meta init done
+2025-01-11 06:07:35,749 DEBUG   HandlerThread:3077422 [meta.py:probe():209] probe
+2025-01-11 06:07:35,760 DEBUG   HandlerThread:3077422 [meta.py:_setup_git():199] setup git
+2025-01-11 06:07:35,782 DEBUG   HandlerThread:3077422 [meta.py:_setup_git():206] setup git done
+2025-01-11 06:07:35,783 DEBUG   HandlerThread:3077422 [meta.py:_save_pip():53] save pip
+2025-01-11 06:07:35,784 DEBUG   HandlerThread:3077422 [meta.py:_save_pip():67] save pip done
+2025-01-11 06:07:35,784 DEBUG   HandlerThread:3077422 [meta.py:_save_conda():74] save conda
+2025-01-11 06:07:36,694 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/requirements.txt
+2025-01-11 06:07:36,695 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/conda-environment.yaml
+2025-01-11 06:07:41,696 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/output.log
+2025-01-11 06:07:43,697 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/output.log
+2025-01-11 06:07:45,595 DEBUG   HandlerThread:3077422 [meta.py:_save_conda():84] save conda done
+2025-01-11 06:07:45,595 DEBUG   HandlerThread:3077422 [meta.py:probe():247] probe done
+2025-01-11 06:07:45,699 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/conda-environment.yaml
+2025-01-11 06:07:45,699 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/wandb-metadata.json
+2025-01-11 06:07:45,767 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 06:07:45,768 DEBUG   SenderThread:3077422 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 06:07:46,158 DEBUG   SenderThread:3077422 [sender.py:send():236] send: telemetry
+2025-01-11 06:07:46,159 DEBUG   SenderThread:3077422 [sender.py:send():236] send: files
+2025-01-11 06:07:46,163 INFO    SenderThread:3077422 [sender.py:_save_file():952] saving file wandb-metadata.json with policy now
+2025-01-11 06:07:46,929 INFO    Thread-11 :3077422 [upload_job.py:push():138] Uploaded file /tmp/tmpf7gx_g1xwandb/hl5437vm-wandb-metadata.json
+2025-01-11 06:07:59,706 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/output.log
+2025-01-11 06:08:00,720 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 06:08:00,720 DEBUG   SenderThread:3077422 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 06:08:01,707 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/config.yaml
+2025-01-11 06:08:13,712 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/output.log
+2025-01-11 06:08:16,152 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 06:08:16,153 DEBUG   SenderThread:3077422 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 06:08:25,718 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/output.log
+2025-01-11 06:08:27,521 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: partial_history
+2025-01-11 06:08:31,495 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 06:08:31,495 DEBUG   SenderThread:3077422 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 06:08:46,904 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 06:08:46,904 DEBUG   SenderThread:3077422 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 06:09:02,303 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 06:09:02,303 DEBUG   SenderThread:3077422 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 06:09:11,504 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: partial_history
+2025-01-11 06:09:14,742 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/output.log
+2025-01-11 06:09:18,080 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 06:09:18,080 DEBUG   SenderThread:3077422 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 06:09:18,744 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/output.log
+2025-01-11 06:09:20,745 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/output.log
+2025-01-11 06:09:32,751 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/output.log
+2025-01-11 06:09:33,402 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 06:09:33,403 DEBUG   SenderThread:3077422 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 06:09:44,756 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/output.log
+2025-01-11 06:09:46,691 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: partial_history
+2025-01-11 06:09:46,696 DEBUG   SenderThread:3077422 [sender.py:send():236] send: history
+2025-01-11 06:09:46,698 DEBUG   SenderThread:3077422 [sender.py:send():236] send: summary
+2025-01-11 06:09:46,699 INFO    SenderThread:3077422 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2025-01-11 06:09:46,757 INFO    Thread-7  :3077422 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_060729-ueb5jatv/files/wandb-summary.json
+2025-01-11 06:09:48,773 DEBUG   HandlerThread:3077422 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 06:09:48,774 DEBUG   SenderThread:3077422 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 06:10:00,699 WARNING MainThread:3077422 [internal.py:wandb_internal():153] Internal process interrupt: 1
+2025-01-11 06:10:00,721 DEBUG   SenderThread:3077422 [sender.py:send():236] send: telemetry
+2025-01-11 06:10:00,934 WARNING MainThread:3077422 [internal.py:wandb_internal():153] Internal process interrupt: 2
+2025-01-11 06:10:00,934 ERROR   MainThread:3077422 [internal.py:wandb_internal():156] Internal process interrupted.
+2025-01-11 06:10:01,349 INFO    MainThread:3077422 [internal.py:handle_exit():80] Internal process exited

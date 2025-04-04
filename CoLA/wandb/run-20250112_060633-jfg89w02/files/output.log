@@ -1,0 +1,51 @@
+2025-01-12 06:06:38,202 INFO {
+    "attn_type": "kep_svgp",
+    "backbone": "mlp",
+    "batch_size": 32,
+    "beta1": 0.9,
+    "beta2": 0.999,
+    "clip": 0,
+    "dataset": "cola",
+    "depth": 2,
+    "ema_decay": 0.995,
+    "emb_dim": 128,
+    "eta_kl": 1.0,
+    "eta_ksvd": 1.0,
+    "gpu": "2",
+    "hdim": 256,
+    "ksvd_layers": 2,
+    "low_rank": 5,
+    "lr": 0.0005,
+    "max_len": 100,
+    "min_lr": 1e-05,
+    "min_word_count": 0,
+    "mlp_dropout": 0.1,
+    "mlp_gamma": 1.0,
+    "mlp_hdim1": 64,
+    "mlp_hdim2": 64,
+    "mlp_hdim3": 64,
+    "mlp_hdim4": 64,
+    "model": "vit_cola",
+    "nb_epochs": 50,
+    "nb_run": 1,
+    "nb_worker": 4,
+    "num_classes": 2,
+    "num_heads": 4,
+    "pretrained_dir": null,
+    "pretrained_seed": 0,
+    "rank_multi": 2,
+    "save_dir": "./cola_out/vit_out_sum",
+    "seed": 0,
+    "start_ema_step": 50,
+    "update_ema_interval": 5,
+    "use_ema": true,
+    "warmup_epoch": 5,
+    "weight_decay": 5e-05
+}
+2025-01-12 06:06:38,262 INFO ####################################################################################################
+1 / 1 Running
+2025-01-12 06:06:54,186 INFO Using vit_cola ...
+cuda:0
+1927878
+2025-01-12 06:06:54,189 INFO ####### --- Training Epoch 0 --- #######
+2025-01-12 06:07:07,227 INFO Epoch 0 	 Batch 99	LR : 0.00000	MCC: -0.03	Top1 Acc.: 44.72	CE Loss: 0.81	KSVD Loss: 3.51	KL Loss: 15121.63	Tot. Loss: 15125.95

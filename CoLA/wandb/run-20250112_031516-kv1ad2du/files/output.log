@@ -1,0 +1,80 @@
+2025-01-12 03:15:24,311 INFO {
+    "attn_type": "kep_svgp",
+    "backbone": "mlp",
+    "batch_size": 32,
+    "beta1": 0.9,
+    "beta2": 0.999,
+    "clip": 0,
+    "dataset": "cola",
+    "depth": 2,
+    "ema_decay": 0.995,
+    "emb_dim": 128,
+    "eta_kl": 1.0,
+    "eta_ksvd": 1.0,
+    "gpu": "1",
+    "hdim": 256,
+    "ksvd_layers": 1,
+    "low_rank": 5,
+    "lr": 0.0005,
+    "max_len": 100,
+    "min_lr": 1e-05,
+    "min_word_count": 0,
+    "mlp_dropout": 0.1,
+    "mlp_gamma": 1.0,
+    "mlp_hdim1": 64,
+    "mlp_hdim2": 64,
+    "mlp_hdim3": 64,
+    "mlp_hdim4": 64,
+    "model": "vit_cola",
+    "nb_epochs": 50,
+    "nb_run": 1,
+    "nb_worker": 4,
+    "num_classes": 2,
+    "num_heads": 4,
+    "pretrained_dir": null,
+    "pretrained_seed": 0,
+    "rank_multi": 2,
+    "save_dir": "./cola_out/vit_out_sum",
+    "seed": 4,
+    "start_ema_step": 50,
+    "update_ema_interval": 5,
+    "use_ema": true,
+    "warmup_epoch": 5,
+    "weight_decay": 5e-05
+}
+2025-01-12 03:15:24,397 INFO ####################################################################################################
+1 / 1 Running
+Traceback (most recent call last):
+  File "main.py", line 227, in <module>
+    main(args)
+  File "main.py", line 62, in main
+    net = models.get_model.get_model(args.model, vocab_size, logger, args)
+  File "/mnt/disk1/pqhung/TransDiff/CoLA/models/get_model.py", line 10, in get_model
+    net = models.vit_cola.vit_cola(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
+  File "/mnt/disk1/pqhung/TransDiff/CoLA/models/vit_cola.py", line 89, in vit_cola
+    dropout=0.1, num_layers=args.depth, hidden=args.hdim, head=args.num_heads, mlp_hidden=args.hdim)
+  File "/mnt/disk1/pqhung/TransDiff/CoLA/models/vit_cola.py", line 50, in __init__
+    h_size=self.hidden, drop_rate=self.dropout)
+  File "/mnt/disk1/pqhung/TransDiff/CoLA/models/vit_cola.py", line 19, in __init__
+    self.elmo=Elmo(options_file,weight_file,num_rep,dropout=0.)
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/allennlp/modules/elmo.py", line 122, in __init__
+    vocab_to_cache=vocab_to_cache,
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/allennlp/modules/elmo.py", line 511, in __init__
+    options_file, weight_file, requires_grad=requires_grad
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/allennlp/modules/elmo.py", line 296, in __init__
+    with open(cached_path(options_file), "r") as fin:
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/allennlp/common/file_utils.py", line 138, in cached_path
+    force_extract=force_extract,
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/cached_path/_cached_path.py", line 173, in cached_path
+    file_path, etag = get_from_cache(url_or_filename, cache_dir, quiet=quiet, progress=progress)
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/cached_path/_cached_path.py", line 284, in get_from_cache
+    etag = client.get_etag()
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/cached_path/schemes/http.py", line 58, in get_etag
+    return self.head_response.headers.get("ETag")
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/cached_path/schemes/http.py", line 51, in head_response
+    self.validate_response(response)
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/cached_path/schemes/http.py", line 80, in validate_response
+    response.raise_for_status()
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/requests/models.py", line 1021, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 500 Server Error: Internal Server Error for url: https://allennlp.s3.amazonaws.com/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_options.json

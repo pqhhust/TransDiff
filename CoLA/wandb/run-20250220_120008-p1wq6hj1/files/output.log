@@ -1,0 +1,14 @@
+
+Namespace(attn_type='kep_svgp', batch_size=128, dataset='cola', depth=2, emb_dim=128, eta_kl=1.0, eta_ksvd=0.1, gpu='0', hdim=256, ksvd_layers=1, low_rank=5, max_len=100, min_word_count=0, model='vit_cola', nb_run=1, num_classes=2, num_heads=4, rank_multi=2, save_dir='./output', seed=0)
+Traceback (most recent call last):
+  File "test.py", line 70, in <module>
+    test(args)
+  File "test.py", line 32, in test
+    logger = utils.utils.get_logger(save_path)
+  File "/mnt/disk1/pqhung/TransDiff/CoLA/utils/utils.py", line 32, in get_logger
+    file_hdlr = logging.FileHandler(file_path)
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/logging/__init__.py", line 1087, in __init__
+    StreamHandler.__init__(self, self._open())
+  File "/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/logging/__init__.py", line 1116, in _open
+    return open(self.baseFilename, self.mode, encoding=self.encoding)
+FileNotFoundError: [Errno 2] No such file or directory: '/mnt/disk1/pqhung/TransDiff/CoLA/output/cola_kep_svgp_vit_cola_ksvdlayer1_ksvd0.1_kl1.0_0/run.log'

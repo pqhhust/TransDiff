@@ -1,0 +1,5 @@
+### install
+pip install allennlp
+pip install timm
+### run if core dumped
+# pip install torch==1.13.0

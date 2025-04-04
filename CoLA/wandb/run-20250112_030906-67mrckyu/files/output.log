@@ -1,0 +1,458 @@
+2025-01-12 03:09:11,331 INFO {
+    "attn_type": "kep_svgp",
+    "backbone": "mlp",
+    "batch_size": 32,
+    "beta1": 0.9,
+    "beta2": 0.999,
+    "clip": 0,
+    "dataset": "cola",
+    "depth": 2,
+    "ema_decay": 0.995,
+    "emb_dim": 128,
+    "eta_kl": 1.0,
+    "eta_ksvd": 1.0,
+    "gpu": "1",
+    "hdim": 256,
+    "ksvd_layers": 1,
+    "low_rank": 5,
+    "lr": 0.0005,
+    "max_len": 100,
+    "min_lr": 1e-05,
+    "min_word_count": 0,
+    "mlp_dropout": 0.1,
+    "mlp_gamma": 1.0,
+    "mlp_hdim1": 64,
+    "mlp_hdim2": 64,
+    "mlp_hdim3": 64,
+    "mlp_hdim4": 64,
+    "model": "vit_cola",
+    "nb_epochs": 50,
+    "nb_run": 1,
+    "nb_worker": 4,
+    "num_classes": 2,
+    "num_heads": 4,
+    "pretrained_dir": null,
+    "pretrained_seed": 0,
+    "rank_multi": 2,
+    "save_dir": "./cola_out/vit_out_sum",
+    "seed": 1,
+    "start_ema_step": 50,
+    "update_ema_interval": 5,
+    "use_ema": true,
+    "warmup_epoch": 5,
+    "weight_decay": 5e-05
+}
+2025-01-12 03:09:11,422 INFO ####################################################################################################
+1 / 1 Running
+2025-01-12 03:09:27,431 INFO Using vit_cola ...
+ViT(
+  (embedding): Embeddings(
+    (token_embeds): Embedding(7661, 128, padding_idx=0)
+    (pos_embeds): Embedding(100, 1152)
+    (layer_norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    (project): Linear(in_features=1152, out_features=256, bias=True)
+    (dropout): Dropout(p=0.1, inplace=False)
+    (elmo): Elmo(
+      (_elmo_lstm): _ElmoBiLm(
+        (_token_embedder): _ElmoCharacterEncoder(
+          (char_conv_0): Conv1d(16, 32, kernel_size=(1,), stride=(1,))
+          (char_conv_1): Conv1d(16, 32, kernel_size=(2,), stride=(1,))
+          (char_conv_2): Conv1d(16, 64, kernel_size=(3,), stride=(1,))
+          (char_conv_3): Conv1d(16, 128, kernel_size=(4,), stride=(1,))
+          (char_conv_4): Conv1d(16, 256, kernel_size=(5,), stride=(1,))
+          (char_conv_5): Conv1d(16, 512, kernel_size=(6,), stride=(1,))
+          (char_conv_6): Conv1d(16, 1024, kernel_size=(7,), stride=(1,))
+          (_highways): Highway(
+            (_layers): ModuleList(
+              (0): Linear(in_features=2048, out_features=4096, bias=True)
+              (1): Linear(in_features=2048, out_features=4096, bias=True)
+            )
+          )
+          (_projection): Linear(in_features=2048, out_features=512, bias=True)
+        )
+        (_elmo_lstm): ElmoLstm(
+          (forward_layer_0): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+          (backward_layer_0): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+          (forward_layer_1): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+          (backward_layer_1): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+        )
+      )
+      (_dropout): Dropout(p=0.0, inplace=False)
+      (scalar_mix_0): ScalarMix(
+        (scalar_parameters): ParameterList(
+            (0): Parameter containing: [torch.float32 of size 1 (GPU 0)]
+            (1): Parameter containing: [torch.float32 of size 1 (GPU 0)]
+            (2): Parameter containing: [torch.float32 of size 1 (GPU 0)]
+        )
+      )
+    )
+  )
+  (enc): Sequential(
+    (0): TransformerEncoder(
+      (la1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+      (msa): MultiHeadSelfAttention(
+        (q): Linear(in_features=256, out_features=256, bias=True)
+        (k): Linear(in_features=256, out_features=256, bias=True)
+        (v): Linear(in_features=256, out_features=256, bias=True)
+        (o): Linear(in_features=256, out_features=256, bias=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (la2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+      (mlp): Sequential(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): GELU(approximate='none')
+        (2): Dropout(p=0.1, inplace=False)
+        (3): Linear(in_features=256, out_features=256, bias=True)
+        (4): GELU(approximate='none')
+        (5): Dropout(p=0.1, inplace=False)
+      )
+    )
+    (1): TransformerEncoder(
+      (la1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+      (msa): KEP_SVGPAttention(
+        (qk): Linear(in_features=256, out_features=512, bias=False)
+        (attn_drop): Dropout(p=0.0, inplace=False)
+        (proj_drop): Dropout(p=0.1, inplace=False)
+        (final_weight): Linear(in_features=5, out_features=64, bias=True)
+      )
+      (la2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+      (mlp): Sequential(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): GELU(approximate='none')
+        (2): Dropout(p=0.1, inplace=False)
+        (3): Linear(in_features=256, out_features=256, bias=True)
+        (4): GELU(approximate='none')
+        (5): Dropout(p=0.1, inplace=False)
+      )
+    )
+  )
+  (fc): Sequential(
+    (0): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    (1): Linear(in_features=256, out_features=2, bias=True)
+  )
+)
+2053478
+2025-01-12 03:09:27,434 INFO ####### --- Training Epoch 0 --- #######
+2025-01-12 03:09:45,101 INFO Epoch 0 	 Batch 99	LR : 0.00000	MCC: 2.82	Top1 Acc.: 44.84	CE Loss: 0.81	KSVD Loss: 3.38	KL Loss: 3285.09	Tot. Loss: 3289.28
+2025-01-12 03:09:59,707 INFO Epoch 0 	 Batch 199	LR : 0.00000	MCC: 3.20	Top1 Acc.: 44.25	CE Loss: 0.81	KSVD Loss: 3.41	KL Loss: 3285.09	Tot. Loss: 3289.32
+2025-01-12 03:11:03,129 INFO ##################
+ ---> Validation Epoch 0	Acc.: 32.599	MCC: 1.254	FPR: 97.059	AUROC: 42.719	AUPR: 61.880	AURC: 716.281	EAURC: 407.671	AUPR Succ.: 28.741	ECE: 25.814	NLL: 7.847	Brier: 58.896
+2025-01-12 03:11:03,130 INFO MCC improved from 0.00 to 1.25!!!
+2025-01-12 03:11:05,625 INFO AUROC improved from 0.00 to 42.72!!!
+2025-01-12 03:11:08,065 INFO AURC decreased from 1000000.00 to 716.28!!!
+2025-01-12 03:11:10,657 INFO ####### --- Training Epoch 1 --- #######
+2025-01-12 03:11:25,812 INFO Epoch 1 	 Batch 99	LR : 0.00010	MCC: -0.86	Top1 Acc.: 65.66	CE Loss: 0.65	KSVD Loss: 0.50	KL Loss: 3190.79	Tot. Loss: 3191.94
+2025-01-12 03:11:37,797 INFO Epoch 1 	 Batch 199	LR : 0.00010	MCC: -1.37	Top1 Acc.: 69.84	CE Loss: 0.62	KSVD Loss: 0.13	KL Loss: 3012.39	Tot. Loss: 3013.14
+2025-01-12 03:12:27,502 INFO ##################
+ ---> Validation Epoch 1	Acc.: 72.247	MCC: 0.000	FPR: 94.643	AUROC: 50.715	AUPR: 28.040	AURC: 271.309	EAURC: 228.638	AUPR Succ.: 72.898	ECE: 4.596	NLL: 5.971	Brier: 40.672
+2025-01-12 03:12:27,503 INFO AUROC improved from 42.72 to 50.72!!!
+2025-01-12 03:12:30,164 INFO AURC decreased from 716.28 to 271.31!!!
+2025-01-12 03:12:32,704 INFO ####### --- Training Epoch 2 --- #######
+2025-01-12 03:12:44,913 INFO Epoch 2 	 Batch 99	LR : 0.00020	MCC: 0.86	Top1 Acc.: 69.56	CE Loss: 0.62	KSVD Loss: 0.06	KL Loss: 2735.88	Tot. Loss: 2736.56
+2025-01-12 03:12:57,677 INFO Epoch 2 	 Batch 199	LR : 0.00020	MCC: -0.46	Top1 Acc.: 69.88	CE Loss: 0.61	KSVD Loss: 0.03	KL Loss: 2467.82	Tot. Loss: 2468.46
+2025-01-12 03:13:47,992 INFO ##################
+ ---> Validation Epoch 2	Acc.: 72.247	MCC: 0.000	FPR: 95.238	AUROC: 51.100	AUPR: 28.110	AURC: 266.560	EAURC: 223.889	AUPR Succ.: 73.423	ECE: 4.476	NLL: 5.959	Brier: 40.565
+2025-01-12 03:13:47,993 INFO AUROC improved from 50.72 to 51.10!!!
+2025-01-12 03:13:50,578 INFO AURC decreased from 271.31 to 266.56!!!
+2025-01-12 03:13:53,388 INFO ####### --- Training Epoch 3 --- #######
+2025-01-12 03:14:06,245 INFO Epoch 3 	 Batch 99	LR : 0.00030	MCC: 0.23	Top1 Acc.: 69.62	CE Loss: 0.62	KSVD Loss: 0.01	KL Loss: 2135.56	Tot. Loss: 2136.19
+2025-01-12 03:14:18,514 INFO Epoch 3 	 Batch 199	LR : 0.00030	MCC: 0.04	Top1 Acc.: 70.81	CE Loss: 0.61	KSVD Loss: 0.00	KL Loss: 1871.06	Tot. Loss: 1871.67
+2025-01-12 03:15:10,482 INFO ##################
+ ---> Validation Epoch 3	Acc.: 72.247	MCC: 0.000	FPR: 94.841	AUROC: 52.971	AUPR: 29.176	AURC: 257.335	EAURC: 214.664	AUPR Succ.: 74.326	ECE: 7.125	NLL: 6.016	Brier: 41.067
+2025-01-12 03:15:10,483 INFO AUROC improved from 51.10 to 52.97!!!
+2025-01-12 03:15:12,969 INFO AURC decreased from 266.56 to 257.33!!!
+2025-01-12 03:15:15,332 INFO ####### --- Training Epoch 4 --- #######
+2025-01-12 03:15:27,950 INFO Epoch 4 	 Batch 99	LR : 0.00040	MCC: 0.15	Top1 Acc.: 70.00	CE Loss: 0.61	KSVD Loss: 0.00	KL Loss: 1573.98	Tot. Loss: 1574.60
+2025-01-12 03:15:40,838 INFO Epoch 4 	 Batch 199	LR : 0.00040	MCC: 0.10	Top1 Acc.: 70.25	CE Loss: 0.61	KSVD Loss: 0.00	KL Loss: 1358.82	Tot. Loss: 1359.43
+2025-01-12 03:16:42,947 INFO ##################
+ ---> Validation Epoch 4	Acc.: 72.247	MCC: 0.000	FPR: 93.452	AUROC: 54.594	AUPR: 30.374	AURC: 253.601	EAURC: 210.930	AUPR Succ.: 74.709	ECE: 9.844	NLL: 6.109	Brier: 41.926
+2025-01-12 03:16:42,948 INFO AUROC improved from 52.97 to 54.59!!!
+2025-01-12 03:16:45,524 INFO AURC decreased from 257.33 to 253.60!!!
+2025-01-12 03:16:48,312 INFO ####### --- Training Epoch 5 --- #######
+2025-01-12 03:17:02,503 INFO Epoch 5 	 Batch 99	LR : 0.00050	MCC: 0.48	Top1 Acc.: 69.09	CE Loss: 0.63	KSVD Loss: 0.00	KL Loss: 1128.42	Tot. Loss: 1129.05
+2025-01-12 03:17:14,707 INFO Epoch 5 	 Batch 199	LR : 0.00050	MCC: 0.16	Top1 Acc.: 70.06	CE Loss: 0.61	KSVD Loss: 0.00	KL Loss: 969.28	Tot. Loss: 969.89
+/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/torch/optim/lr_scheduler.py:808: UserWarning: To get the last learning rate computed by the scheduler, please use `get_last_lr()`.
+  "please use `get_last_lr()`.", UserWarning)
+2025-01-12 03:18:19,347 INFO ##################
+ ---> Validation Epoch 5	Acc.: 72.247	MCC: 0.000	FPR: 94.048	AUROC: 53.597	AUPR: 29.877	AURC: 249.409	EAURC: 206.738	AUPR Succ.: 75.179	ECE: 9.002	NLL: 6.134	Brier: 41.616
+2025-01-12 03:18:19,348 INFO AURC decreased from 253.60 to 249.41!!!
+2025-01-12 03:18:21,776 INFO ####### --- Training Epoch 6 --- #######
+2025-01-12 03:18:37,533 INFO Epoch 6 	 Batch 99	LR : 0.00050	MCC: -0.43	Top1 Acc.: 68.84	CE Loss: 0.62	KSVD Loss: 0.00	KL Loss: 812.46	Tot. Loss: 813.09
+2025-01-12 03:18:51,744 INFO Epoch 6 	 Batch 199	LR : 0.00050	MCC: 0.27	Top1 Acc.: 70.53	CE Loss: 0.61	KSVD Loss: 0.00	KL Loss: 714.38	Tot. Loss: 714.99
+2025-01-12 03:19:57,319 INFO ##################
+ ---> Validation Epoch 6	Acc.: 72.247	MCC: 0.000	FPR: 92.857	AUROC: 55.664	AUPR: 31.858	AURC: 245.872	EAURC: 203.201	AUPR Succ.: 75.519	ECE: 6.827	NLL: 5.983	Brier: 40.782
+2025-01-12 03:19:57,319 INFO AUROC improved from 54.59 to 55.66!!!
+2025-01-12 03:19:59,798 INFO AURC decreased from 249.41 to 245.87!!!
+2025-01-12 03:20:02,755 INFO ####### --- Training Epoch 7 --- #######
+2025-01-12 03:20:17,876 INFO Epoch 7 	 Batch 99	LR : 0.00050	MCC: 0.29	Top1 Acc.: 69.56	CE Loss: 0.62	KSVD Loss: 0.00	KL Loss: 613.08	Tot. Loss: 613.70
+2025-01-12 03:20:29,201 INFO Epoch 7 	 Batch 199	LR : 0.00050	MCC: -0.07	Top1 Acc.: 70.16	CE Loss: 0.61	KSVD Loss: 0.00	KL Loss: 547.27	Tot. Loss: 547.89
+2025-01-12 03:21:18,244 INFO ##################
+ ---> Validation Epoch 7	Acc.: 72.247	MCC: 0.000	FPR: 91.270	AUROC: 57.086	AUPR: 32.582	AURC: 230.937	EAURC: 188.266	AUPR Succ.: 77.149	ECE: 12.161	NLL: 6.188	Brier: 42.681
+2025-01-12 03:21:18,244 INFO AUROC improved from 55.66 to 57.09!!!
+2025-01-12 03:21:20,805 INFO AURC decreased from 245.87 to 230.94!!!
+2025-01-12 03:21:23,501 INFO ####### --- Training Epoch 8 --- #######
+2025-01-12 03:21:35,555 INFO Epoch 8 	 Batch 99	LR : 0.00050	MCC: 0.94	Top1 Acc.: 70.25	CE Loss: 0.61	KSVD Loss: 0.00	KL Loss: 477.25	Tot. Loss: 477.85
+2025-01-12 03:21:47,226 INFO Epoch 8 	 Batch 199	LR : 0.00050	MCC: 3.51	Top1 Acc.: 70.00	CE Loss: 0.63	KSVD Loss: 0.00	KL Loss: 430.60	Tot. Loss: 431.23
+2025-01-12 03:22:33,951 INFO ##################
+ ---> Validation Epoch 8	Acc.: 72.247	MCC: 0.000	FPR: 92.262	AUROC: 58.390	AUPR: 33.432	AURC: 225.187	EAURC: 182.516	AUPR Succ.: 77.764	ECE: 2.019	NLL: 5.861	Brier: 39.745
+2025-01-12 03:22:33,952 INFO AUROC improved from 57.09 to 58.39!!!
+2025-01-12 03:22:36,612 INFO AURC decreased from 230.94 to 225.19!!!
+2025-01-12 03:22:39,291 INFO ####### --- Training Epoch 9 --- #######
+2025-01-12 03:22:52,160 INFO Epoch 9 	 Batch 99	LR : 0.00050	MCC: 0.00	Top1 Acc.: 69.69	CE Loss: 0.61	KSVD Loss: 0.00	KL Loss: 379.91	Tot. Loss: 380.52
+2025-01-12 03:23:03,517 INFO Epoch 9 	 Batch 199	LR : 0.00050	MCC: 0.77	Top1 Acc.: 70.19	CE Loss: 0.61	KSVD Loss: 0.00	KL Loss: 345.54	Tot. Loss: 346.15
+2025-01-12 03:23:50,800 INFO ##################
+ ---> Validation Epoch 9	Acc.: 72.137	MCC: 0.169	FPR: 88.933	AUROC: 61.352	AUPR: 37.741	AURC: 206.730	EAURC: 163.700	AUPR Succ.: 79.850	ECE: 6.119	NLL: 5.855	Brier: 39.671
+2025-01-12 03:23:50,800 INFO AUROC improved from 58.39 to 61.35!!!
+2025-01-12 03:23:53,529 INFO AURC decreased from 225.19 to 206.73!!!
+2025-01-12 03:23:56,138 INFO ####### --- Training Epoch 10 --- #######
+2025-01-12 03:24:08,783 INFO Epoch 10 	 Batch 99	LR : 0.00049	MCC: 0.50	Top1 Acc.: 70.09	CE Loss: 0.60	KSVD Loss: 0.00	KL Loss: 307.59	Tot. Loss: 308.19
+2025-01-12 03:24:21,619 INFO Epoch 10 	 Batch 199	LR : 0.00049	MCC: 2.45	Top1 Acc.: 69.09	CE Loss: 0.61	KSVD Loss: 0.00	KL Loss: 281.50	Tot. Loss: 282.10
+2025-01-12 03:25:15,965 INFO ##################
+ ---> Validation Epoch 10	Acc.: 72.081	MCC: 2.177	FPR: 89.744	AUROC: 63.205	AUPR: 37.527	AURC: 193.441	EAURC: 150.232	AUPR Succ.: 81.412	ECE: 7.782	NLL: 5.905	Brier: 40.113
+2025-01-12 03:25:15,966 INFO MCC improved from 1.25 to 2.18!!!
+2025-01-12 03:25:18,582 INFO AUROC improved from 61.35 to 63.21!!!
+2025-01-12 03:25:21,368 INFO AURC decreased from 206.73 to 193.44!!!
+2025-01-12 03:25:24,342 INFO ####### --- Training Epoch 11 --- #######
+2025-01-12 03:25:39,663 INFO Epoch 11 	 Batch 99	LR : 0.00049	MCC: 4.12	Top1 Acc.: 69.47	CE Loss: 0.60	KSVD Loss: 0.00	KL Loss: 252.34	Tot. Loss: 252.94
+2025-01-12 03:25:55,264 INFO Epoch 11 	 Batch 199	LR : 0.00049	MCC: 5.51	Top1 Acc.: 70.66	CE Loss: 0.58	KSVD Loss: 0.00	KL Loss: 232.08	Tot. Loss: 232.66
+2025-01-12 03:26:55,303 INFO ##################
+ ---> Validation Epoch 11	Acc.: 72.302	MCC: 0.732	FPR: 86.680	AUROC: 64.114	AUPR: 38.930	AURC: 189.793	EAURC: 147.301	AUPR Succ.: 81.771	ECE: 7.456	NLL: 5.810	Brier: 39.394
+2025-01-12 03:26:55,304 INFO AUROC improved from 63.21 to 64.11!!!
+2025-01-12 03:26:58,014 INFO AURC decreased from 193.44 to 189.79!!!
+2025-01-12 03:27:00,757 INFO ####### --- Training Epoch 12 --- #######
+2025-01-12 03:27:16,800 INFO Epoch 12 	 Batch 99	LR : 0.00048	MCC: 7.56	Top1 Acc.: 70.06	CE Loss: 0.60	KSVD Loss: 0.00	KL Loss: 209.22	Tot. Loss: 209.83
+2025-01-12 03:27:32,484 INFO Epoch 12 	 Batch 199	LR : 0.00048	MCC: 7.65	Top1 Acc.: 69.91	CE Loss: 0.59	KSVD Loss: 0.00	KL Loss: 193.21	Tot. Loss: 193.79
+2025-01-12 03:28:31,815 INFO ##################
+ ---> Validation Epoch 12	Acc.: 72.797	MCC: 8.252	FPR: 88.462	AUROC: 63.680	AUPR: 37.777	AURC: 189.512	EAURC: 148.610	AUPR Succ.: 81.704	ECE: 2.897	NLL: 5.648	Brier: 38.011
+2025-01-12 03:28:31,816 INFO MCC improved from 2.18 to 8.25!!!
+2025-01-12 03:28:34,268 INFO AURC decreased from 189.79 to 189.51!!!
+2025-01-12 03:28:36,991 INFO ####### --- Training Epoch 13 --- #######
+2025-01-12 03:28:49,900 INFO Epoch 13 	 Batch 99	LR : 0.00048	MCC: 16.29	Top1 Acc.: 70.91	CE Loss: 0.57	KSVD Loss: 0.00	KL Loss: 174.99	Tot. Loss: 175.56
+2025-01-12 03:29:02,478 INFO Epoch 13 	 Batch 199	LR : 0.00048	MCC: 20.44	Top1 Acc.: 72.22	CE Loss: 0.56	KSVD Loss: 0.00	KL Loss: 162.13	Tot. Loss: 162.70
+2025-01-12 03:29:51,139 INFO ##################
+ ---> Validation Epoch 13	Acc.: 72.412	MCC: 11.216	FPR: 86.028	AUROC: 64.837	AUPR: 40.398	AURC: 184.513	EAURC: 142.377	AUPR Succ.: 82.353	ECE: 2.406	NLL: 5.611	Brier: 37.831
+2025-01-12 03:29:51,140 INFO MCC improved from 8.25 to 11.22!!!
+2025-01-12 03:29:53,745 INFO AUROC improved from 64.11 to 64.84!!!
+2025-01-12 03:29:56,499 INFO AURC decreased from 189.51 to 184.51!!!
+2025-01-12 03:29:59,269 INFO ####### --- Training Epoch 14 --- #######
+2025-01-12 03:30:14,306 INFO Epoch 14 	 Batch 99	LR : 0.00047	MCC: 15.42	Top1 Acc.: 71.72	CE Loss: 0.56	KSVD Loss: 0.00	KL Loss: 147.42	Tot. Loss: 147.98
+2025-01-12 03:30:26,992 INFO Epoch 14 	 Batch 199	LR : 0.00047	MCC: 21.34	Top1 Acc.: 71.75	CE Loss: 0.56	KSVD Loss: 0.00	KL Loss: 136.98	Tot. Loss: 137.54
+2025-01-12 03:31:15,739 INFO ##################
+ ---> Validation Epoch 14	Acc.: 72.026	MCC: 10.523	FPR: 81.496	AUROC: 67.555	AUPR: 44.324	AURC: 175.226	EAURC: 131.835	AUPR Succ.: 83.498	ECE: 3.927	NLL: 5.571	Brier: 37.407
+2025-01-12 03:31:15,740 INFO AUROC improved from 64.84 to 67.56!!!
+2025-01-12 03:31:18,471 INFO AURC decreased from 184.51 to 175.23!!!
+2025-01-12 03:31:21,207 INFO ####### --- Training Epoch 15 --- #######
+2025-01-12 03:31:34,102 INFO Epoch 15 	 Batch 99	LR : 0.00046	MCC: 28.94	Top1 Acc.: 73.59	CE Loss: 0.54	KSVD Loss: 0.00	KL Loss: 124.96	Tot. Loss: 125.50
+2025-01-12 03:31:46,957 INFO Epoch 15 	 Batch 199	LR : 0.00046	MCC: 26.03	Top1 Acc.: 72.88	CE Loss: 0.54	KSVD Loss: 0.00	KL Loss: 116.39	Tot. Loss: 116.94
+2025-01-12 03:32:34,763 INFO ##################
+ ---> Validation Epoch 15	Acc.: 72.797	MCC: 6.531	FPR: 87.247	AUROC: 67.396	AUPR: 41.545	AURC: 166.593	EAURC: 125.691	AUPR Succ.: 84.407	ECE: 7.219	NLL: 5.623	Brier: 37.831
+2025-01-12 03:32:34,763 INFO AURC decreased from 175.23 to 166.59!!!
+2025-01-12 03:32:37,385 INFO ####### --- Training Epoch 16 --- #######
+2025-01-12 03:32:50,137 INFO Epoch 16 	 Batch 99	LR : 0.00045	MCC: 27.87	Top1 Acc.: 74.59	CE Loss: 0.52	KSVD Loss: 0.00	KL Loss: 106.49	Tot. Loss: 107.00
+2025-01-12 03:33:02,646 INFO Epoch 16 	 Batch 199	LR : 0.00045	MCC: 25.36	Top1 Acc.: 71.72	CE Loss: 0.54	KSVD Loss: 0.00	KL Loss: 99.40	Tot. Loss: 99.95
+2025-01-12 03:33:57,469 INFO ##################
+ ---> Validation Epoch 16	Acc.: 72.963	MCC: 24.541	FPR: 89.817	AUROC: 65.954	AUPR: 38.326	AURC: 173.285	EAURC: 132.906	AUPR Succ.: 83.576	ECE: 2.704	NLL: 5.544	Brier: 37.201
+2025-01-12 03:33:57,470 INFO MCC improved from 11.22 to 24.54!!!
+2025-01-12 03:34:00,203 INFO ####### --- Training Epoch 17 --- #######
+2025-01-12 03:34:14,187 INFO Epoch 17 	 Batch 99	LR : 0.00044	MCC: 29.09	Top1 Acc.: 73.50	CE Loss: 0.52	KSVD Loss: 0.00	KL Loss: 91.17	Tot. Loss: 91.70
+2025-01-12 03:34:28,204 INFO Epoch 17 	 Batch 199	LR : 0.00044	MCC: 33.26	Top1 Acc.: 74.78	CE Loss: 0.51	KSVD Loss: 0.00	KL Loss: 85.27	Tot. Loss: 85.78
+2025-01-12 03:35:28,170 INFO ##################
+ ---> Validation Epoch 17	Acc.: 72.302	MCC: 23.683	FPR: 88.270	AUROC: 65.240	AUPR: 40.404	AURC: 181.721	EAURC: 139.229	AUPR Succ.: 82.721	ECE: 5.135	NLL: 5.708	Brier: 38.224
+2025-01-12 03:35:28,172 INFO ####### --- Training Epoch 18 --- #######
+2025-01-12 03:35:43,534 INFO Epoch 18 	 Batch 99	LR : 0.00043	MCC: 40.87	Top1 Acc.: 77.25	CE Loss: 0.48	KSVD Loss: 0.00	KL Loss: 78.39	Tot. Loss: 78.87
+2025-01-12 03:35:58,915 INFO Epoch 18 	 Batch 199	LR : 0.00043	MCC: 37.51	Top1 Acc.: 75.78	CE Loss: 0.50	KSVD Loss: 0.00	KL Loss: 73.44	Tot. Loss: 73.94
+2025-01-12 03:37:02,444 INFO ##################
+ ---> Validation Epoch 18	Acc.: 72.522	MCC: 23.742	FPR: 85.772	AUROC: 67.554	AUPR: 43.181	AURC: 170.341	EAURC: 128.560	AUPR Succ.: 83.986	ECE: 3.539	NLL: 5.555	Brier: 37.083
+2025-01-12 03:37:02,445 INFO ####### --- Training Epoch 19 --- #######
+2025-01-12 03:37:17,928 INFO Epoch 19 	 Batch 99	LR : 0.00042	MCC: 41.34	Top1 Acc.: 77.09	CE Loss: 0.47	KSVD Loss: 0.00	KL Loss: 67.65	Tot. Loss: 68.13
+2025-01-12 03:37:33,720 INFO Epoch 19 	 Batch 199	LR : 0.00042	MCC: 36.32	Top1 Acc.: 76.16	CE Loss: 0.50	KSVD Loss: 0.00	KL Loss: 63.48	Tot. Loss: 63.98
+2025-01-12 03:38:27,779 INFO ##################
+ ---> Validation Epoch 19	Acc.: 72.081	MCC: 25.184	FPR: 90.533	AUROC: 65.400	AUPR: 38.875	AURC: 185.171	EAURC: 141.961	AUPR Succ.: 82.327	ECE: 4.460	NLL: 5.714	Brier: 38.252
+2025-01-12 03:38:27,780 INFO MCC improved from 24.54 to 25.18!!!
+2025-01-12 03:38:30,330 INFO ####### --- Training Epoch 20 --- #######
+2025-01-12 03:38:42,918 INFO Epoch 20 	 Batch 99	LR : 0.00041	MCC: 43.54	Top1 Acc.: 77.72	CE Loss: 0.45	KSVD Loss: 0.00	KL Loss: 58.60	Tot. Loss: 59.04
+2025-01-12 03:38:55,724 INFO Epoch 20 	 Batch 199	LR : 0.00041	MCC: 43.91	Top1 Acc.: 77.53	CE Loss: 0.47	KSVD Loss: 0.00	KL Loss: 55.06	Tot. Loss: 55.53
+2025-01-12 03:39:45,021 INFO ##################
+ ---> Validation Epoch 20	Acc.: 74.559	MCC: 26.848	FPR: 88.961	AUROC: 64.523	AUPR: 36.013	AURC: 165.254	EAURC: 129.735	AUPR Succ.: 84.272	ECE: 7.106	NLL: 5.695	Brier: 37.238
+2025-01-12 03:39:45,022 INFO MCC improved from 25.18 to 26.85!!!
+2025-01-12 03:39:47,586 INFO AURC decreased from 166.59 to 165.25!!!
+2025-01-12 03:39:50,321 INFO ####### --- Training Epoch 21 --- #######
+2025-01-12 03:40:03,157 INFO Epoch 21 	 Batch 99	LR : 0.00040	MCC: 52.09	Top1 Acc.: 80.84	CE Loss: 0.41	KSVD Loss: 0.00	KL Loss: 50.92	Tot. Loss: 51.33
+2025-01-12 03:40:15,740 INFO Epoch 21 	 Batch 199	LR : 0.00040	MCC: 43.22	Top1 Acc.: 78.53	CE Loss: 0.46	KSVD Loss: 0.00	KL Loss: 47.91	Tot. Loss: 48.38
+2025-01-12 03:41:04,465 INFO ##################
+ ---> Validation Epoch 21	Acc.: 72.081	MCC: 27.149	FPR: 88.757	AUROC: 65.237	AUPR: 39.818	AURC: 182.790	EAURC: 139.580	AUPR Succ.: 82.643	ECE: 4.843	NLL: 5.785	Brier: 38.602
+2025-01-12 03:41:04,466 INFO MCC improved from 26.85 to 27.15!!!
+2025-01-12 03:41:07,075 INFO ####### --- Training Epoch 22 --- #######
+2025-01-12 03:41:19,563 INFO Epoch 22 	 Batch 99	LR : 0.00039	MCC: 54.24	Top1 Acc.: 81.81	CE Loss: 0.40	KSVD Loss: 0.00	KL Loss: 44.38	Tot. Loss: 44.78
+2025-01-12 03:41:32,107 INFO Epoch 22 	 Batch 199	LR : 0.00039	MCC: 51.88	Top1 Acc.: 79.50	CE Loss: 0.42	KSVD Loss: 0.00	KL Loss: 41.82	Tot. Loss: 42.24
+2025-01-12 03:42:19,288 INFO ##################
+ ---> Validation Epoch 22	Acc.: 71.421	MCC: 25.916	FPR: 87.861	AUROC: 65.690	AUPR: 42.210	AURC: 186.657	EAURC: 141.254	AUPR Succ.: 82.313	ECE: 8.160	NLL: 6.152	Brier: 39.864
+2025-01-12 03:42:19,289 INFO ####### --- Training Epoch 23 --- #######
+2025-01-12 03:42:32,020 INFO Epoch 23 	 Batch 99	LR : 0.00037	MCC: 56.80	Top1 Acc.: 82.34	CE Loss: 0.37	KSVD Loss: 0.00	KL Loss: 38.80	Tot. Loss: 39.18
+2025-01-12 03:42:44,614 INFO Epoch 23 	 Batch 199	LR : 0.00037	MCC: 57.64	Top1 Acc.: 82.25	CE Loss: 0.38	KSVD Loss: 0.00	KL Loss: 36.61	Tot. Loss: 36.99
+2025-01-12 03:43:35,653 INFO ##################
+ ---> Validation Epoch 23	Acc.: 70.595	MCC: 29.797	FPR: 90.449	AUROC: 62.562	AUPR: 38.554	AURC: 210.508	EAURC: 162.276	AUPR Succ.: 79.678	ECE: 9.238	NLL: 6.411	Brier: 41.899
+2025-01-12 03:43:35,654 INFO MCC improved from 27.15 to 29.80!!!
+2025-01-12 03:43:38,226 INFO ####### --- Training Epoch 24 --- #######
+2025-01-12 03:43:52,625 INFO Epoch 24 	 Batch 99	LR : 0.00036	MCC: 64.06	Top1 Acc.: 85.06	CE Loss: 0.34	KSVD Loss: 0.00	KL Loss: 34.02	Tot. Loss: 34.36
+2025-01-12 03:44:08,247 INFO Epoch 24 	 Batch 199	LR : 0.00036	MCC: 59.21	Top1 Acc.: 83.56	CE Loss: 0.36	KSVD Loss: 0.00	KL Loss: 32.14	Tot. Loss: 32.49
+2025-01-12 03:45:19,162 INFO ##################
+ ---> Validation Epoch 24	Acc.: 72.247	MCC: 25.714	FPR: 90.476	AUROC: 66.679	AUPR: 40.784	AURC: 171.642	EAURC: 128.971	AUPR Succ.: 83.945	ECE: 10.426	NLL: 6.200	Brier: 39.838
+2025-01-12 03:45:19,164 INFO ####### --- Training Epoch 25 --- #######
+2025-01-12 03:45:35,251 INFO Epoch 25 	 Batch 99	LR : 0.00035	MCC: 66.01	Top1 Acc.: 85.22	CE Loss: 0.34	KSVD Loss: 0.00	KL Loss: 29.91	Tot. Loss: 30.25
+2025-01-12 03:45:50,827 INFO Epoch 25 	 Batch 199	LR : 0.00035	MCC: 64.12	Top1 Acc.: 85.03	CE Loss: 0.33	KSVD Loss: 0.00	KL Loss: 28.29	Tot. Loss: 28.62
+2025-01-12 03:46:55,795 INFO ##################
+ ---> Validation Epoch 25	Acc.: 71.641	MCC: 26.881	FPR: 87.379	AUROC: 66.557	AUPR: 41.705	AURC: 178.797	EAURC: 134.132	AUPR Succ.: 83.205	ECE: 12.957	NLL: 6.932	Brier: 41.817
+2025-01-12 03:46:55,796 INFO ####### --- Training Epoch 26 --- #######
+2025-01-12 03:47:10,774 INFO Epoch 26 	 Batch 99	LR : 0.00033	MCC: 69.11	Top1 Acc.: 87.50	CE Loss: 0.29	KSVD Loss: 0.00	KL Loss: 26.37	Tot. Loss: 26.66
+2025-01-12 03:47:26,324 INFO Epoch 26 	 Batch 199	LR : 0.00033	MCC: 65.82	Top1 Acc.: 85.34	CE Loss: 0.32	KSVD Loss: 0.00	KL Loss: 24.97	Tot. Loss: 25.28
+2025-01-12 03:48:20,426 INFO ##################
+ ---> Validation Epoch 26	Acc.: 69.769	MCC: 26.078	FPR: 85.792	AUROC: 67.461	AUPR: 44.184	AURC: 186.658	EAURC: 135.502	AUPR Succ.: 82.696	ECE: 13.944	NLL: 7.002	Brier: 43.226
+2025-01-12 03:48:20,427 INFO ####### --- Training Epoch 27 --- #######
+2025-01-12 03:48:32,836 INFO Epoch 27 	 Batch 99	LR : 0.00032	MCC: 73.76	Top1 Acc.: 89.22	CE Loss: 0.25	KSVD Loss: 0.00	KL Loss: 23.31	Tot. Loss: 23.56
+2025-01-12 03:48:48,492 INFO Epoch 27 	 Batch 199	LR : 0.00032	MCC: 70.78	Top1 Acc.: 87.19	CE Loss: 0.29	KSVD Loss: 0.00	KL Loss: 22.10	Tot. Loss: 22.39
+2025-01-12 03:49:39,287 INFO ##################
+ ---> Validation Epoch 27	Acc.: 65.253	MCC: 27.594	FPR: 89.223	AUROC: 63.350	AUPR: 44.590	AURC: 246.558	EAURC: 177.653	AUPR Succ.: 76.543	ECE: 18.473	NLL: 8.504	Brier: 50.936
+2025-01-12 03:49:39,288 INFO ####### --- Training Epoch 28 --- #######
+2025-01-12 03:49:51,869 INFO Epoch 28 	 Batch 99	LR : 0.00030	MCC: 75.33	Top1 Acc.: 89.53	CE Loss: 0.25	KSVD Loss: 0.00	KL Loss: 20.66	Tot. Loss: 20.90
+2025-01-12 03:50:05,310 INFO Epoch 28 	 Batch 199	LR : 0.00030	MCC: 71.03	Top1 Acc.: 87.88	CE Loss: 0.27	KSVD Loss: 0.00	KL Loss: 19.61	Tot. Loss: 19.87
+2025-01-12 03:50:53,218 INFO ##################
+ ---> Validation Epoch 28	Acc.: 70.319	MCC: 28.978	FPR: 87.941	AUROC: 67.280	AUPR: 43.031	AURC: 185.361	EAURC: 136.166	AUPR Succ.: 82.696	ECE: 18.928	NLL: 8.936	Brier: 46.775
+2025-01-12 03:50:53,219 INFO ####### --- Training Epoch 29 --- #######
+2025-01-12 03:51:05,283 INFO Epoch 29 	 Batch 99	LR : 0.00029	MCC: 78.72	Top1 Acc.: 91.16	CE Loss: 0.21	KSVD Loss: 0.00	KL Loss: 18.36	Tot. Loss: 18.57
+2025-01-12 03:51:16,988 INFO Epoch 29 	 Batch 199	LR : 0.00029	MCC: 75.90	Top1 Acc.: 89.44	CE Loss: 0.25	KSVD Loss: 0.00	KL Loss: 17.45	Tot. Loss: 17.70
+2025-01-12 03:52:03,881 INFO ##################
+ ---> Validation Epoch 29	Acc.: 72.687	MCC: 29.443	FPR: 86.694	AUROC: 65.138	AUPR: 39.397	AURC: 179.787	EAURC: 138.535	AUPR Succ.: 82.874	ECE: 16.354	NLL: 8.405	Brier: 43.702
+2025-01-12 03:52:03,882 INFO ####### --- Training Epoch 30 --- #######
+2025-01-12 03:52:14,652 INFO Epoch 30 	 Batch 99	LR : 0.00027	MCC: 82.66	Top1 Acc.: 93.03	CE Loss: 0.17	KSVD Loss: 0.00	KL Loss: 16.36	Tot. Loss: 16.54
+2025-01-12 03:52:25,201 INFO Epoch 30 	 Batch 199	LR : 0.00027	MCC: 77.86	Top1 Acc.: 90.75	CE Loss: 0.21	KSVD Loss: 0.00	KL Loss: 15.57	Tot. Loss: 15.78
+2025-01-12 03:53:12,752 INFO ##################
+ ---> Validation Epoch 30	Acc.: 67.456	MCC: 24.999	FPR: 87.140	AUROC: 65.763	AUPR: 47.300	AURC: 221.872	EAURC: 162.003	AUPR Succ.: 78.901	ECE: 21.001	NLL: 9.649	Brier: 50.218
+2025-01-12 03:53:12,754 INFO ####### --- Training Epoch 31 --- #######
+2025-01-12 03:53:25,821 INFO Epoch 31 	 Batch 99	LR : 0.00025	MCC: 80.78	Top1 Acc.: 91.62	CE Loss: 0.21	KSVD Loss: 0.00	KL Loss: 14.62	Tot. Loss: 14.83
+2025-01-12 03:53:40,467 INFO Epoch 31 	 Batch 199	LR : 0.00025	MCC: 81.11	Top1 Acc.: 92.19	CE Loss: 0.19	KSVD Loss: 0.00	KL Loss: 13.93	Tot. Loss: 14.12
+2025-01-12 03:54:38,731 INFO ##################
+ ---> Validation Epoch 31	Acc.: 63.271	MCC: 25.346	FPR: 92.354	AUROC: 61.312	AUPR: 45.110	AURC: 272.130	EAURC: 194.458	AUPR Succ.: 73.998	ECE: 21.579	NLL: 9.487	Brier: 55.521
+2025-01-12 03:54:38,733 INFO ####### --- Training Epoch 32 --- #######
+2025-01-12 03:54:53,321 INFO Epoch 32 	 Batch 99	LR : 0.00024	MCC: 84.15	Top1 Acc.: 93.47	CE Loss: 0.16	KSVD Loss: 0.00	KL Loss: 13.11	Tot. Loss: 13.27
+2025-01-12 03:55:08,562 INFO Epoch 32 	 Batch 199	LR : 0.00024	MCC: 84.75	Top1 Acc.: 93.62	CE Loss: 0.16	KSVD Loss: 0.00	KL Loss: 12.51	Tot. Loss: 12.66
+2025-01-12 03:56:14,363 INFO ##################
+ ---> Validation Epoch 32	Acc.: 71.256	MCC: 26.989	FPR: 84.483	AUROC: 67.150	AUPR: 42.692	AURC: 179.830	EAURC: 133.869	AUPR Succ.: 83.145	ECE: 18.913	NLL: 9.279	Brier: 45.839
+2025-01-12 03:56:14,365 INFO ####### --- Training Epoch 33 --- #######
+2025-01-12 03:56:29,616 INFO Epoch 33 	 Batch 99	LR : 0.00022	MCC: 86.63	Top1 Acc.: 94.56	CE Loss: 0.14	KSVD Loss: 0.00	KL Loss: 11.79	Tot. Loss: 11.93
+2025-01-12 03:56:44,869 INFO Epoch 33 	 Batch 199	LR : 0.00022	MCC: 84.37	Top1 Acc.: 93.31	CE Loss: 0.16	KSVD Loss: 0.00	KL Loss: 11.26	Tot. Loss: 11.43
+2025-01-12 03:57:50,750 INFO ##################
+ ---> Validation Epoch 33	Acc.: 71.035	MCC: 28.035	FPR: 86.502	AUROC: 67.606	AUPR: 43.733	AURC: 184.592	EAURC: 137.881	AUPR Succ.: 82.560	ECE: 21.391	NLL: 10.597	Brier: 47.826
+2025-01-12 03:57:50,751 INFO AUROC improved from 67.56 to 67.61!!!
+2025-01-12 03:57:55,127 INFO ####### --- Training Epoch 34 --- #######
+2025-01-12 03:58:08,104 INFO Epoch 34 	 Batch 99	LR : 0.00021	MCC: 87.74	Top1 Acc.: 94.75	CE Loss: 0.13	KSVD Loss: 0.00	KL Loss: 10.63	Tot. Loss: 10.77
+2025-01-12 03:58:20,668 INFO Epoch 34 	 Batch 199	LR : 0.00021	MCC: 86.08	Top1 Acc.: 94.09	CE Loss: 0.14	KSVD Loss: 0.00	KL Loss: 10.18	Tot. Loss: 10.31
+2025-01-12 03:59:10,821 INFO ##################
+ ---> Validation Epoch 34	Acc.: 70.044	MCC: 28.743	FPR: 90.441	AUROC: 65.730	AUPR: 42.021	AURC: 198.892	EAURC: 148.721	AUPR Succ.: 81.127	ECE: 21.908	NLL: 11.385	Brier: 50.095
+2025-01-12 03:59:10,823 INFO ####### --- Training Epoch 35 --- #######
+2025-01-12 03:59:22,859 INFO Epoch 35 	 Batch 99	LR : 0.00019	MCC: 89.25	Top1 Acc.: 95.59	CE Loss: 0.12	KSVD Loss: 0.00	KL Loss: 9.63	Tot. Loss: 9.75
+2025-01-12 03:59:35,479 INFO Epoch 35 	 Batch 199	LR : 0.00019	MCC: 87.60	Top1 Acc.: 94.78	CE Loss: 0.12	KSVD Loss: 0.00	KL Loss: 9.23	Tot. Loss: 9.35
+2025-01-12 04:00:25,460 INFO ##################
+ ---> Validation Epoch 35	Acc.: 68.502	MCC: 25.970	FPR: 86.189	AUROC: 66.447	AUPR: 45.677	AURC: 205.809	EAURC: 149.978	AUPR Succ.: 80.644	ECE: 23.451	NLL: 12.105	Brier: 51.933
+2025-01-12 04:00:25,461 INFO ####### --- Training Epoch 36 --- #######
+2025-01-12 04:00:39,102 INFO Epoch 36 	 Batch 99	LR : 0.00018	MCC: 91.10	Top1 Acc.: 96.16	CE Loss: 0.10	KSVD Loss: 0.00	KL Loss: 8.75	Tot. Loss: 8.84
+2025-01-12 04:00:52,788 INFO Epoch 36 	 Batch 199	LR : 0.00018	MCC: 88.97	Top1 Acc.: 95.44	CE Loss: 0.12	KSVD Loss: 0.00	KL Loss: 8.40	Tot. Loss: 8.51
+2025-01-12 04:01:48,947 INFO ##################
+ ---> Validation Epoch 36	Acc.: 69.438	MCC: 28.636	FPR: 89.730	AUROC: 65.226	AUPR: 40.761	AURC: 202.846	EAURC: 150.493	AUPR Succ.: 80.806	ECE: 24.745	NLL: 13.802	Brier: 53.887
+2025-01-12 04:01:48,948 INFO ####### --- Training Epoch 37 --- #######
+2025-01-12 04:02:01,843 INFO Epoch 37 	 Batch 99	LR : 0.00016	MCC: 90.41	Top1 Acc.: 95.84	CE Loss: 0.10	KSVD Loss: 0.00	KL Loss: 7.98	Tot. Loss: 8.08
+2025-01-12 04:02:15,152 INFO Epoch 37 	 Batch 199	LR : 0.00016	MCC: 86.56	Top1 Acc.: 94.50	CE Loss: 0.12	KSVD Loss: 0.00	KL Loss: 7.67	Tot. Loss: 7.79
+2025-01-12 04:03:05,438 INFO ##################
+ ---> Validation Epoch 37	Acc.: 70.540	MCC: 28.867	FPR: 91.963	AUROC: 66.125	AUPR: 40.770	AURC: 187.845	EAURC: 139.421	AUPR Succ.: 82.377	ECE: 23.963	NLL: 13.341	Brier: 52.237
+2025-01-12 04:03:05,440 INFO ####### --- Training Epoch 38 --- #######
+2025-01-12 04:03:17,906 INFO Epoch 38 	 Batch 99	LR : 0.00015	MCC: 92.50	Top1 Acc.: 97.00	CE Loss: 0.07	KSVD Loss: 0.00	KL Loss: 7.30	Tot. Loss: 7.38
+2025-01-12 04:03:31,049 INFO Epoch 38 	 Batch 199	LR : 0.00015	MCC: 91.03	Top1 Acc.: 96.22	CE Loss: 0.09	KSVD Loss: 0.00	KL Loss: 7.04	Tot. Loss: 7.12
+2025-01-12 04:04:32,748 INFO ##################
+ ---> Validation Epoch 38	Acc.: 68.667	MCC: 26.515	FPR: 89.279	AUROC: 66.590	AUPR: 44.233	AURC: 202.634	EAURC: 147.426	AUPR Succ.: 80.994	ECE: 25.732	NLL: 14.621	Brier: 55.195
+2025-01-12 04:04:32,749 INFO ####### --- Training Epoch 39 --- #######
+2025-01-12 04:04:46,649 INFO Epoch 39 	 Batch 99	LR : 0.00014	MCC: 92.82	Top1 Acc.: 97.09	CE Loss: 0.08	KSVD Loss: 0.00	KL Loss: 6.72	Tot. Loss: 6.79
+2025-01-12 04:05:00,725 INFO Epoch 39 	 Batch 199	LR : 0.00014	MCC: 92.53	Top1 Acc.: 96.91	CE Loss: 0.07	KSVD Loss: 0.00	KL Loss: 6.48	Tot. Loss: 6.55
+2025-01-12 04:06:05,920 INFO ##################
+ ---> Validation Epoch 39	Acc.: 70.374	MCC: 28.565	FPR: 90.892	AUROC: 66.108	AUPR: 41.146	AURC: 193.000	EAURC: 143.998	AUPR Succ.: 81.760	ECE: 24.110	NLL: 13.830	Brier: 51.980
+2025-01-12 04:06:05,921 INFO ####### --- Training Epoch 40 --- #######
+2025-01-12 04:06:21,655 INFO Epoch 40 	 Batch 99	LR : 0.00012	MCC: 93.57	Top1 Acc.: 97.25	CE Loss: 0.06	KSVD Loss: 0.00	KL Loss: 6.20	Tot. Loss: 6.27
+2025-01-12 04:06:36,732 INFO Epoch 40 	 Batch 199	LR : 0.00012	MCC: 93.81	Top1 Acc.: 97.41	CE Loss: 0.06	KSVD Loss: 0.00	KL Loss: 6.00	Tot. Loss: 6.06
+2025-01-12 04:07:42,672 INFO ##################
+ ---> Validation Epoch 40	Acc.: 69.769	MCC: 28.495	FPR: 87.796	AUROC: 66.799	AUPR: 43.100	AURC: 194.069	EAURC: 142.913	AUPR Succ.: 81.755	ECE: 25.441	NLL: 15.213	Brier: 54.072
+2025-01-12 04:07:42,673 INFO ####### --- Training Epoch 41 --- #######
+2025-01-12 04:07:58,338 INFO Epoch 41 	 Batch 99	LR : 0.00011	MCC: 93.86	Top1 Acc.: 97.50	CE Loss: 0.06	KSVD Loss: 0.00	KL Loss: 5.75	Tot. Loss: 5.81
+2025-01-12 04:08:12,221 INFO Epoch 41 	 Batch 199	LR : 0.00011	MCC: 93.25	Top1 Acc.: 97.00	CE Loss: 0.07	KSVD Loss: 0.00	KL Loss: 5.58	Tot. Loss: 5.65
+2025-01-12 04:09:02,471 INFO ##################
+ ---> Validation Epoch 41	Acc.: 69.989	MCC: 28.839	FPR: 90.459	AUROC: 66.215	AUPR: 42.300	AURC: 193.855	EAURC: 143.488	AUPR Succ.: 81.760	ECE: 25.619	NLL: 15.799	Brier: 54.181
+2025-01-12 04:09:02,473 INFO ####### --- Training Epoch 42 --- #######
+2025-01-12 04:09:14,824 INFO Epoch 42 	 Batch 99	LR : 0.00010	MCC: 94.66	Top1 Acc.: 97.84	CE Loss: 0.05	KSVD Loss: 0.00	KL Loss: 5.36	Tot. Loss: 5.42
+2025-01-12 04:09:28,092 INFO Epoch 42 	 Batch 199	LR : 0.00010	MCC: 95.22	Top1 Acc.: 97.97	CE Loss: 0.05	KSVD Loss: 0.00	KL Loss: 5.21	Tot. Loss: 5.26
+2025-01-12 04:10:17,965 INFO ##################
+ ---> Validation Epoch 42	Acc.: 70.540	MCC: 28.293	FPR: 89.720	AUROC: 66.893	AUPR: 42.589	AURC: 185.493	EAURC: 137.070	AUPR Succ.: 82.640	ECE: 25.567	NLL: 16.678	Brier: 53.797
+2025-01-12 04:10:17,966 INFO ####### --- Training Epoch 43 --- #######
+2025-01-12 04:10:30,546 INFO Epoch 43 	 Batch 99	LR : 0.00009	MCC: 94.97	Top1 Acc.: 97.91	CE Loss: 0.05	KSVD Loss: 0.00	KL Loss: 5.02	Tot. Loss: 5.08
+2025-01-12 04:10:43,970 INFO Epoch 43 	 Batch 199	LR : 0.00009	MCC: 93.95	Top1 Acc.: 97.34	CE Loss: 0.06	KSVD Loss: 0.00	KL Loss: 4.89	Tot. Loss: 4.95
+2025-01-12 04:11:34,919 INFO ##################
+ ---> Validation Epoch 43	Acc.: 69.824	MCC: 29.236	FPR: 86.861	AUROC: 66.246	AUPR: 43.960	AURC: 196.055	EAURC: 145.096	AUPR Succ.: 81.513	ECE: 25.501	NLL: 16.149	Brier: 53.845
+2025-01-12 04:11:34,921 INFO ####### --- Training Epoch 44 --- #######
+2025-01-12 04:11:48,272 INFO Epoch 44 	 Batch 99	LR : 0.00008	MCC: 96.44	Top1 Acc.: 98.50	CE Loss: 0.04	KSVD Loss: 0.00	KL Loss: 4.73	Tot. Loss: 4.77
+2025-01-12 04:12:01,627 INFO Epoch 44 	 Batch 199	LR : 0.00008	MCC: 95.25	Top1 Acc.: 98.06	CE Loss: 0.04	KSVD Loss: 0.00	KL Loss: 4.61	Tot. Loss: 4.66
+2025-01-12 04:12:52,276 INFO ##################
+ ---> Validation Epoch 44	Acc.: 72.026	MCC: 27.432	FPR: 88.189	AUROC: 68.045	AUPR: 42.463	AURC: 171.047	EAURC: 127.656	AUPR Succ.: 84.003	ECE: 25.025	NLL: 17.011	Brier: 51.791
+2025-01-12 04:12:52,277 INFO AUROC improved from 67.61 to 68.05!!!
+2025-01-12 04:12:54,917 INFO ####### --- Training Epoch 45 --- #######
+2025-01-12 04:13:07,283 INFO Epoch 45 	 Batch 99	LR : 0.00007	MCC: 97.42	Top1 Acc.: 98.88	CE Loss: 0.03	KSVD Loss: 0.00	KL Loss: 4.48	Tot. Loss: 4.50
+2025-01-12 04:13:19,724 INFO Epoch 45 	 Batch 199	LR : 0.00007	MCC: 96.96	Top1 Acc.: 98.69	CE Loss: 0.03	KSVD Loss: 0.00	KL Loss: 4.38	Tot. Loss: 4.41
+2025-01-12 04:14:19,245 INFO ##################
+ ---> Validation Epoch 45	Acc.: 70.595	MCC: 27.790	FPR: 87.828	AUROC: 66.795	AUPR: 42.925	AURC: 186.160	EAURC: 137.928	AUPR Succ.: 82.548	ECE: 25.992	NLL: 17.828	Brier: 54.029
+2025-01-12 04:14:19,246 INFO ####### --- Training Epoch 46 --- #######
+2025-01-12 04:14:33,103 INFO Epoch 46 	 Batch 99	LR : 0.00006	MCC: 96.45	Top1 Acc.: 98.50	CE Loss: 0.04	KSVD Loss: 0.00	KL Loss: 4.26	Tot. Loss: 4.29
+2025-01-12 04:14:47,300 INFO Epoch 46 	 Batch 199	LR : 0.00006	MCC: 96.02	Top1 Acc.: 98.34	CE Loss: 0.03	KSVD Loss: 0.00	KL Loss: 4.17	Tot. Loss: 4.20
+2025-01-12 04:15:51,701 INFO ##################
+ ---> Validation Epoch 46	Acc.: 71.035	MCC: 27.813	FPR: 91.635	AUROC: 67.141	AUPR: 41.216	AURC: 181.601	EAURC: 134.890	AUPR Succ.: 82.971	ECE: 26.426	NLL: 18.609	Brier: 54.352
+2025-01-12 04:15:51,702 INFO ####### --- Training Epoch 47 --- #######
+2025-01-12 04:16:07,702 INFO Epoch 47 	 Batch 99	LR : 0.00005	MCC: 96.94	Top1 Acc.: 98.66	CE Loss: 0.03	KSVD Loss: 0.00	KL Loss: 4.07	Tot. Loss: 4.09
+2025-01-12 04:16:22,819 INFO Epoch 47 	 Batch 199	LR : 0.00005	MCC: 97.32	Top1 Acc.: 98.91	CE Loss: 0.03	KSVD Loss: 0.00	KL Loss: 4.00	Tot. Loss: 4.02
+2025-01-12 04:17:30,479 INFO ##################
+ ---> Validation Epoch 47	Acc.: 70.044	MCC: 27.351	FPR: 86.765	AUROC: 68.249	AUPR: 45.192	AURC: 183.249	EAURC: 133.079	AUPR Succ.: 83.004	ECE: 26.632	NLL: 18.454	Brier: 54.843
+2025-01-12 04:17:30,480 INFO AUROC improved from 68.05 to 68.25!!!
+2025-01-12 04:17:33,039 INFO ####### --- Training Epoch 48 --- #######
+2025-01-12 04:17:49,992 INFO Epoch 48 	 Batch 99	LR : 0.00004	MCC: 97.76	Top1 Acc.: 99.06	CE Loss: 0.02	KSVD Loss: 0.00	KL Loss: 3.91	Tot. Loss: 3.93
+2025-01-12 04:18:04,841 INFO Epoch 48 	 Batch 199	LR : 0.00004	MCC: 96.54	Top1 Acc.: 98.53	CE Loss: 0.03	KSVD Loss: 0.00	KL Loss: 3.85	Tot. Loss: 3.88
+2025-01-12 04:18:55,667 INFO ##################
+ ---> Validation Epoch 48	Acc.: 70.154	MCC: 27.072	FPR: 85.424	AUROC: 68.279	AUPR: 45.066	AURC: 183.871	EAURC: 134.092	AUPR Succ.: 82.875	ECE: 27.314	NLL: 19.453	Brier: 55.421
+2025-01-12 04:18:55,668 INFO AUROC improved from 68.25 to 68.28!!!
+2025-01-12 04:18:58,374 INFO ####### --- Training Epoch 49 --- #######
+2025-01-12 04:19:11,383 INFO Epoch 49 	 Batch 99	LR : 0.00003	MCC: 97.55	Top1 Acc.: 98.97	CE Loss: 0.02	KSVD Loss: 0.00	KL Loss: 3.77	Tot. Loss: 3.79
+2025-01-12 04:19:23,071 INFO Epoch 49 	 Batch 199	LR : 0.00003	MCC: 97.38	Top1 Acc.: 98.91	CE Loss: 0.02	KSVD Loss: 0.00	KL Loss: 3.72	Tot. Loss: 3.75
+2025-01-12 04:20:17,602 INFO ##################
+ ---> Validation Epoch 49	Acc.: 70.980	MCC: 27.376	FPR: 84.820	AUROC: 68.937	AUPR: 45.540	AURC: 174.619	EAURC: 127.719	AUPR Succ.: 83.798	ECE: 26.368	NLL: 19.212	Brier: 53.527
+2025-01-12 04:20:17,603 INFO AUROC improved from 68.28 to 68.94!!!
+2025-01-12 04:20:20,229 INFO Testing model_1 ...
+2025-01-12 04:20:20,229 INFO Testing model_1 ...
+2025-01-12 04:20:34,907 INFO Using vit_cola ...
+2025-01-12 04:20:34,907 INFO Using vit_cola ...
+2025-01-12 04:21:27,828 INFO ##################
+ ---> Test Test Evaluation results：	Acc.: 70.540	MCC: 29.632	FPR: 89.533	AUROC: 62.621	AUPR: 39.154	AURC: 210.686	EAURC: 162.262	AUPR Succ.: 79.666	ECE: 9.373	NLL: 6.415	Brier: 41.932
+2025-01-12 04:21:27,828 INFO ##################
+ ---> Test Test Evaluation results：	Acc.: 70.540	MCC: 29.632	FPR: 89.533	AUROC: 62.621	AUPR: 39.154	AURC: 210.686	EAURC: 162.262	AUPR Succ.: 79.666	ECE: 9.373	NLL: 6.415	Brier: 41.932
+/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/numpy/core/_methods.py:263: RuntimeWarning: Degrees of freedom <= 0 for slice
+  keepdims=keepdims, where=where)
+/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/numpy/core/_methods.py:254: RuntimeWarning: invalid value encountered in double_scalars
+  ret = ret.dtype.type(ret / rcount)

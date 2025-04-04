@@ -1,0 +1,60 @@
+2025-01-12 06:12:43,618 INFO    MainThread:167892 [internal.py:wandb_internal():93] W&B internal server running at pid: 167892, started at: 2025-01-12 06:12:43.618371
+2025-01-12 06:12:43,621 INFO    WriterThread:167892 [datastore.py:open_for_write():75] open: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/run-ph4el0m8.wandb
+2025-01-12 06:12:43,621 DEBUG   SenderThread:167892 [sender.py:send():236] send: header
+2025-01-12 06:12:43,622 DEBUG   SenderThread:167892 [sender.py:send():236] send: run
+2025-01-12 06:12:44,078 INFO    SenderThread:167892 [dir_watcher.py:__init__():216] watching files in: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files
+2025-01-12 06:12:44,078 INFO    SenderThread:167892 [sender.py:_start_run_threads():818] run started: ph4el0m8 with start time 1736662362
+2025-01-12 06:12:44,079 DEBUG   HandlerThread:167892 [handler.py:handle_request():140] handle_request: check_version
+2025-01-12 06:12:44,079 DEBUG   SenderThread:167892 [sender.py:send():236] send: summary
+2025-01-12 06:12:44,079 INFO    SenderThread:167892 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2025-01-12 06:12:44,080 DEBUG   SenderThread:167892 [sender.py:send_request():250] send_request: check_version
+2025-01-12 06:12:44,256 DEBUG   HandlerThread:167892 [handler.py:handle_request():140] handle_request: run_start
+2025-01-12 06:12:44,270 DEBUG   HandlerThread:167892 [meta.py:__init__():35] meta init
+2025-01-12 06:12:44,270 DEBUG   HandlerThread:167892 [meta.py:__init__():49] meta init done
+2025-01-12 06:12:44,270 DEBUG   HandlerThread:167892 [meta.py:probe():209] probe
+2025-01-12 06:12:44,286 DEBUG   HandlerThread:167892 [meta.py:_setup_git():199] setup git
+2025-01-12 06:12:44,304 DEBUG   HandlerThread:167892 [meta.py:_setup_git():206] setup git done
+2025-01-12 06:12:44,305 DEBUG   HandlerThread:167892 [meta.py:_save_pip():53] save pip
+2025-01-12 06:12:44,305 DEBUG   HandlerThread:167892 [meta.py:_save_pip():67] save pip done
+2025-01-12 06:12:44,305 DEBUG   HandlerThread:167892 [meta.py:_save_conda():74] save conda
+2025-01-12 06:12:45,082 INFO    Thread-7  :167892 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/wandb-summary.json
+2025-01-12 06:12:45,082 INFO    Thread-7  :167892 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/requirements.txt
+2025-01-12 06:12:45,083 INFO    Thread-7  :167892 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/conda-environment.yaml
+2025-01-12 06:12:46,972 DEBUG   HandlerThread:167892 [meta.py:_save_conda():84] save conda done
+2025-01-12 06:12:46,972 DEBUG   HandlerThread:167892 [meta.py:probe():247] probe done
+2025-01-12 06:12:47,080 INFO    Thread-7  :167892 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/conda-environment.yaml
+2025-01-12 06:12:47,081 INFO    Thread-7  :167892 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/wandb-metadata.json
+2025-01-12 06:12:47,150 DEBUG   SenderThread:167892 [sender.py:send():236] send: files
+2025-01-12 06:12:47,151 INFO    SenderThread:167892 [sender.py:_save_file():952] saving file wandb-metadata.json with policy now
+2025-01-12 06:12:47,162 DEBUG   HandlerThread:167892 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-12 06:12:47,163 DEBUG   SenderThread:167892 [sender.py:send_request():250] send_request: stop_status
+2025-01-12 06:12:47,527 DEBUG   SenderThread:167892 [sender.py:send():236] send: telemetry
+2025-01-12 06:12:47,932 INFO    Thread-11 :167892 [upload_job.py:push():138] Uploaded file /tmp/tmpe0kd5_3twandb/kcowop19-wandb-metadata.json
+2025-01-12 06:12:48,081 INFO    Thread-7  :167892 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/output.log
+2025-01-12 06:12:50,082 INFO    Thread-7  :167892 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/output.log
+2025-01-12 06:13:02,530 DEBUG   HandlerThread:167892 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-12 06:13:02,531 DEBUG   SenderThread:167892 [sender.py:send_request():250] send_request: stop_status
+2025-01-12 06:13:06,090 INFO    Thread-7  :167892 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/output.log
+2025-01-12 06:13:07,919 WARNING MainThread:167892 [internal.py:wandb_internal():153] Internal process interrupt: 1
+2025-01-12 06:13:07,943 DEBUG   SenderThread:167892 [sender.py:send():236] send: telemetry
+2025-01-12 06:13:08,091 INFO    Thread-7  :167892 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/output.log
+2025-01-12 06:13:08,233 WARNING MainThread:167892 [internal.py:wandb_internal():153] Internal process interrupt: 2
+2025-01-12 06:13:08,233 ERROR   MainThread:167892 [internal.py:wandb_internal():156] Internal process interrupted.
+2025-01-12 06:13:08,943 INFO    WriterThread:167892 [datastore.py:close():279] close: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/run-ph4el0m8.wandb
+2025-01-12 06:13:08,943 INFO    SenderThread:167892 [sender.py:finish():1114] shutting down sender
+2025-01-12 06:13:08,944 INFO    SenderThread:167892 [dir_watcher.py:finish():353] shutting down directory watcher
+2025-01-12 06:13:09,092 INFO    SenderThread:167892 [dir_watcher.py:finish():383] scan: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files
+2025-01-12 06:13:09,093 INFO    SenderThread:167892 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/requirements.txt requirements.txt
+2025-01-12 06:13:09,093 INFO    SenderThread:167892 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/wandb-summary.json wandb-summary.json
+2025-01-12 06:13:09,093 INFO    SenderThread:167892 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/output.log output.log
+2025-01-12 06:13:09,094 INFO    SenderThread:167892 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/wandb-metadata.json wandb-metadata.json
+2025-01-12 06:13:09,094 INFO    SenderThread:167892 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/conda-environment.yaml conda-environment.yaml
+2025-01-12 06:13:09,099 INFO    SenderThread:167892 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/config.yaml config.yaml
+2025-01-12 06:13:09,100 INFO    SenderThread:167892 [file_pusher.py:finish():171] shutting down file pusher
+2025-01-12 06:13:09,105 INFO    SenderThread:167892 [file_pusher.py:join():176] waiting for file pusher
+2025-01-12 06:13:09,902 INFO    Thread-15 :167892 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/conda-environment.yaml
+2025-01-12 06:13:09,918 INFO    Thread-12 :167892 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/requirements.txt
+2025-01-12 06:13:10,528 INFO    Thread-13 :167892 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/wandb-summary.json
+2025-01-12 06:13:10,623 INFO    Thread-16 :167892 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/config.yaml
+2025-01-12 06:13:10,925 INFO    Thread-14 :167892 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250112_061242-ph4el0m8/files/output.log
+2025-01-12 06:13:11,870 INFO    MainThread:167892 [internal.py:handle_exit():80] Internal process exited

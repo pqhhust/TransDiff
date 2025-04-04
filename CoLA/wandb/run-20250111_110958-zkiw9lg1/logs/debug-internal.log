@@ -1,0 +1,142 @@
+2025-01-11 11:09:58,909 INFO    MainThread:26201 [internal.py:wandb_internal():93] W&B internal server running at pid: 26201, started at: 2025-01-11 11:09:58.909060
+2025-01-11 11:09:58,910 INFO    WriterThread:26201 [datastore.py:open_for_write():75] open: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/run-zkiw9lg1.wandb
+2025-01-11 11:09:58,912 DEBUG   SenderThread:26201 [sender.py:send():236] send: header
+2025-01-11 11:09:58,912 DEBUG   SenderThread:26201 [sender.py:send():236] send: run
+2025-01-11 11:09:59,440 INFO    SenderThread:26201 [dir_watcher.py:__init__():216] watching files in: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files
+2025-01-11 11:09:59,441 INFO    SenderThread:26201 [sender.py:_start_run_threads():818] run started: zkiw9lg1 with start time 1736593798
+2025-01-11 11:09:59,441 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: check_version
+2025-01-11 11:09:59,441 DEBUG   SenderThread:26201 [sender.py:send():236] send: summary
+2025-01-11 11:09:59,442 INFO    SenderThread:26201 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2025-01-11 11:09:59,442 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: check_version
+2025-01-11 11:09:59,631 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: run_start
+2025-01-11 11:09:59,662 DEBUG   HandlerThread:26201 [meta.py:__init__():35] meta init
+2025-01-11 11:09:59,662 DEBUG   HandlerThread:26201 [meta.py:__init__():49] meta init done
+2025-01-11 11:09:59,662 DEBUG   HandlerThread:26201 [meta.py:probe():209] probe
+2025-01-11 11:09:59,678 DEBUG   HandlerThread:26201 [meta.py:_setup_git():199] setup git
+2025-01-11 11:09:59,698 DEBUG   HandlerThread:26201 [meta.py:_setup_git():206] setup git done
+2025-01-11 11:09:59,698 DEBUG   HandlerThread:26201 [meta.py:_save_pip():53] save pip
+2025-01-11 11:09:59,699 DEBUG   HandlerThread:26201 [meta.py:_save_pip():67] save pip done
+2025-01-11 11:09:59,699 DEBUG   HandlerThread:26201 [meta.py:_save_conda():74] save conda
+2025-01-11 11:10:00,445 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/requirements.txt
+2025-01-11 11:10:00,446 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/conda-environment.yaml
+2025-01-11 11:10:00,446 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/wandb-summary.json
+2025-01-11 11:10:02,350 DEBUG   HandlerThread:26201 [meta.py:_save_conda():84] save conda done
+2025-01-11 11:10:02,350 DEBUG   HandlerThread:26201 [meta.py:probe():247] probe done
+2025-01-11 11:10:02,442 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/conda-environment.yaml
+2025-01-11 11:10:02,443 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/wandb-metadata.json
+2025-01-11 11:10:02,526 DEBUG   SenderThread:26201 [sender.py:send():236] send: files
+2025-01-11 11:10:02,527 INFO    SenderThread:26201 [sender.py:_save_file():952] saving file wandb-metadata.json with policy now
+2025-01-11 11:10:02,538 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:10:02,539 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:10:02,947 DEBUG   SenderThread:26201 [sender.py:send():236] send: telemetry
+2025-01-11 11:10:03,256 INFO    Thread-11 :26201 [upload_job.py:push():138] Uploaded file /tmp/tmpjlpwi56fwandb/bvhyal9i-wandb-metadata.json
+2025-01-11 11:10:03,443 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_created():269] file/dir created: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:10:05,444 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:10:17,950 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:10:17,950 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:10:37,951 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:10:52,388 DEBUG   SenderThread:26201 [sender.py:send():236] send: stats
+2025-01-11 11:10:52,389 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:10:52,470 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/config.yaml
+2025-01-11 11:10:57,951 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:10:57,952 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:11:00,443 DEBUG   SenderThread:26201 [sender.py:send():236] send: stats
+2025-01-11 11:11:07,477 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:11:13,325 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:11:13,326 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:11:21,485 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:11:28,680 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:11:28,680 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:11:31,790 DEBUG   SenderThread:26201 [sender.py:send():236] send: stats
+2025-01-11 11:11:33,492 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:11:34,591 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: partial_history
+2025-01-11 11:11:44,089 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:11:44,089 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:11:59,473 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:11:59,473 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:12:03,148 DEBUG   SenderThread:26201 [sender.py:send():236] send: stats
+2025-01-11 11:12:14,873 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:12:14,873 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:12:15,659 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: partial_history
+2025-01-11 11:12:17,513 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:12:19,514 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:12:30,432 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:12:30,432 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:12:31,521 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:12:34,522 DEBUG   SenderThread:26201 [sender.py:send():236] send: stats
+2025-01-11 11:12:43,530 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:12:44,164 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: partial_history
+2025-01-11 11:12:44,170 DEBUG   SenderThread:26201 [sender.py:send():236] send: history
+2025-01-11 11:12:44,170 DEBUG   SenderThread:26201 [sender.py:send():236] send: summary
+2025-01-11 11:12:44,172 INFO    SenderThread:26201 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2025-01-11 11:12:44,531 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/wandb-summary.json
+2025-01-11 11:12:45,873 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:12:45,874 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:13:01,204 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:13:01,204 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:13:05,890 DEBUG   SenderThread:26201 [sender.py:send():236] send: stats
+2025-01-11 11:13:16,573 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:13:16,573 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:13:24,981 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: partial_history
+2025-01-11 11:13:27,553 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:13:30,555 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:13:31,986 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:13:31,987 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:13:32,557 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:13:37,243 DEBUG   SenderThread:26201 [sender.py:send():236] send: stats
+2025-01-11 11:13:44,563 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:13:47,348 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:13:47,348 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:13:54,569 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:13:56,652 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: partial_history
+2025-01-11 11:13:56,654 DEBUG   SenderThread:26201 [sender.py:send():236] send: history
+2025-01-11 11:13:56,655 DEBUG   SenderThread:26201 [sender.py:send():236] send: summary
+2025-01-11 11:13:56,656 INFO    SenderThread:26201 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2025-01-11 11:13:57,571 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/wandb-summary.json
+2025-01-11 11:14:02,694 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:14:02,695 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:14:08,593 DEBUG   SenderThread:26201 [sender.py:send():236] send: stats
+2025-01-11 11:14:18,130 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:14:18,131 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:14:37,137 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: partial_history
+2025-01-11 11:14:39,690 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:14:40,594 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:14:42,595 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:14:44,596 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:14:53,970 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:14:54,384 DEBUG   SenderThread:26201 [sender.py:send():236] send: stats
+2025-01-11 11:14:56,603 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:14:59,688 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:14:59,689 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:15:08,608 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:15:10,122 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: partial_history
+2025-01-11 11:15:10,124 DEBUG   SenderThread:26201 [sender.py:send():236] send: history
+2025-01-11 11:15:10,126 DEBUG   SenderThread:26201 [sender.py:send():236] send: summary
+2025-01-11 11:15:10,127 INFO    SenderThread:26201 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2025-01-11 11:15:10,610 INFO    Thread-7  :26201 [dir_watcher.py:_on_file_modified():286] file/dir modified: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/wandb-summary.json
+2025-01-11 11:15:11,382 DEBUG   SenderThread:26201 [sender.py:send():236] send: stats
+2025-01-11 11:15:15,103 DEBUG   HandlerThread:26201 [handler.py:handle_request():140] handle_request: stop_status
+2025-01-11 11:15:15,103 DEBUG   SenderThread:26201 [sender.py:send_request():250] send_request: stop_status
+2025-01-11 11:15:16,658 WARNING MainThread:26201 [internal.py:wandb_internal():153] Internal process interrupt: 1
+2025-01-11 11:15:16,672 DEBUG   SenderThread:26201 [sender.py:send():236] send: telemetry
+2025-01-11 11:15:16,916 WARNING MainThread:26201 [internal.py:wandb_internal():153] Internal process interrupt: 2
+2025-01-11 11:15:16,916 ERROR   MainThread:26201 [internal.py:wandb_internal():156] Internal process interrupted.
+2025-01-11 11:15:17,674 INFO    SenderThread:26201 [sender.py:finish():1114] shutting down sender
+2025-01-11 11:15:17,674 INFO    WriterThread:26201 [datastore.py:close():279] close: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/run-zkiw9lg1.wandb
+2025-01-11 11:15:17,674 INFO    SenderThread:26201 [dir_watcher.py:finish():353] shutting down directory watcher
+2025-01-11 11:15:18,613 INFO    SenderThread:26201 [dir_watcher.py:finish():383] scan: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files
+2025-01-11 11:15:18,613 INFO    SenderThread:26201 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/requirements.txt requirements.txt
+2025-01-11 11:15:18,613 INFO    SenderThread:26201 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/wandb-summary.json wandb-summary.json
+2025-01-11 11:15:18,614 INFO    SenderThread:26201 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log output.log
+2025-01-11 11:15:18,626 INFO    SenderThread:26201 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/wandb-metadata.json wandb-metadata.json
+2025-01-11 11:15:18,626 INFO    SenderThread:26201 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/conda-environment.yaml conda-environment.yaml
+2025-01-11 11:15:18,631 INFO    SenderThread:26201 [dir_watcher.py:finish():397] scan save: /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/config.yaml config.yaml
+2025-01-11 11:15:18,636 INFO    SenderThread:26201 [file_pusher.py:finish():171] shutting down file pusher
+2025-01-11 11:15:18,637 INFO    SenderThread:26201 [file_pusher.py:join():176] waiting for file pusher
+2025-01-11 11:15:19,357 INFO    Thread-12 :26201 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/requirements.txt
+2025-01-11 11:15:19,423 INFO    Thread-13 :26201 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/wandb-summary.json
+2025-01-11 11:15:19,442 INFO    Thread-16 :26201 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/config.yaml
+2025-01-11 11:15:19,456 INFO    Thread-14 :26201 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/output.log
+2025-01-11 11:15:19,481 INFO    Thread-15 :26201 [upload_job.py:push():138] Uploaded file /mnt/disk1/pqhung/TransDiff/CoLA/wandb/run-20250111_110958-zkiw9lg1/files/conda-environment.yaml
+2025-01-11 11:15:20,866 WARNING FileStreamThread:26201 [file_stream.py:request_with_retry():594] requests_with_retry encountered retryable exception: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer')). func: <bound method Session.post of <requests.sessions.Session object at 0x7ff82687d490>>, args: ('https://api.wandb.ai/files/pqhhust-hanoi-university-of-science-and-technology/Difformer/zkiw9lg1/file_stream',), kwargs: {'json': {'files': {'wandb-events.jsonl': {'offset': 7, 'content': ['{"system.gpu.0.gpu": 89.33, "system.gpu.0.memory": 34.6, "system.gpu.0.memoryAllocated": 35.0, "system.gpu.0.temp": 87.2, "system.gpu.process.0.gpu": 89.33, "system.gpu.process.0.memory": 34.6, "system.gpu.process.0.memoryAllocated": 35.0, "system.gpu.process.0.temp": 87.2, "system.gpu.0.powerWatts": 236.03, "system.gpu.0.powerPercent": 73.76, "system.gpu.process.0.powerWatts": 236.03, "system.gpu.process.0.powerPercent": 73.76, "system.gpu.1.gpu": 0.47, "system.gpu.1.memory": 0.0, "system.gpu.1.memoryAllocated": 6.42, "system.gpu.1.temp": 50.4, "system.gpu.process.1.gpu": 0.47, "system.gpu.process.1.memory": 0.0, "system.gpu.process.1.memoryAllocated": 6.42, "system.gpu.process.1.temp": 50.4, "system.gpu.1.powerWatts": 92.63, "system.gpu.1.powerPercent": 28.95, "system.gpu.process.1.powerWatts": 92.63, "system.gpu.process.1.powerPercent": 28.95, "system.gpu.2.gpu": 0.4, "system.gpu.2.memory": 0.0, "system.gpu.2.memoryAllocated": 6.42, "system.gpu.2.temp": 56.0, "system.gpu.2.powerWatts": 91.52, "system.gpu.2.powerPercent": 28.6, "system.gpu.3.gpu": 0.0, "system.gpu.3.memory": 0.0, "system.gpu.3.memoryAllocated": 3.3, "system.gpu.3.temp": 33.0, "system.gpu.3.powerWatts": 18.6, "system.gpu.3.powerPercent": 5.81, "system.cpu": 4.62, "system.memory": 9.8, "system.disk": 88.8, "system.proc.memory.availableMB": 115991.17, "system.proc.memory.rssMB": 3711.65, "system.proc.memory.percent": 2.89, "system.proc.cpu.threads": 43.0, "system.network.sent": 11149066, "system.network.recv": 7035954, "_wandb": true, "_timestamp": 1736594048, "_runtime": 250}']}}, 'dropped': 0}}
+2025-01-11 11:15:24,336 INFO    MainThread:26201 [internal.py:handle_exit():80] Internal process exited

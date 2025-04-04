@@ -1,0 +1,9 @@
+Namespace(attn_type='kep_svgp', batch_size=32, dataset='cola', depth=2, emb_dim=128, eta_kl=1.0, eta_ksvd=1.0, gpu='0', hdim=256, ksvd_layers=1, low_rank=5, max_len=100, min_word_count=0, model='vit_cola', nb_run=1, num_classes=2, num_heads=4, rank_multi=2, save_dir='./cola_out/vit_out_sum', seed=0)
+2025-02-20 12:15:05,631 INFO Testing model_1 ...
+2025-02-20 12:15:18,947 INFO Using vit_cola ...
+2025-02-20 12:16:03,885 INFO ##################
+ ---> Test Test Evaluation results：	Acc.: 72.026	MCC: 26.649	FPR: 86.614	AUROC: 65.303	AUPR: 41.301	AURC: 195.176	EAURC: 151.785	AUPR Succ.: 81.116	ECE: 8.466	NLL: 6.247	Brier: 39.553
+/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/numpy/core/_methods.py:263: RuntimeWarning: Degrees of freedom <= 0 for slice
+  keepdims=keepdims, where=where)
+/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/numpy/core/_methods.py:254: RuntimeWarning: invalid value encountered in double_scalars
+  ret = ret.dtype.type(ret / rcount)

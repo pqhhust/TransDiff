@@ -1,0 +1,275 @@
+2025-02-20 13:59:16,412 INFO {
+    "attn_type": "kep_svgp",
+    "backbone": "transformer",
+    "batch_size": 32,
+    "beta1": 0.9,
+    "beta2": 0.999,
+    "clip": 0.1,
+    "dataset": "cola",
+    "depth": 2,
+    "ema_decay": 0.995,
+    "emb_dim": 128,
+    "eta_kl": 1.0,
+    "eta_ksvd": 1.0,
+    "gpu": "0",
+    "hdim": 256,
+    "ksvd_layers": 2,
+    "lambda_ce": 1.0,
+    "lambda_mean": 1.0,
+    "lambda_var": 1.0,
+    "low_rank": 5,
+    "lr": 0.001,
+    "max_len": 100,
+    "min_lr": 1e-05,
+    "min_word_count": 0,
+    "mlp_dropout": 0.0,
+    "mlp_gamma": 1.0,
+    "mlp_hdim1": 64,
+    "mlp_hdim2": 64,
+    "mlp_hdim3": 64,
+    "mlp_hdim4": 64,
+    "model": "diffusion",
+    "nb_epochs": 50,
+    "nb_run": 1,
+    "nb_worker": 4,
+    "num_classes": 2,
+    "num_heads": 4,
+    "pretrained_dir": "./cola_out/vit_out_sum",
+    "pretrained_seed": 0,
+    "rank_multi": 2,
+    "save_dir": "./cola_out/diffusion",
+    "seed": 0,
+    "start_ema_step": 50,
+    "trans_depth": 1,
+    "trans_dropout": 0.1,
+    "trans_mlp_ratio": 1.0,
+    "trans_num_heads": 4,
+    "update_ema_interval": 5,
+    "use_ema": true,
+    "warmup_epoch": 5,
+    "weight_decay": 5e-05
+}
+2025-02-20 13:59:16,498 INFO ####################################################################################################
+1 / 1 Running
+2025-02-20 13:59:29,764 INFO Using diffusion ...
+Diffusion_Transformer(
+  (embedding): Embeddings(
+    (token_embeds): Embedding(7700, 128, padding_idx=0)
+    (pos_embeds): Embedding(100, 1152)
+    (layer_norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    (project): Linear(in_features=1152, out_features=256, bias=True)
+    (dropout): Dropout(p=0.1, inplace=False)
+    (elmo): Elmo(
+      (_elmo_lstm): _ElmoBiLm(
+        (_token_embedder): _ElmoCharacterEncoder(
+          (char_conv_0): Conv1d(16, 32, kernel_size=(1,), stride=(1,))
+          (char_conv_1): Conv1d(16, 32, kernel_size=(2,), stride=(1,))
+          (char_conv_2): Conv1d(16, 64, kernel_size=(3,), stride=(1,))
+          (char_conv_3): Conv1d(16, 128, kernel_size=(4,), stride=(1,))
+          (char_conv_4): Conv1d(16, 256, kernel_size=(5,), stride=(1,))
+          (char_conv_5): Conv1d(16, 512, kernel_size=(6,), stride=(1,))
+          (char_conv_6): Conv1d(16, 1024, kernel_size=(7,), stride=(1,))
+          (_highways): Highway(
+            (_layers): ModuleList(
+              (0): Linear(in_features=2048, out_features=4096, bias=True)
+              (1): Linear(in_features=2048, out_features=4096, bias=True)
+            )
+          )
+          (_projection): Linear(in_features=2048, out_features=512, bias=True)
+        )
+        (_elmo_lstm): ElmoLstm(
+          (forward_layer_0): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+          (backward_layer_0): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+          (forward_layer_1): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+          (backward_layer_1): LstmCellWithProjection(
+            (input_linearity): Linear(in_features=512, out_features=16384, bias=False)
+            (state_linearity): Linear(in_features=512, out_features=16384, bias=True)
+            (state_projection): Linear(in_features=4096, out_features=512, bias=False)
+          )
+        )
+      )
+      (_dropout): Dropout(p=0.0, inplace=False)
+      (scalar_mix_0): ScalarMix(
+        (scalar_parameters): ParameterList(
+            (0): Parameter containing: [torch.float32 of size 1]
+            (1): Parameter containing: [torch.float32 of size 1]
+            (2): Parameter containing: [torch.float32 of size 1]
+        )
+      )
+    )
+  )
+  (share_params): DiT(
+    (t_embedder): TimestepEmbedder(
+      (mlp): Sequential(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): SiLU()
+        (2): Linear(in_features=256, out_features=256, bias=True)
+      )
+    )
+    (blocks): ModuleList(
+      (0): DiTBlock(
+        (norm1): LayerNorm((256,), eps=1e-06, elementwise_affine=False)
+        (attn): Attention(
+          (qkv): Linear(in_features=256, out_features=768, bias=True)
+          (q_norm): Identity()
+          (k_norm): Identity()
+          (attn_drop): Dropout(p=0.0, inplace=False)
+          (proj): Linear(in_features=256, out_features=256, bias=True)
+          (proj_drop): Dropout(p=0.0, inplace=False)
+        )
+        (norm2): LayerNorm((256,), eps=1e-06, elementwise_affine=False)
+        (mlp): Mlp(
+          (fc1): Linear(in_features=256, out_features=256, bias=True)
+          (act): GELU(approximate='none')
+          (drop1): Dropout(p=0, inplace=False)
+          (norm): Identity()
+          (fc2): Linear(in_features=256, out_features=256, bias=True)
+          (drop2): Dropout(p=0, inplace=False)
+        )
+        (adaLN_modulation): Sequential(
+          (0): SiLU()
+          (1): Linear(in_features=256, out_features=1536, bias=True)
+        )
+      )
+    )
+  )
+  (mean_model): Sequential(
+    (0): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    (1): Linear(in_features=256, out_features=256, bias=True)
+    (2): GELU(approximate='none')
+    (3): Dropout(p=0.1, inplace=False)
+  )
+  (var_model): Sequential(
+    (0): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    (1): Linear(in_features=256, out_features=256, bias=True)
+    (2): GELU(approximate='none')
+    (3): Dropout(p=0.1, inplace=False)
+  )
+  (ln): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+  (solution_head_1): Sequential(
+    (0): Linear(in_features=256, out_features=256, bias=True)
+    (1): GELU(approximate='none')
+    (2): Dropout(p=0.1, inplace=False)
+    (3): Linear(in_features=256, out_features=256, bias=True)
+    (4): GELU(approximate='none')
+    (5): Dropout(p=0.1, inplace=False)
+  )
+  (solution_head_2): Sequential(
+    (0): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    (1): Linear(in_features=256, out_features=2, bias=True)
+  )
+)
+2583302
+2025-02-20 13:59:44,772 INFO Using q_distribution ...
+2025-02-20 13:59:45,322 INFO ####### --- Training Epoch 0 --- #######
+2025-02-20 14:00:05,746 INFO Epoch 0 	 Batch 99	LR : 0.00000	CE Loss: 0.50	Mean Loss: 1.17	Var Loss: 0.31	Tot. Loss: 1.99
+2025-02-20 14:00:24,513 INFO Epoch 0 	 Batch 199	LR : 0.00000	CE Loss: 0.51	Mean Loss: 1.14	Var Loss: 0.31	Tot. Loss: 1.97
+2025-02-20 14:00:34,397 INFO ##################
+ ---> Validation Epoch 0	Acc.: 67.126	MCC: 13.002	FPR: 89.280	AUROC: 61.064	AUPR: 42.397	AURC: 276.678	EAURC: 215.499	AUPR Succ.: 72.720	ECE: 3.850	NLL: 6.355	Brier: 43.315
+2025-02-20 14:00:34,398 INFO MCC improved from 0.00 to 13.00!!!
+2025-02-20 14:00:35,015 INFO AUROC improved from 0.00 to 61.06!!!
+2025-02-20 14:00:35,631 INFO AURC decreased from 1000000.00 to 276.68!!!
+2025-02-20 14:00:36,263 INFO ####### --- Training Epoch 1 --- #######
+2025-02-20 14:00:55,647 INFO Epoch 1 	 Batch 99	LR : 0.00020	CE Loss: 1.51	Mean Loss: 1.88	Var Loss: 0.27	Tot. Loss: 3.65
+2025-02-20 14:01:14,893 INFO Epoch 1 	 Batch 199	LR : 0.00020	CE Loss: 0.77	Mean Loss: 5.90	Var Loss: 0.24	Tot. Loss: 6.91
+2025-02-20 14:01:25,068 INFO ##################
+ ---> Validation Epoch 1	Acc.: 29.460	MCC: 0.244	FPR: 94.145	AUROC: 50.288	AUPR: 71.510	AURC: 698.796	EAURC: 353.442	AUPR Succ.: 30.502	ECE: 30.458	NLL: 8.123	Brier: 61.107
+2025-02-20 14:01:25,070 INFO ####### --- Training Epoch 2 --- #######
+2025-02-20 14:01:44,253 INFO Epoch 2 	 Batch 99	LR : 0.00040	CE Loss: 0.75	Mean Loss: 32473.43	Var Loss: 0.31	Tot. Loss: 32474.49
+2025-02-20 14:02:03,750 INFO Epoch 2 	 Batch 199	LR : 0.00040	CE Loss: 1.33	Mean Loss: 116811.41	Var Loss: 0.29	Tot. Loss: 116813.02
+2025-02-20 14:02:13,706 INFO ##################
+ ---> Validation Epoch 2	Acc.: 70.595	MCC: 0.000	FPR: 94.757	AUROC: 50.480	AUPR: 29.951	AURC: 284.586	EAURC: 236.354	AUPR Succ.: 71.618	ECE: 21.128	NLL: 8.298	Brier: 50.873
+2025-02-20 14:02:13,708 INFO ####### --- Training Epoch 3 --- #######
+2025-02-20 14:02:32,179 INFO Epoch 3 	 Batch 99	LR : 0.00060	CE Loss: 2.86	Mean Loss: 22937.33	Var Loss: 0.18	Tot. Loss: 22940.37
+2025-02-20 14:02:51,415 INFO Epoch 3 	 Batch 199	LR : 0.00060	CE Loss: 6.53	Mean Loss: 8264.80	Var Loss: 0.18	Tot. Loss: 8271.52
+2025-02-20 14:03:01,415 INFO ##################
+ ---> Validation Epoch 3	Acc.: 70.595	MCC: 0.000	FPR: 96.255	AUROC: 48.924	AUPR: 28.402	AURC: 290.276	EAURC: 242.045	AUPR Succ.: 71.019	ECE: 29.386	NLL: 26.150	Brier: 58.789
+2025-02-20 14:03:01,417 INFO ####### --- Training Epoch 4 --- #######
+2025-02-20 14:03:20,641 INFO Epoch 4 	 Batch 99	LR : 0.00080	CE Loss: 4.89	Mean Loss: 2576.25	Var Loss: 0.18	Tot. Loss: 2581.32
+2025-02-20 14:03:40,163 INFO Epoch 4 	 Batch 199	LR : 0.00080	CE Loss: 5.33	Mean Loss: 5124.28	Var Loss: 0.18	Tot. Loss: 5129.79
+2025-02-20 14:03:50,103 INFO ##################
+ ---> Validation Epoch 4	Acc.: 61.564	MCC: -1.809	FPR: 93.123	AUROC: 54.606	AUPR: 42.672	AURC: 358.436	EAURC: 272.718	AUPR Succ.: 64.253	ECE: 20.974	NLL: 8.895	Brier: 57.077
+2025-02-20 14:03:50,105 INFO ####### --- Training Epoch 5 --- #######
+2025-02-20 14:04:09,576 INFO Epoch 5 	 Batch 99	LR : 0.00100	CE Loss: 5.94	Mean Loss: 4638.59	Var Loss: 0.18	Tot. Loss: 4644.70
+2025-02-20 14:04:36,153 INFO Epoch 5 	 Batch 199	LR : 0.00100	CE Loss: 12.96	Mean Loss: 5174.81	Var Loss: 0.18	Tot. Loss: 5187.96
+/mnt/disk1/anaconda3/envs/allennlp/lib/python3.7/site-packages/torch/optim/lr_scheduler.py:808: UserWarning: To get the last learning rate computed by the scheduler, please use `get_last_lr()`.
+  "please use `get_last_lr()`.", UserWarning)
+2025-02-20 14:04:50,791 INFO ##################
+ ---> Validation Epoch 5	Acc.: 29.405	MCC: 0.000	FPR: 95.398	AUROC: 49.746	AUPR: 70.709	AURC: 703.842	EAURC: 357.814	AUPR Succ.: 29.681	ECE: 60.401	NLL: 23.061	Brier: 116.002
+2025-02-20 14:04:50,793 INFO ####### --- Training Epoch 6 --- #######
+2025-02-20 14:05:31,056 INFO Epoch 6 	 Batch 99	LR : 0.00100	CE Loss: 13.23	Mean Loss: 10340.99	Var Loss: 0.18	Tot. Loss: 10354.41
+2025-02-20 14:06:20,814 INFO Epoch 6 	 Batch 199	LR : 0.00100	CE Loss: 14.18	Mean Loss: 15787.53	Var Loss: 0.18	Tot. Loss: 15801.89
+2025-02-20 14:06:46,711 INFO ##################
+ ---> Validation Epoch 6	Acc.: 70.595	MCC: 0.000	FPR: 100.000	AUROC: 50.000	AUPR: 29.405	AURC: 296.611	EAURC: 248.379	AUPR Succ.: 85.297	ECE: 29.405	NLL: 182.673	Brier: 58.811
+2025-02-20 14:06:46,713 INFO ####### --- Training Epoch 7 --- #######
+2025-02-20 14:07:06,616 INFO Epoch 7 	 Batch 99	LR : 0.00100	CE Loss: 10.02	Mean Loss: 30911.69	Var Loss: 0.18	Tot. Loss: 30921.89
+2025-02-20 14:07:26,308 INFO Epoch 7 	 Batch 199	LR : 0.00100	CE Loss: 23.52	Mean Loss: 38392.92	Var Loss: 0.18	Tot. Loss: 38416.62
+2025-02-20 14:07:36,070 INFO ##################
+ ---> Validation Epoch 7	Acc.: 70.595	MCC: 0.000	FPR: 97.566	AUROC: 48.833	AUPR: 27.921	AURC: 297.068	EAURC: 248.836	AUPR Succ.: 72.352	ECE: 29.405	NLL: 41.116	Brier: 58.810
+2025-02-20 14:07:36,073 INFO ####### --- Training Epoch 8 --- #######
+2025-02-20 14:07:56,000 INFO Epoch 8 	 Batch 99	LR : 0.00100	CE Loss: 11.75	Mean Loss: 68199.40	Var Loss: 0.18	Tot. Loss: 68211.33
+2025-02-20 14:08:15,134 INFO Epoch 8 	 Batch 199	LR : 0.00100	CE Loss: 22.70	Mean Loss: 59132.40	Var Loss: 0.18	Tot. Loss: 59155.28
+2025-02-20 14:08:24,709 INFO ##################
+ ---> Validation Epoch 8	Acc.: 70.595	MCC: 0.000	FPR: 98.876	AUROC: 50.170	AUPR: 29.481	AURC: 296.227	EAURC: 247.995	AUPR Succ.: 85.218	ECE: 29.404	NLL: 112.632	Brier: 58.811
+2025-02-20 14:08:24,711 INFO ####### --- Training Epoch 9 --- #######
+2025-02-20 14:08:44,513 INFO Epoch 9 	 Batch 99	LR : 0.00099	CE Loss: 16.06	Mean Loss: 85999.41	Var Loss: 0.18	Tot. Loss: 86015.65
+2025-02-20 14:09:03,728 INFO Epoch 9 	 Batch 199	LR : 0.00099	CE Loss: 20.00	Mean Loss: 81334.63	Var Loss: 0.18	Tot. Loss: 81354.81
+2025-02-20 14:09:13,374 INFO ##################
+ ---> Validation Epoch 9	Acc.: 70.595	MCC: 0.000	FPR: 100.000	AUROC: 50.000	AUPR: 29.405	AURC: 296.611	EAURC: 248.379	AUPR Succ.: 85.297	ECE: 29.405	NLL: 237.662	Brier: 58.811
+2025-02-20 14:09:13,376 INFO ####### --- Training Epoch 10 --- #######
+2025-02-20 14:09:32,488 INFO Epoch 10 	 Batch 99	LR : 0.00098	CE Loss: 22.87	Mean Loss: 58173.92	Var Loss: 0.18	Tot. Loss: 58196.97
+2025-02-20 14:09:51,385 INFO Epoch 10 	 Batch 199	LR : 0.00098	CE Loss: 8.25	Mean Loss: 106520.29	Var Loss: 0.18	Tot. Loss: 106528.71
+2025-02-20 14:10:01,148 INFO ##################
+ ---> Validation Epoch 10	Acc.: 70.540	MCC: 0.361	FPR: 98.692	AUROC: 49.835	AUPR: 29.711	AURC: 298.214	EAURC: 249.791	AUPR Succ.: 84.994	ECE: 29.404	NLL: 84.173	Brier: 58.786
+2025-02-20 14:10:01,149 INFO ####### --- Training Epoch 11 --- #######
+2025-02-20 14:10:20,152 INFO Epoch 11 	 Batch 99	LR : 0.00098	CE Loss: 13.59	Mean Loss: 139153.96	Var Loss: 0.18	Tot. Loss: 139167.72
+2025-02-20 14:10:39,100 INFO Epoch 11 	 Batch 199	LR : 0.00098	CE Loss: 17.91	Mean Loss: 112234.58	Var Loss: 0.19	Tot. Loss: 112252.68
+2025-02-20 14:10:48,636 INFO ##################
+ ---> Validation Epoch 11	Acc.: 70.595	MCC: 0.000	FPR: 100.000	AUROC: 50.000	AUPR: 29.405	AURC: 296.611	EAURC: 248.379	AUPR Succ.: 85.297	ECE: 29.405	NLL: 90.591	Brier: 58.811
+2025-02-20 14:10:48,638 INFO ####### --- Training Epoch 12 --- #######
+2025-02-20 14:11:07,328 INFO Epoch 12 	 Batch 99	LR : 0.00097	CE Loss: 25.99	Mean Loss: 133207.74	Var Loss: 0.18	Tot. Loss: 133233.90
+2025-02-20 14:11:27,074 INFO Epoch 12 	 Batch 199	LR : 0.00097	CE Loss: 48.69	Mean Loss: 227202.88	Var Loss: 0.18	Tot. Loss: 227251.75
+2025-02-20 14:11:45,215 INFO ##################
+ ---> Validation Epoch 12	Acc.: 29.405	MCC: 0.000	FPR: 100.000	AUROC: 50.000	AUPR: 70.595	AURC: 703.389	EAURC: 357.361	AUPR Succ.: 64.703	ECE: 70.595	NLL: 534.215	Brier: 141.189
+2025-02-20 14:11:45,216 INFO ####### --- Training Epoch 13 --- #######
+2025-02-20 14:12:13,714 INFO Epoch 13 	 Batch 99	LR : 0.00095	CE Loss: 21.03	Mean Loss: 223065.05	Var Loss: 0.18	Tot. Loss: 223086.25
+2025-02-20 14:13:05,486 INFO Epoch 13 	 Batch 199	LR : 0.00095	CE Loss: 18.34	Mean Loss: 214400.23	Var Loss: 0.18	Tot. Loss: 214418.75
+2025-02-20 14:13:35,655 INFO ##################
+ ---> Validation Epoch 13	Acc.: 29.405	MCC: 0.000	FPR: 100.000	AUROC: 50.000	AUPR: 70.595	AURC: 703.389	EAURC: 357.361	AUPR Succ.: 64.703	ECE: 70.595	NLL: 257.657	Brier: 141.189
+2025-02-20 14:13:35,657 INFO ####### --- Training Epoch 14 --- #######
+2025-02-20 14:14:04,329 INFO Epoch 14 	 Batch 99	LR : 0.00094	CE Loss: 17.15	Mean Loss: 349306.38	Var Loss: 0.18	Tot. Loss: 349323.71
+2025-02-20 14:14:24,329 INFO Epoch 14 	 Batch 199	LR : 0.00094	CE Loss: 24.20	Mean Loss: 305235.35	Var Loss: 0.18	Tot. Loss: 305259.73
+2025-02-20 14:14:34,718 INFO ##################
+ ---> Validation Epoch 14	Acc.: 29.405	MCC: 0.000	FPR: 94.462	AUROC: 52.158	AUPR: 71.719	AURC: 696.781	EAURC: 350.753	AUPR Succ.: 53.793	ECE: 70.594	NLL: 155.847	Brier: 141.189
+2025-02-20 14:14:34,720 INFO ####### --- Training Epoch 15 --- #######
+2025-02-20 14:14:54,510 INFO Epoch 15 	 Batch 99	LR : 0.00092	CE Loss: 23.21	Mean Loss: 339424.79	Var Loss: 0.18	Tot. Loss: 339448.18
+2025-02-20 14:15:14,383 INFO Epoch 15 	 Batch 199	LR : 0.00092	CE Loss: 31.53	Mean Loss: 417577.66	Var Loss: 0.18	Tot. Loss: 417609.37
+2025-02-20 14:15:24,480 INFO ##################
+ ---> Validation Epoch 15	Acc.: 70.595	MCC: 0.000	FPR: 100.000	AUROC: 50.000	AUPR: 29.405	AURC: 296.611	EAURC: 248.379	AUPR Succ.: 85.297	ECE: 29.405	NLL: 381.864	Brier: 58.811
+2025-02-20 14:15:24,482 INFO ####### --- Training Epoch 16 --- #######
+2025-02-20 14:15:44,517 INFO Epoch 16 	 Batch 99	LR : 0.00091	CE Loss: 24.00	Mean Loss: 388990.39	Var Loss: 0.18	Tot. Loss: 389014.57
+2025-02-20 14:16:03,832 INFO Epoch 16 	 Batch 199	LR : 0.00091	CE Loss: 38.44	Mean Loss: 620292.49	Var Loss: 0.18	Tot. Loss: 620331.11
+2025-02-20 14:16:13,708 INFO ##################
+ ---> Validation Epoch 16	Acc.: 70.595	MCC: 0.000	FPR: 94.007	AUROC: 50.942	AUPR: 30.084	AURC: 287.268	EAURC: 239.036	AUPR Succ.: 75.850	ECE: 29.405	NLL: 47.566	Brier: 58.810
+2025-02-20 14:16:13,709 INFO ####### --- Training Epoch 17 --- #######
+2025-02-20 14:16:33,020 INFO Epoch 17 	 Batch 99	LR : 0.00089	CE Loss: 31.47	Mean Loss: 506131.69	Var Loss: 0.18	Tot. Loss: 506163.34
+2025-02-20 14:16:52,909 INFO Epoch 17 	 Batch 199	LR : 0.00089	CE Loss: 58.34	Mean Loss: 460910.99	Var Loss: 0.18	Tot. Loss: 460969.51
+2025-02-20 14:17:03,241 INFO ##################
+ ---> Validation Epoch 17	Acc.: 70.595	MCC: 0.000	FPR: 100.000	AUROC: 50.000	AUPR: 29.405	AURC: 296.611	EAURC: 248.379	AUPR Succ.: 85.297	ECE: 29.405	NLL: 492.069	Brier: 58.811
+2025-02-20 14:17:03,243 INFO ####### --- Training Epoch 18 --- #######
+2025-02-20 14:17:22,870 INFO Epoch 18 	 Batch 99	LR : 0.00087	CE Loss: 28.04	Mean Loss: 437724.48	Var Loss: 0.18	Tot. Loss: 437752.70
+2025-02-20 14:17:42,475 INFO Epoch 18 	 Batch 199	LR : 0.00087	CE Loss: 51.69	Mean Loss: 518029.96	Var Loss: 0.18	Tot. Loss: 518081.82
+2025-02-20 14:17:52,450 INFO ##################
+ ---> Validation Epoch 18	Acc.: 29.405	MCC: 0.000	FPR: 100.000	AUROC: 50.000	AUPR: 70.595	AURC: 703.389	EAURC: 357.361	AUPR Succ.: 64.703	ECE: 70.595	NLL: 484.588	Brier: 141.189

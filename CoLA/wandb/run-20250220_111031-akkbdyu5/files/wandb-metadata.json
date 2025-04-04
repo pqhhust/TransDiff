@@ -1,0 +1,43 @@
+{
+    "os": "Linux-5.15.0-131-generic-x86_64-with-debian-bookworm-sid",
+    "python": "3.7.16",
+    "heartbeatAt": "2025-02-20T11:10:33.319741",
+    "startedAt": "2025-02-20T11:10:31.757257",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 3080",
+    "gpu_count": 4,
+    "cpu_count": 48,
+    "cuda": null,
+    "args": [
+        "--attn-type",
+        "softmax",
+        "--batch-size",
+        "32",
+        "--gpu",
+        "0",
+        "--nb-epochs",
+        "50",
+        "--nb-run",
+        "1",
+        "--model",
+        "vit_cola",
+        "--lr",
+        "5e-4",
+        "--seed",
+        "2",
+        "--save-dir",
+        "./cola_out/vit_out"
+    ],
+    "state": "running",
+    "program": "main.py",
+    "codePath": "CoLA/main.py",
+    "git": {
+        "remote": "https://github.com/pqhhust/TransDiff.git",
+        "commit": "f9e76b4737d887d372eaed75b541add501dbb322"
+    },
+    "email": "Hung.PQ220030@sis.hust.edu.vn",
+    "root": "/mnt/disk1/pqhung/TransDiff",
+    "host": "ubuntu",
+    "username": "ubuntu",
+    "executable": "/mnt/disk1/anaconda3/envs/allennlp/bin/python3"
+}
