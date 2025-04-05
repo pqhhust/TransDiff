@@ -32,13 +32,13 @@ def test(args):
     logger = utils.utils.get_logger(save_path)
 
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
-    data_train, gold_train,data_test, gold_test, data_ood, gold_ood=\
+    data_train, gold_train, data_test, gold_test, data_ood, gold_ood=\
             get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
     word_to_int, _ = get_vocab(data_train, args.min_word_count)
     vocab_size = len(word_to_int)
 
     test_loader = DataLoader(data_test,gold_test,args.batch_size,word_to_int,device,shuffle=False)
-    # ood_loader = DataLoader(data_ood,gold_ood,args.batch_size,word_to_int,device,shuffle=False)
+    ood_loader = DataLoader(data_ood,gold_ood,args.batch_size,word_to_int,device,shuffle=False)
 
     for r in range(args.nb_run):
         logger.info(f'Testing model_{r + 1} ...')
@@ -47,7 +47,7 @@ def test(args):
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_net_{r + 1}.pth')))
         net = net.cuda()
         process_results(args, test_loader, net, metrics, logger, "Test Evaluation", results_storage)
-        # process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage)
+        process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage)
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
     wandb.log({f"Test/{metric}": results[metric]['mean'] for metric in results})
