@@ -16,7 +16,8 @@ from utils.seed_utils import set_seed
 from data_loader import get_data, get_vocab, DataLoader
 
 import warmup_scheduler
-wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
+# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#
+wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
 
 
 def main(args):
