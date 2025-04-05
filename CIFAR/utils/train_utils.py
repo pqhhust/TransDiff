@@ -36,7 +36,7 @@ def get_args_parser():
     parser.add_argument("--warmup-epoch", default=5, type=int)
     parser.add_argument("--clip-grad-norm", default=1.0, type=float)
     parser.add_argument("--clip-grad-value", default=10.0, type=float)
-    parser.add_argument("--accumulation-steps", default=1, type=int)
+    parser.add_argument("--accumulation-steps", default=2, type=int)
 
     ## nb of run 
     parser.add_argument('--nb-run', default=1, type=int, help='Run n times, in order to compute std')
@@ -77,9 +77,9 @@ def get_args_parser():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      help="Dataset parser for training on ImageNet")
     ImageNet.add_argument('--dataset', default='imagenet1k', type=str, help='Dataset name')
-    ImageNet.add_argument("--train-dir", type=str, default='./data/IMAGENET1K/train', help="ImageNet train directory")
-    ImageNet.add_argument("--val-dir", type=str, default='./data/IMAGENET1K/val', help="ImageNet val directory")
-    ImageNet.add_argument("--test-dir", type=str, default='./data/IMAGENET1K/val', help="ImageNet test directory")
+    ImageNet.add_argument("--train-dir", type=str, default='/scratch/user/u.th134169/IMAGENET1K/train', help="ImageNet train directory")
+    ImageNet.add_argument("--val-dir", type=str, default='/scratch/user/u.th134169/IMAGENET1K/val', help="ImageNet val directory")
+    ImageNet.add_argument("--test-dir", type=str, default='/scratch/user/u.th134169/IMAGENET1K/val', help="ImageNet test directory")
     ImageNet.add_argument("--nb-cls", type=int, default=1000, help="number of classes in ImageNet")
 
     parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer', 'lstm', 'gru'], help='Backbone name')
