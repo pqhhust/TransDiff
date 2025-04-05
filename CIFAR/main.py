@@ -191,18 +191,18 @@ def main_diffusion(args):
         )
         train_sampler = DistributedSampler(train_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=True)
         val_sampler = DistributedSampler(val_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=False)
-        train_loader = DataLoader(train_loader.dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, drop_last=True)
+        train_loader = DataLoader(train_loader.dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=8, drop_last=True)
         if global_rank == 0:
-            val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=None, num_workers=4, drop_last=False)
+            val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=None, num_workers=8, drop_last=False)
     else:
         train_loader, val_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(
             args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
         )
         train_sampler = DistributedSampler(train_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=True)
         val_sampler = DistributedSampler(val_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=False)
-        train_loader = DataLoader(train_loader.dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, drop_last=True)
+        train_loader = DataLoader(train_loader.dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=8, drop_last=True)
         if global_rank == 0:
-            val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=None, num_workers=4, drop_last=False)
+            val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=None, num_workers=8, drop_last=False)
 
     for run in range(args.nb_run):
         if global_rank == 0:
@@ -283,9 +283,9 @@ def main_diffusion(args):
                     # torch.save(net.module.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
 
                 # Save the last model state on rank 0
-                torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
+                torch.save(net.module.state_dict(), os.path.join(save_path, f'epoch_{epoch}_net_{run+1}_diffusion_{args.backbone}.pth'))
                 training_state_checkpoint = {'epoch': epoch, 'optimizer_state_dict': optimizer.state_dict(), 'lr_scheduler_state_dict': lr_scheduler.state_dict()}
-                torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_diffusion_{args.backbone}.pth'))
+                torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_epoch_{epoch}_diffusion_{args.backbone}.pth'))
     # Clean up distributed process group
     dist.destroy_process_group()
 
