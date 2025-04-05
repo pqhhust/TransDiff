@@ -236,7 +236,7 @@ if __name__ == '__main__':
     args = utils.train_utils.get_args_parser()
     if args.model == 'diffusion':
         main_diffusion(args)
-        test.test(args)
+        test.test_diffusion(args)
         wandb.finish()
     # elif args.model == 'diffusion' and args.stage == 2:
     #     main_diffusion_stage2(args)
