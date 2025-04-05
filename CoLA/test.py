@@ -23,6 +23,7 @@ def test(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     metrics = ['MCC', 'Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
     results_storage = {metric: [] for metric in metrics}
+    results_storage_ood = {metric: [] for metric in metrics}
     cor_results_all_models = {}
 
     if args.attn_type == 'softmax':
@@ -50,17 +51,80 @@ def test(args):
         process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage)
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
+    results_ood = {metric: utils.utils.compute_statistics(results_storage_ood[metric]) for metric in metrics}
     wandb.log({f"Test/{metric}": results[metric]['mean'] for metric in results})
+    wandb.log({f"Test_ood/{metric}": results[metric]['mean'] for metric in results_ood})
     test_results_path = os.path.join(save_path, 'test_results.csv')
+    test_results_path_ood = os.path.join(save_path, 'test_results_ood.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
+    utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results_ood)
+
+def test_diffusion(args):
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    metrics = ['MCC', 'Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
+    results_storage = {metric: [] for metric in metrics}
+    results_storage_ood = {metric: [] for metric in metrics}
+    cor_results_all_models = {}
+
+    if args.attn_type == 'softmax':
+        if args.backbone == 'mlp':
+            save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}")
+        elif args.backbone == 'lstm' or args.backbone == 'gru':
+            save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}")
+        elif args.backbone == 'transformer':
+            save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
+    elif args.attn_type == 'kep_svgp':
+        if args.backbone == 'mlp':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.rnn_low_dim}_{args.lr}_{args.clip}_{args.nb_epochs}"
+            )
+        elif args.backbone == 'lstm' or args.backbone == 'gru':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}"
+            )
+        elif args.backbone == 'transformer':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}"
+            )
+
+    device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
+    data_train, gold_train, data_test, gold_test, data_ood, gold_ood=\
+            get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
+    word_to_int, _ = get_vocab(data_train, args.min_word_count)
+    vocab_size = len(word_to_int)
+
+    test_loader = DataLoader(data_test,gold_test,args.batch_size,word_to_int,device,shuffle=False)
+    ood_loader = DataLoader(data_ood,gold_ood,args.batch_size,word_to_int,device,shuffle=False)
+
+    for r in range(args.nb_run):
+        logger.info(f'Testing model_{r + 1} ...')
+        
+        net = models.get_model.get_model(args.model, vocab_size, logger, args)
+        net.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_net_{r + 1}.pth')))
+        net = net.cuda()
+        process_results(args, test_loader, net, metrics, logger, "Test Evaluation", results_storage)
+        process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage_ood)
+
+    results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
+    results_ood = {metric: utils.utils.compute_statistics(results_storage_ood[metric]) for metric in metrics}
+    wandb.log({f"Test/{metric}": results[metric]['mean'] for metric in results})
+    wandb.log({f"Test_ood/{metric}": results[metric]['mean'] for metric in results_ood})
+    test_results_path = os.path.join(save_path, 'test_results.csv')
+    test_results_path_ood = os.path.join(save_path, 'test_results_ood.csv')
+    utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
+    utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results_ood)
+    
     
 if __name__ == '__main__':
-    wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+    # wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
     args = utils.test_utils.get_args_parser()
     if args.attn_type == 'kep_svgp':
-        group = 'KEP-SVGP'
+        group = 'KEP-SVGP-CoLA'
     else:
-        group = 'Transformer'
+        group = 'Transformer-CoLA'
     wandb.init(project='Difformer',     
                group=group,
                name=f"Seed_{args.seed}",
