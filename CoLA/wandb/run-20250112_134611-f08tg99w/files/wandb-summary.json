@@ -1,1 +1,0 @@
-{"Train/MCC": 2.8221758557788363, "Train/Top1 Acc.": 49.651972113518596, "Train/CE Loss": 0.7797350557110426, "Train/KSVD Loss": 1.1846488125086383, "Train/KL Loss": 4328.12158203125, "Train/Tot. Loss": 4330.085982816126, "Train/LR": 0.0, "_timestamp": 1736689764, "_runtime": 193, "_step": 0, "_wandb": {"runtime": 191}}
