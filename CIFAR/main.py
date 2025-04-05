@@ -282,15 +282,10 @@ def main_diffusion(args):
                     best_aurc = aurc
                     # torch.save(net.module.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
 
-        # Save the last model state on rank 0
-        if global_rank == 0:
-            torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
-            training_state_checkpoint = {
-                'epoch': epoch,
-                'optimizer_state_dict': optimizer.state_dict(),
-                'lr_scheduler_state_dict': lr_scheduler.state_dict()
-            }
-            torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_diffusion_{args.backbone}.pth'))
+                # Save the last model state on rank 0
+                torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
+                training_state_checkpoint = {'epoch': epoch, 'optimizer_state_dict': optimizer.state_dict(), 'lr_scheduler_state_dict': lr_scheduler.state_dict()}
+                torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_diffusion_{args.backbone}.pth'))
     # Clean up distributed process group
     dist.destroy_process_group()
 
