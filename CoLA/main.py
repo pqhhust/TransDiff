@@ -24,13 +24,13 @@ def main(args):
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
     if args.attn_type == 'softmax':
         save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
-        group = "Transformer"
+        group = "Transformer-CoLA"
     elif args.attn_type == 'kep_svgp':
         save_path = os.path.join(
             args.save_dir,
             f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}"
         )
-        group = "KEP-SVGP"
+        group = "KEP-SVGP-CoLA"
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -118,7 +118,7 @@ def main_diffusion(args):
         elif args.backbone == 'transformer':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
         pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cola_{args.pretrained_seed}")
-        group = "VIT-LSTM-GRU"
+        group = "Transformer-LSTM-GRU-CoLA"
     elif args.attn_type == 'kep_svgp':
         if args.backbone == 'mlp':
             save_path = os.path.join(
@@ -139,7 +139,7 @@ def main_diffusion(args):
             args.pretrained_dir,
             f"{args.dataset}_{args.attn_type}_vit_cola_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
         )
-        group = "KEP-SVGP-LSTM-GRU"
+        group = "KEP-SVGP-LSTM-GRU-CoLA"
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
