@@ -22,6 +22,7 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data import DataLoader
 import torch.distributed as dist
 
+import gc
 import warmup_scheduler
 wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
 # wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
@@ -296,6 +297,9 @@ def main_diffusion(args):
                 torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
                 training_state_checkpoint = {'epoch': epoch, 'optimizer_state_dict': optimizer.state_dict(), 'lr_scheduler_state_dict': lr_scheduler.state_dict()}
                 torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_last_diffusion_{args.backbone}.pth'))
+
+                torch.cuda.empty_cache()
+                gc.collect()
     # Clean up distributed process group
     dist.destroy_process_group()
 
