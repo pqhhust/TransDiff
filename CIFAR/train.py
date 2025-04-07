@@ -226,8 +226,6 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
             logger.info(msg)
             for key in train_log:
                 train_log[key] = utils.utils.AverageMeter()
-        
-        if (i + 1) % accumulation_steps == 0:  # Update weights after accumulation
             torch.cuda.empty_cache()
             import gc; gc.collect()
 
