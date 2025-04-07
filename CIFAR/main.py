@@ -221,13 +221,6 @@ def main_diffusion(args):
 
         pretrained_ViT = models.get_model.get_model('q_distribution_imagenet', nb_cls, logger, args)
         pretrained_ViT = nn.parallel.DistributedDataParallel(pretrained_ViT.cuda(), device_ids=[local_rank])
-        net.module.conv_proj.load_state_dict(pretrained_ViT.module.model.conv_proj.state_dict())
-        net.module.class_token.data.copy_(pretrained_ViT.module.model.class_token.data)
-        net.module.pos_embedding.data.copy_(pretrained_ViT.module.model.encoder.pos_embedding.data)
-        net.module.ln_1.load_state_dict(pretrained_ViT.module.model.encoder.layers[-1].ln_2.state_dict())
-        net.module.solution_head_1.load_state_dict(pretrained_ViT.module.model.encoder.layers[-1].mlp.state_dict())
-        net.module.ln_2.load_state_dict(pretrained_ViT.module.model.encoder.ln.state_dict())
-        net.module.solution_head_2.load_state_dict(pretrained_ViT.module.model.heads[0].state_dict())
 
         # Define optimizer and scheduler
         optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
@@ -241,9 +234,26 @@ def main_diffusion(args):
 
         # Track best metrics
         best_acc, best_auroc, best_aurc = 0, 0, 1e6
-
+        start_epoch = 0
+        if args.resume:
+            weights_checkpoint = torch.load(os.path.join(save_path, args.resume_weights), map_location='cpu', weights_only=True)
+            net.module.load_state_dict(weights_checkpoint)
+            
+            training_state_checkpoint = torch.load(os.path.join(save_path, args.resume_training_state), map_location='cpu')
+            optimizer.load_state_dict(training_state_checkpoint['optimizer_state_dict'])
+            lr_scheduler.load_state_dict(training_state_checkpoint['lr_scheduler_state_dict'])
+            start_epoch = training_state_checkpoint['epoch'] + 1
+            logger.info(f"Resuming training from epoch {start_epoch}...")
+        else:
+            net.module.conv_proj.load_state_dict(pretrained_ViT.module.model.conv_proj.state_dict())
+            net.module.class_token.data.copy_(pretrained_ViT.module.model.class_token.data)
+            net.module.pos_embedding.data.copy_(pretrained_ViT.module.model.encoder.pos_embedding.data)
+            net.module.ln_1.load_state_dict(pretrained_ViT.module.model.encoder.layers[-1].ln_2.state_dict())
+            net.module.solution_head_1.load_state_dict(pretrained_ViT.module.model.encoder.layers[-1].mlp.state_dict())
+            net.module.ln_2.load_state_dict(pretrained_ViT.module.model.encoder.ln.state_dict())
+            net.module.solution_head_2.load_state_dict(pretrained_ViT.module.model.heads[0].state_dict())
         # Training loop over epochs
-        for epoch in range(args.nb_epochs):
+        for epoch in range(start_epoch, args.nb_epochs):
             # Set epoch for sampler to ensure shuffling is consistent across processes
             if dist.get_world_size() > 1:
                 train_sampler.set_epoch(epoch)
@@ -283,9 +293,9 @@ def main_diffusion(args):
                     # torch.save(net.module.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
 
                 # Save the last model state on rank 0
-                torch.save(net.module.state_dict(), os.path.join(save_path, f'epoch_{epoch}_net_{run+1}_diffusion_{args.backbone}.pth'))
+                torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
                 training_state_checkpoint = {'epoch': epoch, 'optimizer_state_dict': optimizer.state_dict(), 'lr_scheduler_state_dict': lr_scheduler.state_dict()}
-                torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_epoch_{epoch}_diffusion_{args.backbone}.pth'))
+                torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_last_diffusion_{args.backbone}.pth'))
     # Clean up distributed process group
     dist.destroy_process_group()
 

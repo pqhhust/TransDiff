@@ -115,7 +115,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
         train_log['CE Loss'].update(ce_loss.item(), inputs.size(0))
         train_log['Mean Loss'].update(means_loss.item(), inputs.size(0))
         if args.attn_type == "softmax":
-            train_log['Var Loss'].update(stds_loss, inputs.size(0))
+            train_log['Var Loss'].update(stds_loss.item(), inputs.size(0))
         else: 
             train_log['Var Loss'].update(stds_loss.item(), inputs.size(0))
         train_log['Tot. Loss'].update(loss.item(), inputs.size(0))
@@ -134,7 +134,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     # Synchronize logs across all processes in distributed mode
     if is_distributed:
         for key in train_log:
-            avg_val = torch.tensor(train_log[key].avg).cuda()
+            avg_val = torch.tensor(train_log[key].avg, device='cuda')
             dist.all_reduce(avg_val)
             train_log[key].avg = (avg_val / dist.get_world_size()).item()
 
