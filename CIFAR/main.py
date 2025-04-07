@@ -298,8 +298,8 @@ def main_diffusion(args):
                 training_state_checkpoint = {'epoch': epoch, 'optimizer_state_dict': optimizer.state_dict(), 'lr_scheduler_state_dict': lr_scheduler.state_dict()}
                 torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_last_diffusion_{args.backbone}.pth'))
 
-                torch.cuda.empty_cache()
-                gc.collect()
+            torch.cuda.empty_cache()
+            gc.collect()
     # Clean up distributed process group
     dist.destroy_process_group()
 

@@ -131,8 +131,8 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
             logger.info(msg)
             for key in train_log:
                 train_log[key] = utils.utils.AverageMeter()
-            torch.cuda.empty_cache()
-            import gc; gc.collect()
+        torch.cuda.empty_cache()
+        import gc; gc.collect()
     # Synchronize logs across all processes in distributed mode
     if is_distributed:
         for key in train_log:
