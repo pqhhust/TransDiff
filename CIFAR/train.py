@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import utils.utils
 import wandb  
 import torch.distributed as dist
+import gc
 
 def compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus):
     """
@@ -131,6 +132,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
             for key in train_log:
                 train_log[key] = utils.utils.AverageMeter()
 
+    gc.collect()
     # Synchronize logs across all processes in distributed mode
     if is_distributed:
         for key in train_log:
