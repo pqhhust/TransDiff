@@ -235,7 +235,7 @@ def main_diffusion(args):
         # Track best metrics
         best_acc, best_auroc, best_aurc = 0, 0, 1e6
         start_epoch = 0
-        if args.resume:
+        if args.resume_weights:
             weights_checkpoint = torch.load(os.path.join(save_path, args.resume_weights), map_location='cpu', weights_only=True)
             net.module.load_state_dict(weights_checkpoint)
             
