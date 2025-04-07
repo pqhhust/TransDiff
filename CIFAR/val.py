@@ -143,36 +143,36 @@ def validation_diffusion(loader, net, args, pretrained_vit):
     net.eval()
     # pretrained_vit.eval()
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
+    with torch.no_grad():
+        for batch_idx, (inputs, targets) in enumerate(loader):
+            inputs, targets = inputs.cuda(), targets.cuda()
+            # output = pretrained_vit._to_words(inputs)
+            # output = pretrained_vit.emb(output)
+            # output = output + pretrained_vit.pos_emb
+            output = net(inputs)
+            # h = pretrained_vit.enc[args.depth - 1].la2(output)
+            # h = pretrained_vit.enc[args.depth - 1].mlp(h)
+            # output = output + h
+            # output = pretrained_vit.fc(output.mean(1))
 
-    for batch_idx, (inputs, targets) in enumerate(loader):
-        inputs, targets = inputs.cuda(), targets.cuda()
-        # output = pretrained_vit._to_words(inputs)
-        # output = pretrained_vit.emb(output)
-        # output = output + pretrained_vit.pos_emb
-        output = net(inputs)
-        # h = pretrained_vit.enc[args.depth - 1].la2(output)
-        # h = pretrained_vit.enc[args.depth - 1].mlp(h)
-        # output = output + h
-        # output = pretrained_vit.fc(output.mean(1))
+            # if args.attn_type == "softmax":
+            #     output = net(inputs)
+                
+            # elif args.attn_type == "kep_svgp":
+            #     results = []
+            #     for _ in range(10):
+            #         results.append(net(inputs)[0])
+            #     outputs = torch.stack(results)
+            #     output = torch.mean(outputs, 0)
+                
+            softmax = F.softmax(output, dim=1)
+            _, pred_cls = softmax.max(1)
 
-        # if args.attn_type == "softmax":
-        #     output = net(inputs)
+            val_log['correct'].append(pred_cls.cpu().eq(targets.cpu().data.view_as(pred_cls)).numpy())
+            val_log['softmax'].append(softmax.cpu().data.numpy())
+            val_log['logit'].append(output.cpu().data.numpy())
+            val_log['target'].append(targets.cpu().data.numpy())
             
-        # elif args.attn_type == "kep_svgp":
-        #     results = []
-        #     for _ in range(10):
-        #         results.append(net(inputs)[0])
-        #     outputs = torch.stack(results)
-        #     output = torch.mean(outputs, 0)
-            
-        softmax = F.softmax(output, dim=1)
-        _, pred_cls = softmax.max(1)
-
-        val_log['correct'].append(pred_cls.cpu().eq(targets.cpu().data.view_as(pred_cls)).numpy())
-        val_log['softmax'].append(softmax.cpu().data.numpy())
-        val_log['logit'].append(output.cpu().data.numpy())
-        val_log['target'].append(targets.cpu().data.numpy())
-        
     for key in val_log : 
         val_log[key] = np.concatenate(val_log[key])
         

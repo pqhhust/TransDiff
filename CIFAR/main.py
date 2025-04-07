@@ -16,6 +16,7 @@ import datasets.imagenet_loader
 import utils.train_utils
 from utils.seed_utils import set_seed
 from utils.ema import EMA
+import gc
 
 import warmup_scheduler
 wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
@@ -254,8 +255,8 @@ def main_diffusion(args):
             # validation
             # if epoch % args.update_ema_interval == 0:
             #     apply_ema(args, ema, net)
-            net_val = net
-            res = val.validation_diffusion(val_loader, net_val, args, pretrained_ViT) 
+            # net_val = net
+            res = val.validation_diffusion(val_loader, net, args, pretrained_ViT) 
             log = [f"{key}: {res[key]:.3f}" for key in res]
             msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
             logger.info(msg)
@@ -276,7 +277,7 @@ def main_diffusion(args):
                 msg = f'Accuracy improved from {best_acc:.2f} to {acc:.2f}!!!'
                 logger.info(msg)
                 best_acc = acc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}_diffusion_{args.backbone}.pth'))
+                torch.save(net.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}_diffusion_{args.backbone}.pth'))
                 # torch.save(pretrained_ViT.state_dict(), os.path.join(save_path, f'best_acc_net_{run + 1}_vit_fc.pth'))
             
             if res['AUROC'] > best_auroc:
@@ -284,16 +285,18 @@ def main_diffusion(args):
                 msg = f'AUROC improved from {best_auroc:.2f} to {auroc:.2f}!!!'
                 logger.info(msg)
                 best_auroc = auroc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}_diffusion_{args.backbone}.pth'))
+                # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}_diffusion_{args.backbone}.pth'))
         
             if res['AURC'] < best_aurc:
                 aurc = res['AURC']
                 msg = f'AURC decreased from {best_aurc:.2f} to {aurc:.2f}!!!'
                 logger.info(msg)
                 best_aurc = aurc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
+                # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
         
-        torch.save(net.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
+            torch.save(net.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
+            torch.cuda.empty_cache()
+            gc.collect()
 
 
 if __name__ == '__main__':
