@@ -143,5 +143,5 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     #         train_log[key].avg = (avg_val / dist.get_world_size()).item()
     
     # Log to wandb only on rank 0
-    if rank == 0:
-        wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
+    # if rank == 0:
+    #     wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
