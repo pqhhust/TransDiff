@@ -244,7 +244,7 @@ def main_diffusion(args):
             optimizer.load_state_dict(training_state_checkpoint['optimizer_state_dict'])
             lr_scheduler.load_state_dict(training_state_checkpoint['lr_scheduler_state_dict'])
             start_epoch = training_state_checkpoint['epoch'] + 1
-            logger.info(f"Resuming training from epoch {start_epoch}...")
+            # logger.info(f"Resuming training from epoch {start_epoch}...")
         else:
             net.module.conv_proj.load_state_dict(pretrained_ViT.module.model.conv_proj.state_dict())
             net.module.class_token.data.copy_(pretrained_ViT.module.model.class_token.data)
