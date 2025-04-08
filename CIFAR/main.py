@@ -265,6 +265,11 @@ def main_diffusion(args):
             # Validate the model
             # res = val.validation_diffusion(val_loader, net, args, pretrained_ViT)
             if global_rank == 0:
+                # Save the last model state on rank 0
+                torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
+                training_state_checkpoint = {'epoch': epoch, 'optimizer_state_dict': optimizer.state_dict(), 'lr_scheduler_state_dict': lr_scheduler.state_dict()}
+                torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_last_diffusion_{args.backbone}.pth'))
+                    
                 res = val.validation_diffusion(val_loader, net, args, pretrained_ViT)
                 log = [f"{key}: {res[key]:.3f}" for key in res]
                 msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
@@ -293,13 +298,8 @@ def main_diffusion(args):
                     best_aurc = aurc
                     # torch.save(net.module.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
 
-                # Save the last model state on rank 0
-                torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
-                training_state_checkpoint = {'epoch': epoch, 'optimizer_state_dict': optimizer.state_dict(), 'lr_scheduler_state_dict': lr_scheduler.state_dict()}
-                torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_last_diffusion_{args.backbone}.pth'))
-
-            torch.cuda.empty_cache()
-            gc.collect()
+            # torch.cuda.empty_cache()
+            # gc.collect()
     # Clean up distributed process group
     dist.destroy_process_group()
 
