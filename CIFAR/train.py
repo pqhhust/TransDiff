@@ -136,12 +136,12 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
             torch.cuda.empty_cache()
             import gc; gc.collect()
     # Synchronize logs across all processes in distributed mode
-    if is_distributed:
-        for key in train_log:
-            avg_val = torch.tensor(train_log[key].avg, device='cuda')
-            dist.all_reduce(avg_val)
-            train_log[key].avg = (avg_val / dist.get_world_size()).item()
-
+    # if is_distributed:
+    #     for key in train_log:
+    #         avg_val = torch.tensor(train_log[key].avg, device='cuda')
+    #         dist.all_reduce(avg_val)
+    #         train_log[key].avg = (avg_val / dist.get_world_size()).item()
+    
     # Log to wandb only on rank 0
     if rank == 0:
         wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
