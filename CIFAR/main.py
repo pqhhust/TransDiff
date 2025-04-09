@@ -297,7 +297,7 @@ def main_diffusion(args):
                     logger.info(msg)
                     best_aurc = aurc
                     # torch.save(net.module.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
-
+            dist.barrier()    
             # torch.cuda.empty_cache()
             # gc.collect()
     # Clean up distributed process group
