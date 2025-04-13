@@ -83,7 +83,7 @@ Adjust the values based on your hardware setup
 The effective batch size is `nproc_per_node * batch-size * accumulation-steps`
 - nproc_per_node: Set to the number of GPUs/processes per node
 ```
-torchrun --nproc_per_node=4 main.py --model diffusion --seed 0 --depth 12 --attn-type softmax --num_heads 12 --hdim 768 --batch-size 32 --nb-epochs 50 --nb-run 1 --lr 1e-3 --weight-decay 5e-5 --warmup-epoch 5 --clip-grad-value 1.0 --accumulation-steps 4 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out --checkpoint-weights last_net_1_diffusion_transformer.pth --trans_depth 4 --trans_num_heads 12 --trans_mlp_ratio 4 --trans_dropout 0.1 --lambda_mean 1 --lambda_var 0 --lambda_ce 1 --run_name DiT-5-seed ImageNet
+torchrun --nproc_per_node=4 main.py --model diffusion --seed 0 --depth 12 --attn-type softmax --num_heads 12 --hdim 768 --batch-size 32 --nb-epochs 50 --nb-run 1 --lr 1e-3 --weight-decay 5e-5 --warmup-epoch 5 --clip-grad-value 1.0 --accumulation-steps 4 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out --resume-weights last_net_1_diffusion_transformer.pth --trans_depth 4 --trans_num_heads 12 --trans_mlp_ratio 4 --trans_dropout 0.1 --lambda_mean 1 --lambda_var 0 --lambda_ce 1 --run_name DiT-5-seed ImageNet
 ```
 
 ## Cola
