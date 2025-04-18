@@ -13,8 +13,146 @@ import torch
 import torch.nn as nn
 import numpy as np
 import math
-from timm.models.vision_transformer import PatchEmbed, Attention, Mlp
+import torch.nn.functional as F
+from torch.jit import Final
 
+from typing import Any, Callable, Dict, Optional, Set, Tuple, Type, Union, List
+from functools import partial
+from itertools import repeat
+import collections.abc
+import os
+
+__all__ = [
+    'is_exportable', 'is_scriptable', 'is_no_jit', 'use_fused_attn',
+    'set_exportable', 'set_scriptable', 'set_no_jit', 'set_layer_config', 'set_fused_attn',
+    'set_reentrant_ckpt', 'use_reentrant_ckpt'
+]
+
+# Set to True if prefer to have layers with no jit optimization (includes activations)
+_NO_JIT = False
+
+# Set to True if prefer to have activation layers with no jit optimization
+# NOTE not currently used as no difference between no_jit and no_activation jit as only layers obeying
+# the jit flags so far are activations. This will change as more layers are updated and/or added.
+_NO_ACTIVATION_JIT = False
+
+# Set to True if exporting a model with Same padding via ONNX
+_EXPORTABLE = False
+
+# Set to True if wanting to use torch.jit.script on a model
+_SCRIPTABLE = False
+
+
+# use torch.scaled_dot_product_attention where possible
+_HAS_FUSED_ATTN = hasattr(torch.nn.functional, 'scaled_dot_product_attention')
+if 'TIMM_FUSED_ATTN' in os.environ:
+    _USE_FUSED_ATTN = int(os.environ['TIMM_FUSED_ATTN'])
+else:
+    _USE_FUSED_ATTN = 1  # 0 == off, 1 == on (for tested use), 2 == on (for experimental use)
+
+
+if 'TIMM_REENTRANT_CKPT' in os.environ:
+    _USE_REENTRANT_CKPT = bool(os.environ['TIMM_REENTRANT_CKPT'])
+else:
+    _USE_REENTRANT_CKPT = False  # defaults to disabled (off)
+
+def use_fused_attn(experimental: bool = False) -> bool:
+    # NOTE: ONNX export cannot handle F.scaled_dot_product_attention as of pytorch 2.0
+    if not _HAS_FUSED_ATTN or _EXPORTABLE:
+        return False
+    if experimental:
+        return _USE_FUSED_ATTN > 1
+    return _USE_FUSED_ATTN > 0
+def _ntuple(n):
+    def parse(x):
+        if isinstance(x, collections.abc.Iterable) and not isinstance(x, str):
+            return tuple(x)
+        return tuple(repeat(x, n))
+    return parse
+
+
+to_1tuple = _ntuple(1)
+to_2tuple = _ntuple(2)
+to_3tuple = _ntuple(3)
+to_4tuple = _ntuple(4)
+to_ntuple = _ntuple
+
+class Mlp(nn.Module):
+    """ MLP as used in Vision Transformer, MLP-Mixer and related networks
+    """
+    def __init__(
+            self,
+            in_features,
+            hidden_features=None,
+            out_features=None,
+            act_layer=nn.GELU,
+            bias=True,
+            drop=0.,
+            use_conv=False,
+    ):
+        super().__init__()
+        out_features = out_features or in_features
+        hidden_features = hidden_features or in_features
+        bias = to_2tuple(bias)
+        drop_probs = to_2tuple(drop)
+        linear_layer = partial(nn.Conv2d, kernel_size=1) if use_conv else nn.Linear
+
+        self.fc1 = linear_layer(in_features, hidden_features, bias=bias[0])
+        self.act = act_layer()
+        self.drop1 = nn.Dropout(drop_probs[0])
+        self.fc2 = linear_layer(hidden_features, out_features, bias=bias[1])
+        self.drop2 = nn.Dropout(drop_probs[1])
+        
+class Attention(nn.Module):
+    fused_attn: Final[bool]
+
+    def __init__(
+            self,
+            dim: int,
+            num_heads: int = 8,
+            qkv_bias: bool = False,
+            qk_norm: bool = False,
+            proj_bias: bool = True,
+            attn_drop: float = 0.,
+            proj_drop: float = 0.,
+            norm_layer: Type[nn.Module] = nn.LayerNorm,
+    ) -> None:
+        super().__init__()
+        assert dim % num_heads == 0, 'dim should be divisible by num_heads'
+        self.num_heads = num_heads
+        self.head_dim = dim // num_heads
+        self.scale = self.head_dim ** -0.5
+        self.fused_attn = use_fused_attn()
+
+        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.q_norm = norm_layer(self.head_dim) if qk_norm else nn.Identity()
+        self.k_norm = norm_layer(self.head_dim) if qk_norm else nn.Identity()
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.proj = nn.Linear(dim, dim, bias=proj_bias)
+        self.proj_drop = nn.Dropout(proj_drop)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, N, C = x.shape
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+        q, k, v = qkv.unbind(0)
+        q, k = self.q_norm(q), self.k_norm(k)
+
+        if self.fused_attn:
+            x = F.scaled_dot_product_attention(
+                q, k, v,
+                dropout_p=self.attn_drop.p if self.training else 0.,
+            )
+        else:
+            q = q * self.scale
+            attn = q @ k.transpose(-2, -1)
+            attn = attn.softmax(dim=-1)
+            attn = self.attn_drop(attn)
+            x = attn @ v
+
+        x = x.transpose(1, 2).reshape(B, N, C)
+        x = self.proj(x)
+        x = self.proj_drop(x)
+        return x
 
 def modulate(x, shift, scale):
     return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)

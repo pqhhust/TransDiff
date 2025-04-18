@@ -7,10 +7,10 @@ Since we use [``allennlp``](https://github.com/allenai/allennlp) package, we nee
 ```
 conda create -n allennlp python=3.7
 conda activate allennlp
-pip install allennlp==2.10.1
-# and we need to downgrade to avoid 
-# "AttributeError: module 'cached_path' has no attribute 'file_friendly_logging'"
-pip install cached-path==1.1.6
+pip install allennlp
+pip install warmup_scheduler
+### run if core dumped
+# pip install torch==1.13.0
 ```
 
 ### Dataset
