@@ -16,8 +16,8 @@ from utils.seed_utils import set_seed
 from data_loader import get_data, get_vocab, DataLoader
 
 import warmup_scheduler
-# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
+wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#
+# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
 
 
 def main(args):
@@ -118,7 +118,7 @@ def main_diffusion(args):
         elif args.backbone == 'transformer':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
         pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cola_{args.pretrained_seed}")
-        group = "Transformer-LSTM-GRU-CoLA"
+        group = "Transformer-DiT-CoLA"
     elif args.attn_type == 'kep_svgp':
         if args.backbone == 'mlp':
             save_path = os.path.join(
@@ -139,7 +139,7 @@ def main_diffusion(args):
             args.pretrained_dir,
             f"{args.dataset}_{args.attn_type}_vit_cola_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
         )
-        group = "KEP-SVGP-LSTM-GRU-CoLA"
+        group = "KEP-SVGP-DiT-CoLA"
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)

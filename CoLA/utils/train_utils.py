@@ -49,6 +49,7 @@ def get_args_parser():
     parser.add_argument('--lambda_mean', default=0, type=float, help='weight of mean_loss')
     parser.add_argument('--lambda_var', default=0, type=float, help='weight of var_loss')
     parser.add_argument('--lambda_ce', default=1., type=float, help='weight of ce_loss')
+    parser.add_argument('--run_name', default=None, type=str, help='name of wandb run')
     parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer'], help='Backbone name')
     parser.add_argument('--pretrained_dir', default=None, type=str, help='Pretrained diffusion model directory')
     parser.add_argument('--use_ema', type=bool, default=True, help='Whether to use EMA')

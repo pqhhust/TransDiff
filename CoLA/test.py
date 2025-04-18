@@ -48,7 +48,7 @@ def test(args):
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_net_{r + 1}.pth')))
         net = net.cuda()
         process_results(args, test_loader, net, metrics, logger, "Test Evaluation", results_storage)
-        process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage)
+        process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage_ood)
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
     results_ood = {metric: utils.utils.compute_statistics(results_storage_ood[metric]) for metric in metrics}
@@ -57,7 +57,7 @@ def test(args):
     test_results_path = os.path.join(save_path, 'test_results.csv')
     test_results_path_ood = os.path.join(save_path, 'test_results_ood.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
-    utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results_ood)
+    utils.utils.csv_writter(test_results_path_ood, args.dataset, args.model, metrics, results_ood)
 
 def test_diffusion(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -90,6 +90,8 @@ def test_diffusion(args):
                 f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}"
             )
 
+    logger = utils.utils.get_logger(save_path)
+    
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
     data_train, gold_train, data_test, gold_test, data_ood, gold_ood=\
             get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
@@ -115,7 +117,7 @@ def test_diffusion(args):
     test_results_path = os.path.join(save_path, 'test_results.csv')
     test_results_path_ood = os.path.join(save_path, 'test_results_ood.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
-    utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results_ood)
+    utils.utils.csv_writter(test_results_path_ood, args.dataset, args.model, metrics, results_ood)
     
     
 if __name__ == '__main__':
