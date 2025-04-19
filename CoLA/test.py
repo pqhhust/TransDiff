@@ -53,7 +53,7 @@ def test(args):
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
     results_ood = {metric: utils.utils.compute_statistics(results_storage_ood[metric]) for metric in metrics}
     wandb.log({f"Test/{metric}": results[metric]['mean'] for metric in results})
-    wandb.log({f"Test_ood/{metric}": results[metric]['mean'] for metric in results_ood})
+    wandb.log({f"Test_ood/{metric}": results_ood[metric]['mean'] for metric in results_ood})
     test_results_path = os.path.join(save_path, 'test_results.csv')
     test_results_path_ood = os.path.join(save_path, 'test_results_ood.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
@@ -113,7 +113,7 @@ def test_diffusion(args):
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
     results_ood = {metric: utils.utils.compute_statistics(results_storage_ood[metric]) for metric in metrics}
     wandb.log({f"Test/{metric}": results[metric]['mean'] for metric in results})
-    wandb.log({f"Test_ood/{metric}": results[metric]['mean'] for metric in results_ood})
+    wandb.log({f"Test_ood/{metric}": results_ood[metric]['mean'] for metric in results_ood})
     test_results_path = os.path.join(save_path, 'test_results.csv')
     test_results_path_ood = os.path.join(save_path, 'test_results_ood.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
