@@ -17,8 +17,8 @@ from utils.seed_utils import set_seed
 from utils.ema import EMA
 
 import warmup_scheduler
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def step_ema(args, ema, net, epoch):
         with_decay = False if epoch < args.start_ema_step else True
@@ -33,14 +33,31 @@ def restore_ema(args, ema, net):
 def main(args):
     if args.attn_type == 'softmax':
         save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
-        group = "VIT"
+        group = "VIT-CIFAR"
     elif args.attn_type == 'kep_svgp':
         save_path = os.path.join(
             args.save_dir,
             f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}"
         )
-        group = "KEP-SVGP"
-
+        group = "KEP-SVGP-CIFAR"
+    elif args.attn_type == 'sgpa':
+        save_path = os.path.join(
+            args.save_dir,
+            f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}"
+        )
+        group = "SGPA-CIFAR"
+    elif args.attn_type == 'cgpt':
+        save_path = os.path.join(
+            args.save_dir,
+            f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}"
+        )
+        group = "CGPT-CIFAR"
+    elif args.attn_type == 'scgpt':
+        save_path = os.path.join(
+            args.save_dir,
+            f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}"
+        )
+        group = "SCGPT-CIFAR"
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
@@ -67,7 +84,7 @@ def main(args):
         ## define model
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
         # print(net)
-        # print(sum(p.numel() for p in net.parameters() if p.requires_grad))
+        print(sum(p.numel() for p in net.parameters() if p.requires_grad))
         net.cuda()
         
         ## define optimizer with warm-up

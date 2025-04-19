@@ -111,7 +111,7 @@ class KEP_SVGPAttention(nn.Module):
         ## compute the KL divergence 
         # Tr(\Lambda^{-2}S_{uu}) term 
         # where Tr(AA^\top) = ||A||_F^2
-        v3 = (lambda_sqrt_inv_diag[None,None,...] ** 2) @ s_sqrt_local.permute(0,4,1,2,3)
+        v3 = (lambda_sqrt_inv_diag[None,None,...] ** 2) @ s_sqrt_local.permute(0,2,1,3,4)
         kl = 0.5 * torch.sum(v3.pow(2)) 
         # m_u^\top\Lambda^{-2}m_u term:
         mu_d = self.m_u.permute(0,1,3,2).unsqueeze(-1)

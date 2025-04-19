@@ -1,12 +1,21 @@
 import models.vit_cifar
 import models.diffusion
 import models.q_distribution
-
+import models.sgpa
+import models.cgpt
+import models.scgpt
 def get_model(model_name, nb_cls, logger, args):
     if model_name == "q_distribution":
         net = models.q_distribution.vit_cifar(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
     if model_name == "vit_cifar":
-        net = models.vit_cifar.vit_cifar(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
+        if args.attn_type == "sgpa":
+            net = models.sgpa.ViT(device=f'cuda:{args.gpu}', depth=args.depth, patch_size=4, in_channels=3, max_len = 64, num_class=args.nb_cls, hdim=args.hdim, num_heads=args.num_heads, sample_size=1, jitter=1e-6, drop_rate=0.1, keys_len=16, kernel_type='ard', flag_sgp=True).cuda()
+        elif args.attn_type == "cgpt":
+            net = models.cgpt.ViT(device=f'cuda:{args.gpu}', depth=args.depth, patch_size=4, in_channels=3, max_len = 64, num_class=args.nb_cls, hdim=args.hdim, num_heads=args.num_heads, sample_size=1, jitter=1e-6, drop_rate=0.1, keys_len=16, kernel_type='std', flag_cgp=True).cuda()
+        elif args.attn_type == "scgpt":
+            net = models.scgpt.ViT(device=f'cuda:{args.gpu}', depth=args.depth, patch_size=4, in_channels=3, max_len = 64, num_class=args.nb_cls, hdim=args.hdim, num_heads=args.num_heads, sample_size=1, jitter=1e-6, noise=0.1, drop_rate=0.1, keys_len=16, kernel_type='std', flag_cgp=True).cuda()
+        else:
+            net = models.vit_cifar.vit_cifar(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
     if model_name == "diffusion":
         if args.backbone == 'mlp':
             net = models.diffusion.Diffusion_MLP(args=args, d_model=args.hdim, hdim1=args.mlp_hdim1, hdim2=args.mlp_hdim2, hdim3=args.mlp_hdim3, hdim4=args.mlp_hdim4, dropout=args.mlp_dropout, clip=args.clip, ViT_depth=args.depth)

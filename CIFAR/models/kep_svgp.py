@@ -85,7 +85,7 @@ class KEP_SVGPAttention(nn.Module):
         if self.concate:
             samples = mean + (v2 @ torch.randn(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze().permute(0, 1, 3, 2)
         else:
-            samples = mean + (v2.permute(0,1,3,2,4) @ torch.randn(B, self.num_heads, N, mean.shape[3], 1).to(x.device)).squeeze()
+            samples = mean + (v2 @ torch.randn(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze().permute(0, 1, 3, 2)
         attn_out = self.final_weight(samples)
         if self.concate:
             attn_out = self.embed_len_weight(attn_out.permute(0,1,3,2)).permute(0,1,3,2)
@@ -97,7 +97,7 @@ class KEP_SVGPAttention(nn.Module):
         ## compute the KL divergence 
         # Tr(\Lambda^{-2}S_{uu}) term 
         # where Tr(AA^\top) = ||A||_F^2
-        v3 = (lambda_sqrt_inv_diag[None,None,...] ** 2) @ s_sqrt_local.permute(0,4,1,2,3)
+        v3 = (lambda_sqrt_inv_diag[None,None,...] ** 2) @ s_sqrt_local.permute(0,2,1,3,4)
         kl = 0.5 * torch.sum(v3.pow(2)) 
         # m_u^\top\Lambda^{-2}m_u term:
         mu_d = self.m_u.permute(0,1,3,2).unsqueeze(-1)

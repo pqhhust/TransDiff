@@ -20,7 +20,7 @@ def get_args_parser():
 
     # KEP-SVGP-attention
     parser.add_argument('--ksvd-layers', type=int, default=1, help='Number of ksvd layers applied to the transformer')
-    parser.add_argument('--attn-type', default='kep_svgp', type=str, choices = ['kep_svgp', 'softmax'], help='Type of attention')
+    parser.add_argument('--attn-type', default='kep_svgp', type=str, choices = ['kep_svgp', 'softmax', 'sgpa', 'cgpt', 'scgpt'], help='Type of attention')
     parser.add_argument('--concate', action='store_true', help='whether to use [e(x),r(x)] instead of (e(x)+r(x))')  
     parser.add_argument('--eta-ksvd', type=float, default=0.1, help='coefficient of the KSVD regularization')
     parser.add_argument('--eta-kl', type=float, default=1.0, help='coefficient of the KL divergence regularization')
