@@ -6,6 +6,7 @@ import utils.utils
 import wandb  
 import torch.distributed as dist
 import gc
+from torch.amp import autocast
 
 def compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus):
     """
@@ -90,19 +91,22 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     for i, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         # optimizer.zero_grad()
-        output = diffusion_model(inputs)
+        with autocast(device_type='cuda', dtype=torch.bfloat16):
+            output = diffusion_model(inputs)
 
-        ce_loss = ce_criterion(output, targets)
+            ce_loss = ce_criterion(output, targets)
 
-        with torch.no_grad():
-            _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs)
+            with torch.no_grad():
+                _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs)
 
-        means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_ViT, train=True)
+            means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_ViT, train=True)
 
-        means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus)
-
-        loss = args.lambda_mean * means_loss + args.lambda_var * stds_loss + args.lambda_ce * ce_loss
-        loss /= args.accumulation_steps
+            means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus)
+            if epoch > args.warmup_epoch + 1:
+                loss = args.lambda_mean_after_warm_up * means_loss + args.lambda_var * stds_loss + args.lambda_ce * ce_loss
+            else:
+                loss = args.lambda_mean * means_loss + args.lambda_var * stds_loss + args.lambda_ce * ce_loss
+            loss /= args.accumulation_steps
         loss.backward() 
         if (i + 1) % args.accumulation_steps == 0: 
             nn.utils.clip_grad_value_(diffusion_model.parameters(), args.clip_grad_value)

@@ -25,119 +25,13 @@ import torch.distributed as dist
 import gc
 import warmup_scheduler
 
-os.environ["NCCL_BLOCKING_WAIT"] = "1"
+# os.environ["NCCL_BLOCKING_WAIT"] = "1"
 os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
-os.environ["NCCL_DEBUG"] = "INFO"
+os.environ["NCCL_DEBUG"] = "WARN"
 os.environ["NCCL_TIMEOUT"] = "900"
 wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
 # wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
-def step_ema(args, ema, net, epoch):
-        with_decay = False if epoch < args.start_ema_step else True
-        ema.update(net, with_decay=with_decay)
-def apply_ema(args, ema, net):
-    if args.use_ema:
-        ema.apply_shadow(net)
-def restore_ema(args, ema, net):
-    if args.use_ema:
-        ema.restore(net)
-
-def main(args):
-    if args.attn_type == 'softmax':
-        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
-        group = "VIT"
-    elif args.attn_type == 'kep_svgp':
-        save_path = os.path.join(
-            args.save_dir,
-            f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}"
-        )
-        group = "KEP-SVGP"
-
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-
-    wandb.init(project='Difformer', 
-               group=group,
-               name=f"Seed_{args.seed}",
-               config=vars(args))
-
-    # Set seed everything
-    set_seed(args.seed)
-
-    logger = utils.utils.get_logger(save_path)
-    logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-
-    train_loader, val_loader, _, nb_cls = datasets.cifar_loader.get_loader(
-        args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
-    )
-
-    for run in range(args.nb_run):
-        prefix = f'{run + 1} / {args.nb_run} Running'
-        logger.info(100*'#' + '\n' + prefix)
-
-        ## define model
-        net = models.get_model.get_model(args.model, nb_cls, logger, args)
-        # print(net)
-        # print(sum(p.numel() for p in net.parameters() if p.requires_grad))
-        net.cuda()
-        
-        ## define optimizer with warm-up
-        optimizer = torch.optim.Adam(
-            net.parameters(),
-            lr=args.lr,
-            betas=(args.beta1, args.beta2),
-            weight_decay=args.weight_decay
-        )
-        base_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=args.nb_epochs, eta_min=args.min_lr
-        )
-        scheduler = warmup_scheduler.GradualWarmupScheduler(
-            optimizer,
-            multiplier=1.,
-            total_epoch=args.warmup_epoch,
-            after_scheduler=base_scheduler
-        )
-        
-        ## make logger
-        best_acc, best_auroc, best_aurc = 0, 0, 1e6
-
-        ## start training
-        for epoch in range(args.nb_epochs):
-            train.train(train_loader, net, optimizer, epoch, logger, args)
-            
-            scheduler.step()
-
-            # validation
-            net_val = net
-            res = val.validation(val_loader, net_val, args) 
-            log = [f"{key}: {res[key]:.3f}" for key in res]
-            msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
-            logger.info(msg)
-
-            wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
-
-            if res['Acc.'] > best_acc:
-                acc = res['Acc.']
-                msg = f'Accuracy improved from {best_acc:.2f} to {acc:.2f}!!!'
-                logger.info(msg)
-                best_acc = acc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}.pth'))
-            
-            if res['AUROC'] > best_auroc:
-                auroc = res['AUROC']
-                msg = f'AUROC improved from {best_auroc:.2f} to {auroc:.2f}!!!'
-                logger.info(msg)
-                best_auroc = auroc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}.pth'))
-        
-            if res['AURC'] < best_aurc:
-                aurc = res['AURC']
-                msg = f'AURC decreased from {best_aurc:.2f} to {aurc:.2f}!!!'
-                logger.info(msg)
-                best_aurc = aurc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth'))
-                
        
 def main_diffusion(args):
     # Determine save path based on attention type and backbone
@@ -179,7 +73,7 @@ def main_diffusion(args):
         # wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
         wandb.init(project='Difformer', 
                    group=group,
-                   name=f"Diffusion {args.run_name}: seed_{args.seed}_lr_{args.lr}_pretrained_seed_{args.pretrained_seed}_ksvd_layers_{args.ksvd_layers}_lambda_mean_{args.lambda_mean}_var_{args.lambda_var}_ce_{args.lambda_ce}_batchsize_{args.batch_size}_epochs_{args.nb_epochs}",
+                   name=f"Diffusion {args.run_name}: seed_{args.seed}_lr_{args.lr}_pretrained_seed_{args.pretrained_seed}_ksvd_layers_{args.ksvd_layers}_lambda_mean_{args.lambda_mean}_{args.lambda_mean_after_warm_up}_var_{args.lambda_var}_ce_{args.lambda_ce}_batchsize_{args.batch_size}_epochs_{args.nb_epochs}",
                    config=vars(args))
 
     # Set random seed for reproducibility
@@ -216,17 +110,17 @@ def main_diffusion(args):
             logger.info(100*'#' + '\n' + prefix)
 
         # Define and initialize the model
-        net = models.get_model.get_model(args.model, nb_cls, logger, args)
-        net = net.cuda()
+        net = models.get_model.get_model(args.model, nb_cls, logger, args).cuda()
+        # net = net.cuda()
         net = nn.parallel.DistributedDataParallel(net, device_ids=[local_rank])  # Wrap model with DDP
 
         # Print model info on rank 0
         if global_rank == 0:
-            print(net)
+            # print(net)
             print(sum(p.numel() for p in net.parameters() if p.requires_grad))
 
-        pretrained_ViT = models.get_model.get_model('q_distribution_imagenet', nb_cls, logger, args)
-        pretrained_ViT = nn.parallel.DistributedDataParallel(pretrained_ViT.cuda(), device_ids=[local_rank])
+        pretrained_ViT = models.get_model.get_model('q_distribution_imagenet', nb_cls, logger, args).cuda()
+        pretrained_ViT = nn.parallel.DistributedDataParallel(pretrained_ViT, device_ids=[local_rank])
 
         # Define optimizer and scheduler
         optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
@@ -271,9 +165,14 @@ def main_diffusion(args):
             # res = val.validation_diffusion(val_loader, net, args, pretrained_ViT)
             if global_rank == 0:
                 # Save the last model state on rank 0
-                torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}_tuning_{args.lambda_mean}.pth'))
+                if epoch == args.warmup_epoch + 1:
+                    torch.save(net.module.state_dict(), os.path.join(save_path, f'warmup_net_{run+1}_diffusion_{args.backbone}_tuning_{args.lambda_mean}.pth'))
+                    training_state_checkpoint = {'epoch': epoch, 'optimizer_state_dict': optimizer.state_dict(), 'lr_scheduler_state_dict': lr_scheduler.state_dict()}
+                    torch.save(training_state_checkpoint, os.path.join(save_path, f'warmup_training_state_{run+1}_last_diffusion_{args.backbone}_tuning_{args.lambda_mean}.pth'))
+                    
+                torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}_tuning_{args.lambda_mean}_{args.lambda_mean_after_warm_up}.pth'))
                 training_state_checkpoint = {'epoch': epoch, 'optimizer_state_dict': optimizer.state_dict(), 'lr_scheduler_state_dict': lr_scheduler.state_dict()}
-                torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_last_diffusion_{args.backbone}_tuning_{args.lambda_mean}.pth'))
+                torch.save(training_state_checkpoint, os.path.join(save_path, f'last_training_state_{run+1}_last_diffusion_{args.backbone}_tuning_{args.lambda_mean}_{args.lambda_mean_after_warm_up}.pth'))
                     
                 res = val.validation_diffusion(val_loader, net, args, pretrained_ViT)
                 log = [f"{key}: {res[key]:.3f}" for key in res]
@@ -317,7 +216,3 @@ if __name__ == '__main__':
     args = utils.train_utils.get_args_parser()
     if args.model == 'diffusion':
         main_diffusion(args)
-    else:
-        main(args)
-        test.test(args)
-        wandb.finish()

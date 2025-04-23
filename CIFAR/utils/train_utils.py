@@ -98,6 +98,7 @@ def get_args_parser():
     parser.add_argument('--pretrained_seed', default=0, type=int, help='seed for pretraining ViT')
     parser.add_argument('--mlp_dropout', default=0.1, type=float, help='dropout rate for diffusion mlp')
     parser.add_argument('--lambda_mean', default=1., type=float, help='weight of mean_loss')
+    parser.add_argument('--lambda_mean_after_warm_up', default=1., type=float, help='weight of mean_loss')
     parser.add_argument('--lambda_var', default=1., type=float, help='weight of var_loss')
     parser.add_argument('--lambda_ce', default=1., type=float, help='weight of ce_loss')
     parser.add_argument('--run_name', default=None, type=str, help='name of wandb run')
