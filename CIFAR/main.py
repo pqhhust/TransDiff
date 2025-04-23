@@ -172,7 +172,7 @@ def main_diffusion(args):
                     
                 torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}_tuning_{args.lambda_mean}_{args.lambda_mean_after_warm_up}.pth'))
                 training_state_checkpoint = {'epoch': epoch, 'optimizer_state_dict': optimizer.state_dict(), 'lr_scheduler_state_dict': lr_scheduler.state_dict()}
-                torch.save(training_state_checkpoint, os.path.join(save_path, f'last_training_state_{run+1}_last_diffusion_{args.backbone}_tuning_{args.lambda_mean}_{args.lambda_mean_after_warm_up}.pth'))
+                torch.save(training_state_checkpoint, os.path.join(save_path, f'last_training_state_{run+1}_diffusion_{args.backbone}_tuning_{args.lambda_mean}_{args.lambda_mean_after_warm_up}.pth'))
                     
                 res = val.validation_diffusion(val_loader, net, args, pretrained_ViT)
                 log = [f"{key}: {res[key]:.3f}" for key in res]
