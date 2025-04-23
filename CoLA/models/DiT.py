@@ -102,6 +102,16 @@ class Mlp(nn.Module):
         self.drop1 = nn.Dropout(drop_probs[0])
         self.fc2 = linear_layer(hidden_features, out_features, bias=bias[1])
         self.drop2 = nn.Dropout(drop_probs[1])
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.act(x)
+        x = self.drop1(x)
+        x = self.norm(x)
+        x = self.fc2(x)
+        x = self.drop2(x)
+        return x
+
         
 class Attention(nn.Module):
     fused_attn: Final[bool]
