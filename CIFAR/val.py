@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+# import gpytorch
 import utils.metrics
 import numpy as np  
 import sklearn.metrics as skm
@@ -9,6 +10,8 @@ from utils.mc_dropout import mc_dropout
 
 @torch.no_grad()
 def validation(loader, net, args, method=None):
+    if args.model == 'svdkl':
+        method = 'svdkl'
     if method == "temperature_scaling":
         _, valid_loader, _, _ = cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
                                                                        args.test_dir, args.batch_size)
@@ -16,36 +19,45 @@ def validation(loader, net, args, method=None):
         net.set_temperature(valid_loader)
     elif method == "mc_dropout":
         net = mc_dropout(net, num_estimators=10, last_layer=False, on_batch=False)
-
+    elif method == "svdkl":
+        net, likelihood = net
+        likelihood.eval()
     net.eval()
     
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
 
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
-        if args.attn_type == "softmax":
-            if method == "mc_dropout":
-                output = net(inputs)
-                B, C = inputs.size(0), output.size(1)
-                output = output.view(B, 10, C).mean(1)
-            else:
-                output = net(inputs)
+        if method == 'svdkl':
+            pass
+            # with gpytorch.settings.num_likelihood_samples(10):
+            #     gp_output = net(inputs)
+            #     output_dist = likelihood(gp_output)
+            #     softmax = output_dist.probs.mean(0)
+            #     output = torch.zeros_like(softmax)
+        else:  
+            if args.attn_type == "softmax":
+                if method == "mc_dropout":
+                    output = net(inputs)
+                    B, C = inputs.size(0), output.size(1)
+                    output = output.view(B, 10, C).mean(1)
+                else:
+                    output = net(inputs)    
+            elif args.attn_type == "kep_svgp":
+                results = []
+                for _ in range(10):
+                    results.append(net(inputs)[0])
+                outputs = torch.stack(results)
+                output = torch.mean(outputs, 0)
             
-        elif args.attn_type == "kep_svgp":
-            results = []
-            for _ in range(10):
-                results.append(net(inputs)[0])
-            outputs = torch.stack(results)
-            output = torch.mean(outputs, 0)
-        
-        elif args.attn_type == "sgpa":
-            results = []
-            for _ in range(10):
-                results.append(net(inputs)[0])
-            outputs = torch.stack(results)
-            output = torch.mean(outputs, 0)
-            
-        softmax = F.softmax(output, dim=1)
+            elif args.attn_type == "sgpa":
+                results = []
+                for _ in range(10):
+                    results.append(net(inputs)[0])
+                outputs = torch.stack(results)
+                output = torch.mean(outputs, 0)
+                
+            softmax = F.softmax(output, dim=1)
         _, pred_cls = softmax.max(1)
 
         val_log['correct'].append(pred_cls.cpu().eq(targets.cpu().data.view_as(pred_cls)).numpy())
@@ -66,7 +78,16 @@ def validation(loader, net, args, method=None):
     # calibration measure ece , mce, rmsce
     ece = utils.metrics.calc_ece(val_log['softmax'], val_log['target'], bins=15)
     # brier, nll
-    nll, brier = utils.metrics.calc_nll_brier(val_log['softmax'], val_log['logit'], val_log['target'])
+    if method == 'svdkl':
+        softmax = val_log['softmax'].astype(np.float32)
+        targets = val_log['target'].astype(np.int64)
+        log_probs = np.log(softmax[range(len(targets)), targets] + 1e-10)
+        nll = -log_probs.mean()
+        one_hot = np.zeros_like(softmax)
+        one_hot[range(len(targets)), targets] = 1
+        brier = np.mean(np.sum((softmax - one_hot) ** 2, axis=1))
+    else:
+        nll, brier = utils.metrics.calc_nll_brier(val_log['softmax'], val_log['logit'], val_log['target'])
 
     # log
     res = {

@@ -4,7 +4,11 @@ import models.q_distribution
 import models.sgpa
 import models.cgpt
 import models.scgpt
+# import models.svdkl
 def get_model(model_name, nb_cls, logger, args):
+    # if model_name == "svdkl":
+    #     feature_extractor = models.svdkl.vit_cifar(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
+    #     net = models.svdkl.DKLModel(feature_extractor, num_dim=args.hdim)
     if model_name == "q_distribution":
         net = models.q_distribution.vit_cifar(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
     if model_name == "vit_cifar":
