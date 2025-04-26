@@ -16,7 +16,7 @@ def get_args_parser():
 
     # KEP-SVGP-attention
     parser.add_argument('--ksvd-layers', type=int, default=1, help='Number of ksvd layers applied to the transformer')
-    parser.add_argument('--attn-type', default='kep_svgp', type=str, choices = ['kep_svgp', 'softmax'], help='Type of attention')
+    parser.add_argument('--attn-type', default='kep_svgp', type=str, choices = ['kep_svgp', 'softmax', 'sgpa'], help='Type of attention')
     parser.add_argument('--eta-ksvd', type=float, default=0.1, help='coefficient of the KSVD regularization')
     parser.add_argument('--eta-kl', type=float, default=1.0, help='coefficient of the KL divergence regularization')
     parser.add_argument('--low-rank', type=int, default=5, help='Number of dimension the low rank method projected to')

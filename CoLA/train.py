@@ -92,6 +92,11 @@ def train(train_loader, net, optimizer, epoch, logger, args):
             'Tot. Loss' : utils.utils.AverageMeter(),
             'LR' : utils.utils.AverageMeter(),
             }
+    elif args.attn_type == "sgpa":
+        train_log = {
+            'Tot. Loss': utils.utils.AverageMeter(),
+            'LR': utils.utils.AverageMeter(),
+        }
 
     msg = '####### --- Training Epoch {:d} --- #######'.format(epoch)
     logger.info(msg)
@@ -104,7 +109,11 @@ def train(train_loader, net, optimizer, epoch, logger, args):
         answers = answers.to(f'cuda:{args.gpu}')
 
         optimizer.zero_grad()
-        outs = net(inputs, positional, inputs_mask, data)
+        
+        if args.attn_type == 'sgpa':
+            loss = net.loss(inputs, answers, positional, inputs_mask, data, anneal_kl=min(1.0, epoch * 2 / args.nb_epochs))
+        else:
+            outs = net(inputs, positional, inputs_mask, data)
 
         if args.attn_type == "softmax":
             loss = compute_loss(cls_criterion, outs, answers)
@@ -126,10 +135,12 @@ def train(train_loader, net, optimizer, epoch, logger, args):
             lr = param_group["lr"]
             break
 
-        train_log['MCC'].update(mcc, inputs.size(0))
+        
         train_log['Tot. Loss'].update(loss.item(), inputs.size(0))
-        train_log['Top1 Acc.'].update(prec.item(), inputs.size(0))
         train_log['LR'].update(lr, inputs.size(0))
+        if args.attn_type == "softmax" or args.attn_type == 'kep_svgp':
+            train_log['MCC'].update(mcc, inputs.size(0))
+            train_log['Top1 Acc.'].update(prec.item(), inputs.size(0))
         if args.attn_type == "kep_svgp":
             train_log['CE Loss'].update(loss_ce.item(), inputs.size(0))
             train_log['KSVD Loss'].update(loss_ksvd.item(), inputs.size(0))

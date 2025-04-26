@@ -29,6 +29,13 @@ def validation(loader, net, args):
                 results.append(net(inputs, positional, inputs_mask, data)[0])
             outputs = torch.stack(results)
             output = torch.mean(outputs, 0)
+        
+        elif args.attn_type == "sgpa":
+            results = []
+            for _ in range(10):
+                results.append(net(inputs, positional, inputs_mask, data)[0])
+            outputs = torch.stack(results)
+            output = torch.mean(outputs, 0)
             
         softmax = F.softmax(output, dim=1)
         _, pred_cls = softmax.max(1)
