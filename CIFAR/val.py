@@ -7,6 +7,7 @@ import sklearn.metrics as skm
 import datasets.cifar_loader as cifar_loader
 from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
+from laplace import Laplace
 
 @torch.no_grad()
 def validation(loader, net, args, method=None):
@@ -22,6 +23,14 @@ def validation(loader, net, args, method=None):
     elif method == "svdkl":
         net, likelihood = net
         likelihood.eval()
+    if method == "kflla":
+        net.train()
+        la = Laplace(net, 'classification', subset_of_weights='last_layer', hessian_structure='kron')
+        train_loader, _, _, _ = cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
+                                                                       args.test_dir, args.batch_size)
+        with torch.enable_grad():
+            la.fit(train_loader)
+            la.optimize_prior_precision(method='marglik')
     net.eval()
     
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
@@ -35,6 +44,9 @@ def validation(loader, net, args, method=None):
             #     output_dist = likelihood(gp_output)
             #     softmax = output_dist.probs.mean(0)
             #     output = torch.zeros_like(softmax)
+        if method == 'kflla':
+            softmax = la(inputs)
+            output = torch.zeros_like(softmax)
         else:  
             if args.attn_type == "softmax":
                 if method == "mc_dropout":
@@ -78,7 +90,7 @@ def validation(loader, net, args, method=None):
     # calibration measure ece , mce, rmsce
     ece = utils.metrics.calc_ece(val_log['softmax'], val_log['target'], bins=15)
     # brier, nll
-    if method == 'svdkl':
+    if method == 'svdkl' or method == 'kflla':
         softmax = val_log['softmax'].astype(np.float32)
         targets = val_log['target'].astype(np.int64)
         log_probs = np.log(softmax[range(len(targets)), targets] + 1e-10)

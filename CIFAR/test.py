@@ -108,6 +108,8 @@ def test(args):
     results_storage = {metric: [] for metric in metrics}
     cor_results_all_models = {}
 
+    if args.attn_type == 'sgpa':
+        save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
     if args.attn_type == 'softmax':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
     elif args.attn_type == 'kep_svgp':
