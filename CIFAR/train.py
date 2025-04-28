@@ -73,7 +73,7 @@ def train(train_loader, net, optimizer, epoch, logger, args):
 
         optimizer.zero_grad()
         if args.attn_type == "sgpa" or args.attn_type == "cgpt" or args.attn_type == "scgpt":
-            loss = net.loss(inputs, targets, 0.)
+            loss = net.loss(inputs, targets, anneal_kl=min(1.0, epoch * 2 / args.nb_epochs))
         else:
             outs = net(inputs)
 
