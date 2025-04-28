@@ -220,7 +220,7 @@ def main_diffusion(args):
                 msg = f'MCC improved from {best_mcc:.2f} to {mcc:.2f}!!!'
                 logger.info(msg)
                 best_mcc = mcc
-                torch.save(net_val.state_dict(),os.path.join(save_path, f'best_mcc_net_{r + 1}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth'))
+                torch.save(net_val.state_dict(),os.path.join(save_path, f'best_mcc_net_{run+1}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth'))
             
             if res['AUROC'] > best_auroc :
                 auroc = res['AUROC']
