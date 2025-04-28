@@ -107,7 +107,7 @@ def test_diffusion(args):
         logger.info(f'Testing model_{r + 1} ...')
         
         net = models.get_model.get_model(args.model, vocab_size, logger, args)
-        net.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_net_{r + 1}.pth')))
+        net.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_net_{r + 1}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth')))
         net = net.cuda()
         process_results(args, test_loader, net, metrics, logger, "Test Evaluation", results_storage)
         process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage_ood)
