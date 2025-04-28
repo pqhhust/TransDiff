@@ -2,8 +2,12 @@ import models.vit_cola
 import models.q_distribution
 import models.diffusion
 import models.sgpa
+import models.svdkl
 
 def get_model(model_name, vocab_size, logger, args):
+    if model_name == "svdkl":
+        feature_extractor = models.svdkl.vit_cola(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi)
+        net = models.svdkl.DKLModel(feature_extractor, num_dim=args.hdim)
     if model_name == "q_distribution":
         net = models.q_distribution.vit_cola(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi)
     if model_name == "vit_cola":
