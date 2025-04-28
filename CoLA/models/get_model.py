@@ -2,7 +2,7 @@ import models.vit_cola
 import models.q_distribution
 import models.diffusion
 import models.sgpa
-import models.svdkl
+# import models.svdkl
 
 def get_model(model_name, vocab_size, logger, args):
     if model_name == "svdkl":
