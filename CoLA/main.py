@@ -230,20 +230,21 @@ def main(args):
 #                     logger.info(msg)
 #                     best_mcc = mcc
 #                     torch.save(net_val.state_dict(),os.path.join(save_path, f'best_mcc_net_{run+1}.pth'))
+#                     torch.save(likelihood.state_dict(), os.path.join(save_path, f'best_mcc_likelihood_{run+1}.pth'))
                 
 #                 if res['AUROC'] > best_auroc :
 #                     auroc = res['AUROC']
 #                     msg = f'AUROC improved from {best_auroc:.2f} to {auroc:.2f}!!!'
 #                     logger.info(msg)
 #                     best_auroc = auroc
-#                     torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}.pth'))
+#                     # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}.pth'))
             
 #                 if res['AURC'] < best_aurc :
 #                     aurc = res['AURC']
 #                     msg = f'AURC decreased from {best_aurc:.2f} to {aurc:.2f}!!!'
 #                     logger.info(msg)
 #                     best_aurc = aurc
-#                     torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth'))
+#                     # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth'))
 
 def main_diffusion(args):
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
@@ -377,10 +378,10 @@ if __name__ == '__main__':
         wandb.finish()
     # elif args.model == 'diffusion' and args.stage == 2:
     #     main_diffusion_stage2(args)
-    if args.model == 'svdkl':
-        main_svdkl(args)
-        test.test(args)
-        wandb.finish()
+    # if args.model == 'svdkl':
+    #     main_svdkl(args)
+    #     test.test(args)
+    #     wandb.finish()
     else:
         main(args)
         test.test(args)

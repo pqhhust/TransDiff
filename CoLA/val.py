@@ -3,13 +3,28 @@ import torch.nn.functional as F
 import utils.metrics
 import numpy as np 
 from sklearn.metrics import matthews_corrcoef
+from utils.temperature_scaling import ModelWithTemperature
+from utils.mc_dropout import mc_dropout
+from data_loader import get_data, get_vocab, DataLoader
 # import gpytorch
 
 @torch.no_grad()
 def validation(loader, net, args, method=None):
-    if args.model == 'svdkl':
-        method = 'svdkl'
-    if method == 'svdkl':
+    # if args.model == 'svdkl':
+    #     method = 'svdkl'
+    if args.model == "temperature_scaling":
+        data_train,gold_train,data_test,gold_test,data_ood,gold_ood=\
+            get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
+        word_to_int, _ = get_vocab(data_train, args.min_word_count)
+        vocab_size = len(word_to_int)
+
+        train_loader = DataLoader(data_train,gold_train,args.batch_size,word_to_int,'cuda:0')
+        test_loader = DataLoader(data_test,gold_test,args.batch_size,word_to_int,'cuda:0',shuffle=False)
+        net = ModelWithTemperature(net)
+        net.set_temperature(test_loader)
+    elif args.model == "mc_dropout":
+        net = mc_dropout(net, num_estimators=10, last_layer=True, on_batch=False)
+    elif args.model == 'svdkl':
         net, likelihood = net
         likelihood.eval()
 
@@ -24,13 +39,16 @@ def validation(loader, net, args, method=None):
         inputs_mask = inputs_mask.to(f'cuda:{args.gpu}')
         positional = positional.to(f'cuda:{args.gpu}')
         answers = answers.to(f'cuda:{args.gpu}')
-        if method == 'svdkl':
+        if args.model == 'svdkl':
             pass
             # with gpytorch.settings.num_likelihood_samples(10):
             #     gp_output = net(inputs, positional, inputs_mask, data)
             #     output_dist = likelihood(gp_output)
             #     softmax = output_dist.probs.mean(0)
             #     output = torch.zeros_like(softmax)
+        elif args.model == 'mc_dropout':
+            softmax = net(inputs, positional, inputs_mask, data)
+            output = torch.zeros_like(softmax)
         else:
             if args.model == 'diffusion':
                 output = net(inputs, positional, data, train=False)
@@ -75,7 +93,7 @@ def validation(loader, net, args, method=None):
     # calibration measure ece , mce, rmsce
     ece = utils.metrics.calc_ece(val_log['softmax'], val_log['target'], bins=15)
     # brier, nll
-    if method == 'svdkl':
+    if args.model == 'svdkl' or args.model == 'mc_dropout':
         softmax = val_log['softmax'].astype(np.float32)
         targets = val_log['target'].astype(np.int64)
         log_probs = np.log(softmax[range(len(targets)), targets] + 1e-10)

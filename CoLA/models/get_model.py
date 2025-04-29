@@ -10,7 +10,7 @@ def get_model(model_name, vocab_size, logger, args):
     #     net = models.svdkl.DKLModel(feature_extractor, num_dim=args.hdim)
     if model_name == "q_distribution":
         net = models.q_distribution.vit_cola(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi)
-    if model_name == "vit_cola":
+    if model_name == "vit_cola" or model_name == 'temperature_scaling' or model_name == 'mc_dropout':
         if args.attn_type == "sgpa":
             net = models.sgpa.Transformer(device='cuda', vocab_size=vocab_size, depth=args.depth, max_len=100, embdim=128, num_class=args.num_classes, hdim=args.hdim, num_heads=args.num_heads, sample_size=1, jitter=1e-7, drop_rate=0.1, keys_len=5, kernel_type='exponential', flag_sgp=True)
         else:
