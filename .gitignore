@@ -10,3 +10,7 @@ CIFAR/results
 CoLA/data
 CoLA/results
 CoLA/wandb
+IMDB/acl*
+IMDB/data
+IMDB/results
+IMDB/wandb

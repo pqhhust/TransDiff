@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class KEP_SVGPAttention(nn.Module):
-    def __init__(self, dim, num_heads=8, low_rank=5, rank_multi=2, \
+    def __init__(self, dim, num_heads=8, embed_len=64, low_rank=10, rank_multi=10, concate=False, \
                 qk_bias=False, attn_drop=0., proj_drop=0.):
         super(KEP_SVGPAttention, self).__init__()
         assert dim % num_heads == 0, 'dim should be divisible by num_heads'
@@ -18,6 +18,7 @@ class KEP_SVGPAttention(nn.Module):
         ## projection weights we, wr in kep-svgp attention
         self.low_rank = low_rank
         self.rank_multi = rank_multi
+        self.embed_len = embed_len
         self.we = nn.Parameter(nn.init.orthogonal_(torch.Tensor(self.num_heads, self.low_rank * self.rank_multi, self.low_rank)))
         self.wr = nn.Parameter(nn.init.orthogonal_(torch.Tensor(self.num_heads, self.low_rank * self.rank_multi, self.low_rank)))
         self.log_lambda_sqrt_inv_diag = nn.Parameter(nn.init.uniform_(torch.Tensor(self.num_heads, self.low_rank)))
@@ -31,12 +32,16 @@ class KEP_SVGPAttention(nn.Module):
     def gen_weights(self, x):
         ## evenly sample
         # to cope with variable token lengths
-        indices = torch.linspace(0, x.shape[1]-1, self.low_rank * self.rank_multi, dtype=int)
-        x = x.transpose(-2,-1).reshape(x.size(0), self.num_heads, self.head_dim, x.size(1))
-        x = x[:, :, :, indices].transpose(1, 2)
+        if self.embed_len > self.low_rank * self.rank_multi:
+            indices = torch.linspace(0, x.shape[1]-1, self.low_rank * self.rank_multi, dtype=int)
+            x = x.transpose(-2,-1).reshape(x.size(0), self.num_heads, self.head_dim, x.size(1))
+            x = x[:, :, :, indices].transpose(1, 2)
+        else:
+            x = x.transpose(-2,-1).reshape(x.size(0), self.num_heads, self.head_dim, x.size(1))
+            x = x.transpose(1, 2)
         we = torch.einsum('bahd,hde->bahe', x, self.we.type_as(x)).transpose(1,2)
         wr = torch.einsum('bahd,hde->bahe', x, self.wr.type_as(x)).transpose(1,2)
-        return we, wr 
+        return we, wr
 
     def feature_map(self, x):
         ## normalization should be on dim=-1

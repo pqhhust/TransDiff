@@ -16,14 +16,17 @@ import models.get_model
 import utils.train_utils
 from utils.seed_utils import set_seed
 
-from transformers import BertTokenizer
-from torchtext import data, datasets
+# from transformers import BertTokenizer
+# from torchtext.legacy import data
+# from torchtext import datasets
 
 # import gpytorch
 
+from data_loader import get_imdb_data
+
 import warmup_scheduler
-wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#
-# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
+# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#
+wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
 
 
 def main(args):
@@ -59,41 +62,60 @@ def main(args):
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    max_input_length = tokenizer.max_model_input_sizes['bert-base-uncased']
+    # tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    # max_input_length = tokenizer.model_max_length
     
-    def tokenize_and_cut(sentence):
-        tokens = tokenizer.tokenize(sentence) 
-        tokens = tokens[:max_input_length-2]
-        return tokens
+    # # Define processing functions
+    # def tokenize_and_cut(sentence):
+    #     tokens = tokenizer.tokenize(sentence) 
+    #     tokens = tokens[:max_input_length-2]  # Account for [CLS] and [SEP]
+    #     return tokens
         
-    TEXT = data.Field(batch_first = True,
-                    use_vocab = False,
-                    tokenize = tokenize_and_cut,
-                    preprocessing = tokenizer.convert_tokens_to_ids,
-                    init_token = tokenizer.cls_token_id,
-                    eos_token = tokenizer.sep_token_id,
-                    pad_token = tokenizer.pad_token_id,
-                    unk_token = tokenizer.unk_token_id)
+    # # Define fields
+    # TEXT = data.Field(batch_first=True,
+    #                 use_vocab=False,
+    #                 tokenize=tokenize_and_cut,
+    #                 preprocessing=tokenizer.convert_tokens_to_ids,
+    #                 init_token=tokenizer.cls_token_id,
+    #                 eos_token=tokenizer.sep_token_id,
+    #                 pad_token=tokenizer.pad_token_id,
+    #                 unk_token=tokenizer.unk_token_id)
 
-    LABEL = data.LabelField(dtype = torch.float)
-
-    traind, testd = datasets.IMDB.splits(TEXT, LABEL)
-    traind.examples = traind.examples + testd.examples 
-    all_data = traind 
-    train_data, test_data = all_data.split(random_state = random.seed(args.seed), split_ratio=0.8) 
-    train_data, valid_data = train_data.split(random_state = random.seed(args.seed), split_ratio=0.875)
-
-    LABEL.build_vocab(train_data)
+    # LABEL = data.LabelField(dtype=torch.float)
     
-    print(f"Number of training examples: {len(train_data)}")
-    print(f"Number of validation examples: {len(valid_data)}")
-    print(f"Number of testing examples: {len(test_data)}")
+    # # Load data from CSV files
+    # fields = [('text', TEXT), ('label', LABEL)]
+    
+    # train_data, val_data, test_data = data.TabularDataset.splits(
+    #     path='./data/imdb_reviews',
+    #     train='train/reviews.csv',
+    #     validation='val/reviews.csv',
+    #     test='test/reviews.csv',
+    #     format='csv',
+    #     skip_header=True,
+    #     fields=fields
+    # )
+    
+    # # Build vocabulary (only needed for the label field in this case)
+    # LABEL.build_vocab(train_data)
+    
+    # print(f"Number of training examples: {len(train_data)}")
+    # print(f"Number of validation examples: {len(val_data)}")
+    # print(f"Number of testing examples: {len(test_data)}")
+    
+    # # Create iterators
+    
+    # train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
+    #     (train_data, val_data, test_data), 
+    #     batch_size=args.batch_size,
+    #     sort_key=lambda x: len(x.text),  # Sort by length for efficient batching
+    #     sort_within_batch=True,  # Sort within each batch
+    #     device=device,
+    #     shuffle=True,
+    #     repeat=False
+    # )
 
-    train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
-        (train_data, valid_data, test_data), 
-        batch_size = args.batch_size, 
-        device = device)
+    train_loader, val_loader, test_loader, tokenizer = get_imdb_data('./data', args.batch_size)
 
     for run in range(args.nb_run):
         prefix = '{:d} / {:d} Running'.format(run + 1, args.nb_run)
@@ -110,29 +132,37 @@ def main(args):
         scheduler = warmup_scheduler.GradualWarmupScheduler(optimizer, multiplier=1., total_epoch=args.warmup_epoch, after_scheduler=base_scheduler)
         
         ## make logger
-        best_mcc, best_auroc, best_aurc = 0, 0, 1e6
+        best_acc, best_auroc, best_aurc = 0, 0, 1e6
 
         ## start training
         for epoch in range(args.nb_epochs):
-            train.train(train_iterator, net, optimizer, epoch, logger, args)
+            train.train(train_loader, net, optimizer, epoch, logger, args)
             
             scheduler.step()
 
             # validation
             net_val = net
-            res = val.validation(valid_iterator, net_val, args) 
+            res = val.validation(val_loader, net_val, args) 
             log = [key + ': {:.3f}'.format(res[key]) for key in res]
             msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
             logger.info(msg)
-
             wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
 
-            if res['MCC'] > best_mcc :
-                mcc = res['MCC']
-                msg = f'MCC improved from {best_mcc:.2f} to {mcc:.2f}!!!'
+            # test_results = val.validation(test_loader, net_val, args)
+            # # if epoch % args.update_ema_interval == 0:
+            # #     restore_ema(args, ema, net)
+    
+            # log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
+            # msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+            # logger.info(msg)
+            # wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
+
+            if res['Acc.'] > best_acc :
+                acc = res['Acc.']
+                msg = f'ACC improved from {best_acc:.2f} to {acc:.2f}!!!'
                 logger.info(msg)
-                best_mcc = mcc
-                torch.save(net_val.state_dict(),os.path.join(save_path, f'best_mcc_net_{run+1}.pth'))
+                best_acc = acc
+                torch.save(net_val.state_dict(),os.path.join(save_path, f'best_acc_net_{run+1}.pth'))
             
             if res['AUROC'] > best_auroc :
                 auroc = res['AUROC']
@@ -147,6 +177,7 @@ def main(args):
                 logger.info(msg)
                 best_aurc = aurc
                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth'))
+
 
 # def main_svdkl(args):
 #     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
@@ -287,7 +318,7 @@ def main_diffusion(args):
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}")
         elif args.backbone == 'transformer':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
-        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cola_{args.pretrained_seed}")
+        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_transformer_imdb_{args.pretrained_seed}")
         group = "Transformer-DiT-IMDB"
     elif args.attn_type == 'kep_svgp':
         if args.backbone == 'mlp':
@@ -307,7 +338,7 @@ def main_diffusion(args):
             )
         pretrained_path = os.path.join(
             args.pretrained_dir,
-            f"{args.dataset}_{args.attn_type}_vit_cola_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
+            f"{args.dataset}_{args.attn_type}_transformer_imdb_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
         )
         group = "KEP-SVGP-DiT-IMDB"
 
@@ -326,41 +357,60 @@ def main_diffusion(args):
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    max_input_length = tokenizer.max_model_input_sizes['bert-base-uncased']
-
-    def tokenize_and_cut(sentence):
-        tokens = tokenizer.tokenize(sentence) 
-        tokens = tokens[:max_input_length-2]
-        return tokens
+    # tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    # max_input_length = tokenizer.model_max_length
+    
+    # # Define processing functions
+    # def tokenize_and_cut(sentence):
+    #     tokens = tokenizer.tokenize(sentence) 
+    #     tokens = tokens[:max_input_length-2]  # Account for [CLS] and [SEP]
+    #     return tokens
         
-    TEXT = data.Field(batch_first = True,
-                    use_vocab = False,
-                    tokenize = tokenize_and_cut,
-                    preprocessing = tokenizer.convert_tokens_to_ids,
-                    init_token = tokenizer.cls_token_id,
-                    eos_token = tokenizer.sep_token_id,
-                    pad_token = tokenizer.pad_token_id,
-                    unk_token = tokenizer.unk_token_id)
+    # # Define fields
+    # TEXT = data.Field(batch_first=True,
+    #                 use_vocab=False,
+    #                 tokenize=tokenize_and_cut,
+    #                 preprocessing=tokenizer.convert_tokens_to_ids,
+    #                 init_token=tokenizer.cls_token_id,
+    #                 eos_token=tokenizer.sep_token_id,
+    #                 pad_token=tokenizer.pad_token_id,
+    #                 unk_token=tokenizer.unk_token_id)
 
-    LABEL = data.LabelField(dtype = torch.float)
+    # LABEL = data.LabelField(dtype=torch.float)
+    
+    # # Load data from CSV files
+    # fields = [('text', TEXT), ('label', LABEL)]
+    
+    # train_data, val_data, test_data = data.TabularDataset.splits(
+    #     path='./data/imdb_reviews',
+    #     train='train/reviews.csv',
+    #     validation='val/reviews.csv',
+    #     test='test/reviews.csv',
+    #     format='csv',
+    #     skip_header=True,
+    #     fields=fields
+    # )
+    
+    # # Build vocabulary (only needed for the label field in this case)
+    # LABEL.build_vocab(train_data)
+    
+    # print(f"Number of training examples: {len(train_data)}")
+    # print(f"Number of validation examples: {len(val_data)}")
+    # print(f"Number of testing examples: {len(test_data)}")
+    
+    # # Create iterators
+    
+    # train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
+    #     (train_data, val_data, test_data), 
+    #     batch_size=args.batch_size,
+    #     sort_key=lambda x: len(x.text),  # Sort by length for efficient batching
+    #     sort_within_batch=True,  # Sort within each batch
+    #     device=device,
+    #     shuffle=True,
+    #     repeat=False
+    # )
 
-    traind, testd = datasets.IMDB.splits(TEXT, LABEL)
-    traind.examples = traind.examples + testd.examples 
-    all_data = traind 
-    train_data, test_data = all_data.split(random_state = random.seed(args.seed), split_ratio=0.8) 
-    train_data, valid_data = train_data.split(random_state = random.seed(args.seed), split_ratio=0.875)
-
-    LABEL.build_vocab(train_data)
-
-    print(f"Number of training examples: {len(train_data)}")
-    print(f"Number of validation examples: {len(valid_data)}")
-    print(f"Number of testing examples: {len(test_data)}")
-
-    train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
-        (train_data, valid_data, test_data), 
-        batch_size = args.batch_size, 
-        device = device)
+    train_loader, val_loader, test_loader, tokenizer = get_imdb_data('./data', args.batch_size)
 
     for run in range(args.nb_run):
         prefix = '{:d} / {:d} Running'.format(run + 1, args.nb_run)
@@ -372,9 +422,10 @@ def main_diffusion(args):
         print(sum(p.numel() for p in net.parameters() if p.requires_grad))
         net.cuda()
         pretrained_ViT = models.get_model.get_model('q_distribution', len(tokenizer.vocab), logger, args)
-        pretrained_ViT.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_mcc_net_{run + 1}.pth')))
+        pretrained_ViT.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_acc_net_{run + 1}.pth')))
         pretrained_ViT.cuda()
         net.embedding.load_state_dict(pretrained_ViT.embedding.state_dict())
+        net.pos_encoder.load_state_dict(pretrained_ViT.pos_encoder.state_dict())
         net.ln.load_state_dict(pretrained_ViT.enc[args.depth - 1].la2.state_dict())
         net.solution_head_1.load_state_dict(pretrained_ViT.enc[args.depth - 1].mlp.state_dict())
         net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
@@ -384,35 +435,35 @@ def main_diffusion(args):
         scheduler = warmup_scheduler.GradualWarmupScheduler(optimizer, multiplier=1., total_epoch=args.warmup_epoch, after_scheduler=base_scheduler)
         
         ## make logger
-        best_mcc, best_auroc, best_aurc = 0, 0, 1e6
+        best_acc, best_auroc, best_aurc = 0, 0, 1e6
 
         ## start training
         for epoch in range(args.nb_epochs):
-            train.train_diffusion(train_iterator, net, optimizer, epoch, logger, args, pretrained_ViT)
+            train.train_diffusion(train_loader, net, optimizer, epoch, logger, args, pretrained_ViT)
             
             scheduler.step()
 
             # validation
             net_val = net
-            res = val.validation(valid_iterator, net_val, args) 
+            res = val.validation(val_loader, net_val, args) 
             log = [key + ': {:.3f}'.format(res[key]) for key in res]
             msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
             logger.info(msg)
 
             wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
 
-            # test_results = val.validation(test_loader, net_val, args)
-            # log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
-            # msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
-            # logger.info(msg)
-            # wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
+            test_results = val.validation(test_loader, net_val, args)
+            log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
+            msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+            logger.info(msg)
+            wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
 
-            if res['MCC'] > best_mcc :
-                mcc = res['MCC']
-                msg = f'MCC improved from {best_mcc:.2f} to {mcc:.2f}!!!'
+            if res['Acc.'] > best_acc :
+                acc = res['Acc.']
+                msg = f'Acc. improved from {best_acc:.2f} to {acc:.2f}!!!'
                 logger.info(msg)
-                best_mcc = mcc
-                torch.save(net_val.state_dict(),os.path.join(save_path, f'best_mcc_net_{run+1}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth'))
+                best_acc = acc
+                torch.save(net_val.state_dict(),os.path.join(save_path, f'best_acc_net_{run+1}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth'))
             
             if res['AUROC'] > best_auroc :
                 auroc = res['AUROC']
@@ -433,7 +484,8 @@ def main_diffusion(args):
 if __name__ == '__main__':
     args = utils.train_utils.get_args_parser()
     if args.model == 'diffusion':
-        main_diffusion(args)
+        if args.nb_epochs > 0: 
+            main_diffusion(args)
         test.test_diffusion(args)
         wandb.finish()
     # elif args.model == 'diffusion' and args.stage == 2:
@@ -443,6 +495,7 @@ if __name__ == '__main__':
     #     test.test(args)
     #     wandb.finish()
     else:
-        main(args)
+        if args.nb_epochs > 0:
+            main(args)
         test.test(args)
         wandb.finish()

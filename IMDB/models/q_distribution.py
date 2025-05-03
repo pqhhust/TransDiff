@@ -24,7 +24,7 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 class KEP_SVGPAttention(nn.Module):
-    def __init__(self, dim, num_heads=8, low_rank=5, rank_multi=2, \
+    def __init__(self, dim, num_heads=8, embed_len=64, low_rank=10, rank_multi=10, concate=False, \
                 qk_bias=False, attn_drop=0., proj_drop=0.):
         super(KEP_SVGPAttention, self).__init__()
         assert dim % num_heads == 0, 'dim should be divisible by num_heads'
@@ -38,6 +38,7 @@ class KEP_SVGPAttention(nn.Module):
         ## projection weights we, wr in kep_svgp attention
         self.low_rank = low_rank
         self.rank_multi = rank_multi
+        self.embed_len = embed_len
         self.we = nn.Parameter(nn.init.orthogonal_(torch.Tensor(self.num_heads, self.low_rank * self.rank_multi, self.low_rank)))
         self.wr = nn.Parameter(nn.init.orthogonal_(torch.Tensor(self.num_heads, self.low_rank * self.rank_multi, self.low_rank)))
         self.log_lambda_sqrt_inv_diag = nn.Parameter(nn.init.uniform_(torch.Tensor(self.num_heads, self.low_rank)))
@@ -51,12 +52,16 @@ class KEP_SVGPAttention(nn.Module):
     def gen_weights(self, x):
         ## evenly sample
         # to cope with variable token lengths
-        indices = torch.linspace(0, x.shape[1]-1, self.low_rank * self.rank_multi, dtype=int)
-        x = x.transpose(-2,-1).reshape(x.size(0), self.num_heads, self.head_dim, x.size(1))
-        x = x[:, :, :, indices].transpose(1, 2)
+        if self.embed_len > self.low_rank * self.rank_multi:
+            indices = torch.linspace(0, x.shape[1]-1, self.low_rank * self.rank_multi, dtype=int)
+            x = x.transpose(-2,-1).reshape(x.size(0), self.num_heads, self.head_dim, x.size(1))
+            x = x[:, :, :, indices].transpose(1, 2)
+        else:
+            x = x.transpose(-2,-1).reshape(x.size(0), self.num_heads, self.head_dim, x.size(1))
+            x = x.transpose(1, 2)
         we = torch.einsum('bahd,hde->bahe', x, self.we.type_as(x)).transpose(1,2)
         wr = torch.einsum('bahd,hde->bahe', x, self.wr.type_as(x)).transpose(1,2)
-        return we, wr 
+        return we, wr
 
     def feature_map(self, x):
         ## normalization should be on dim=-1
@@ -127,7 +132,7 @@ class KEP_SVGPAttention(nn.Module):
         return attn_out, [escore, rscore, self.we, self.wr], lambda_sqrt_inv_diag, kl, mean, covariance
 
 class TransformerEncoder(nn.Module):
-    def __init__(self, args, attn_type, feats, mlp_hidden=128, head=8, dropout=0., \
+    def __init__(self, args, attn_type, feats, mlp_hidden=128, head=8, dropout=0., embed_len=64, \
                 low_rank=10, rank_multi=10, attn_drop=0.):
         super(TransformerEncoder, self).__init__()
         self.attn_type = attn_type
@@ -135,8 +140,7 @@ class TransformerEncoder(nn.Module):
         if self.attn_type == "softmax":
             self.msa = MultiHeadSelfAttention(feats, head=head, dropout=dropout)
         elif self.attn_type == "kep_svgp":
-            self.msa = KEP_SVGPAttention(feats, head, low_rank=low_rank, rank_multi=rank_multi, \
-                                            proj_drop=dropout)
+            self.msa = KEP_SVGPAttention(feats, head, embed_len=embed_len, low_rank=low_rank, rank_multi=rank_multi, proj_drop=dropout)
         self.la2 = nn.LayerNorm(feats)
         self.mlp = nn.Sequential(
             nn.Linear(feats, mlp_hidden),
@@ -226,23 +230,24 @@ class Transformer(nn.Module):
             nn.Linear(hidden, num_classes) # for cls_token
         )
 
-    def forward(self, input_data, positional, inputs_mask, data):
+    def forward(self, text):
         x_t = []
         score_list = []
         Lambda_inv_list = []
         kl_list = []
         means = []
         covariances = []
-        out = self.embedding.forward(input_data, positional, data)
+        out = self.embedding(text) 
+        out = self.pos_encoder(out)
         x_t.append(out)
         for enc in self.enc:
             if enc.attn_type == "softmax":
-                out, x_t_trans, mean, cov = enc(out, inputs_mask)
+                out, x_t_trans, mean, cov = enc(out)
                 x_t.append(x_t_trans)
                 means.append(mean)
                 covariances.append(cov)
             elif enc.attn_type == "kep_svgp":
-                out, scores, Lambda_inv, kl, x_t_trans, mean, cov = enc(out, inputs_mask)
+                out, scores, Lambda_inv, kl, x_t_trans, mean, cov = enc(out)
                 score_list.append(scores)
                 Lambda_inv_list.append(Lambda_inv)
                 kl_list.append(kl)

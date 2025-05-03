@@ -2,7 +2,7 @@ import torch
 import gpytorch
 import math
 
-from IMDB.models.transformer_imdb import ViT
+from models.transformer_imdb import Transformer
 
 class ViTFeatureExtractor(ViT):
     def forward(self, input_data, positional, inputs_mask, data):

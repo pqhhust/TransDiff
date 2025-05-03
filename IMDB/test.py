@@ -8,9 +8,9 @@ import models.get_model
 import csv
 from torch.utils.data import DataLoader
 import wandb
-import gpytorch
+# import gpytorch
 
-from data_loader import get_data, get_vocab, DataLoader
+from data_loader import get_imdb_data
 
 
 def process_results(args, loader, model, metrics, logger, method_name, results_storage):
@@ -22,9 +22,9 @@ def process_results(args, loader, model, metrics, logger, method_name, results_s
 
 def test(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    metrics = ['MCC', 'Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
+    metrics = ['Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
     results_storage = {metric: [] for metric in metrics}
-    results_storage_ood = {metric: [] for metric in metrics}
+    # results_storage_ood = {metric: [] for metric in metrics}
     cor_results_all_models = {}
 
     if args.attn_type == 'sgpa':
@@ -37,42 +37,42 @@ def test(args):
     logger = utils.utils.get_logger(save_path)
 
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
-    data_train, gold_train, data_test, gold_test, data_ood, gold_ood=\
-            get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
-    word_to_int, _ = get_vocab(data_train, args.min_word_count)
-    vocab_size = len(word_to_int)
+    # data_train, gold_train, data_test, gold_test, data_ood, gold_ood=\
+    #         get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
+    # word_to_int, _ = get_vocab(data_train, args.min_word_count)
+    # vocab_size = len(word_to_int)
 
-    test_loader = DataLoader(data_test,gold_test,args.batch_size,word_to_int,device,shuffle=False)
-    ood_loader = DataLoader(data_ood,gold_ood,args.batch_size,word_to_int,device,shuffle=False)
-
+    # test_loader = DataLoader(data_test,gold_test,args.batch_size,word_to_int,device,shuffle=False)
+    # ood_loader = DataLoader(data_ood,gold_ood,args.batch_size,word_to_int,device,shuffle=False)
+    _, _, test_loader, tokenizer = get_imdb_data('./data', args.batch_size)
     for r in range(args.nb_run):
         logger.info(f'Testing model_{r + 1} ...')
         
-        net = models.get_model.get_model(args.model, vocab_size, logger, args)
-        net.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_net_{r + 1}.pth')))
+        net = models.get_model.get_model(args.model, len(tokenizer.vocab), logger, args)
+        net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
         net = net.cuda()
         if args.model == 'svdkl':
-            # pass
-            likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=2).cuda()
-            likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_likelihood_{r + 1}.pth')))
-            net = (net, likelihood) 
+            pass
+            # likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=2).cuda()
+            # likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_likelihood_{r + 1}.pth')))
+            # net = (net, likelihood) 
         process_results(args, test_loader, net, metrics, logger, "Test Evaluation", results_storage)
-        process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage_ood)
+        # process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage_ood)
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
-    results_ood = {metric: utils.utils.compute_statistics(results_storage_ood[metric]) for metric in metrics}
+    # results_ood = {metric: utils.utils.compute_statistics(results_storage_ood[metric]) for metric in metrics}
     wandb.log({f"Test/{metric}": results[metric]['mean'] for metric in results})
-    wandb.log({f"Test_ood/{metric}": results_ood[metric]['mean'] for metric in results_ood})
+    # wandb.log({f"Test_ood/{metric}": results_ood[metric]['mean'] for metric in results_ood})
     test_results_path = os.path.join(save_path, 'test_results.csv')
-    test_results_path_ood = os.path.join(save_path, 'test_results_ood.csv')
+    # test_results_path_ood = os.path.join(save_path, 'test_results_ood.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
-    utils.utils.csv_writter(test_results_path_ood, args.dataset, args.model, metrics, results_ood)
+    # utils.utils.csv_writter(test_results_path_ood, args.dataset, args.model, metrics, results_ood)
 
 def test_diffusion(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    metrics = ['MCC', 'Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
+    metrics = ['Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
     results_storage = {metric: [] for metric in metrics}
-    results_storage_ood = {metric: [] for metric in metrics}
+    # results_storage_ood = {metric: [] for metric in metrics}
     cor_results_all_models = {}
 
     if args.attn_type == 'softmax':
@@ -102,31 +102,31 @@ def test_diffusion(args):
     logger = utils.utils.get_logger(save_path)
     
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
-    data_train, gold_train, data_test, gold_test, data_ood, gold_ood=\
-            get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
-    word_to_int, _ = get_vocab(data_train, args.min_word_count)
-    vocab_size = len(word_to_int)
+    # data_train, gold_train, data_test, gold_test, data_ood, gold_ood=\
+    #         get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
+    # word_to_int, _ = get_vocab(data_train, args.min_word_count)
+    # vocab_size = len(word_to_int)
 
-    test_loader = DataLoader(data_test,gold_test,args.batch_size,word_to_int,device,shuffle=False)
-    ood_loader = DataLoader(data_ood,gold_ood,args.batch_size,word_to_int,device,shuffle=False)
-
+    # test_loader = DataLoader(data_test,gold_test,args.batch_size,word_to_int,device,shuffle=False)
+    # ood_loader = DataLoader(data_ood,gold_ood,args.batch_size,word_to_int,device,shuffle=False)
+    _, _, test_loader, tokenizer = get_imdb_data('./data', args.batch_size)
     for r in range(args.nb_run):
         logger.info(f'Testing model_{r + 1} ...')
         
-        net = models.get_model.get_model(args.model, vocab_size, logger, args)
-        net.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_net_{r + 1}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth')))
+        net = models.get_model.get_model(args.model, len(tokenizer.vocab), logger, args)
+        net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth')))
         net = net.cuda()
         process_results(args, test_loader, net, metrics, logger, "Test Evaluation", results_storage)
-        process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage_ood)
+        # process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage_ood)
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
-    results_ood = {metric: utils.utils.compute_statistics(results_storage_ood[metric]) for metric in metrics}
+    # results_ood = {metric: utils.utils.compute_statistics(results_storage_ood[metric]) for metric in metrics}
     wandb.log({f"Test/{metric}": results[metric]['mean'] for metric in results})
-    wandb.log({f"Test_ood/{metric}": results_ood[metric]['mean'] for metric in results_ood})
+    # wandb.log({f"Test_ood/{metric}": results_ood[metric]['mean'] for metric in results_ood})
     test_results_path = os.path.join(save_path, 'test_results.csv')
-    test_results_path_ood = os.path.join(save_path, 'test_results_ood.csv')
+    # test_results_path_ood = os.path.join(save_path, 'test_results_ood.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
-    utils.utils.csv_writter(test_results_path_ood, args.dataset, args.model, metrics, results_ood)
+    # utils.utils.csv_writter(test_results_path_ood, args.dataset, args.model, metrics, results_ood)
     
     
 if __name__ == '__main__':

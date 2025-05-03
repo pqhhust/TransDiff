@@ -77,14 +77,14 @@ def train(train_loader, net, optimizer, epoch, logger, args):
 
     if args.attn_type == "softmax":
         train_log = {
-            'MCC' : utils.utils.AverageMeter(),
+            # 'MCC' : utils.utils.AverageMeter(),
             'Top1 Acc.' : utils.utils.AverageMeter(),
             'Tot. Loss' : utils.utils.AverageMeter(),
             'LR' : utils.utils.AverageMeter(),
             }
     elif args.attn_type == "kep_svgp":
         train_log = {
-            'MCC' : utils.utils.AverageMeter(),
+            # 'MCC' : utils.utils.AverageMeter(),
             'Top1 Acc.' : utils.utils.AverageMeter(),
             'CE Loss' : utils.utils.AverageMeter(),
             'KSVD Loss' : utils.utils.AverageMeter(),
@@ -101,35 +101,31 @@ def train(train_loader, net, optimizer, epoch, logger, args):
     msg = '####### --- Training Epoch {:d} --- #######'.format(epoch)
     logger.info(msg)
 
-    for i in range(train_loader.num_batches):
-        data, inputs, inputs_mask, positional, answers = train_loader.__load_next__()
-        inputs = inputs.to(f'cuda:{args.gpu}')
-        inputs_mask = inputs_mask.to(f'cuda:{args.gpu}')
-        positional = positional.to(f'cuda:{args.gpu}')
-        answers = answers.to(f'cuda:{args.gpu}')
+    for i, batch in enumerate(train_loader):
+        inputs, targets = batch['input_ids'].cuda(), batch['labels'].cuda()
 
         optimizer.zero_grad()
         
         if args.attn_type == 'sgpa':
-            loss = net.loss(inputs, answers, positional, inputs_mask, data, anneal_kl=min(1.0, epoch * 2 / args.nb_epochs))
+            loss = net.loss(inputs, anneal_kl=min(1.0, epoch * 2 / args.nb_epochs))
         else:
-            outs = net(inputs, positional, inputs_mask, data)
+            outs = net(inputs)
 
         if args.attn_type == "softmax":
-            loss = compute_loss(cls_criterion, outs, answers)
+            loss = compute_loss(cls_criterion, outs, targets)
         elif args.attn_type == "kep_svgp":
-            loss, loss_ce, loss_ksvd, loss_kl = compute_loss(cls_criterion, outs[0], answers, \
+            loss, loss_ce, loss_ksvd, loss_kl = compute_loss(cls_criterion, outs[0], targets, \
                                                             outs[1], outs[2], outs[3], args.eta_ksvd, args.eta_kl)
 
         loss.backward()
         optimizer.step()
 
         if args.attn_type == "softmax":
-            prec, _ = utils.utils.accuracy(outs, answers)
-            mcc = utils.utils.mcc(outs, answers)
+            prec, _ = utils.utils.accuracy(outs, targets)
+            # mcc = utils.utils.mcc(outs, answers)
         elif args.attn_type == "kep_svgp":
-            prec, _ = utils.utils.accuracy(outs[0], answers)
-            mcc = utils.utils.mcc(outs[0], answers)
+            prec, _ = utils.utils.accuracy(outs[0], targets)
+            # mcc = utils.utils.mcc(outs[0], answers)
 
         for param_group in optimizer.param_groups:
             lr = param_group["lr"]
@@ -139,7 +135,7 @@ def train(train_loader, net, optimizer, epoch, logger, args):
         train_log['Tot. Loss'].update(loss.item(), inputs.size(0))
         train_log['LR'].update(lr, inputs.size(0))
         if args.attn_type == "softmax" or args.attn_type == 'kep_svgp':
-            train_log['MCC'].update(mcc, inputs.size(0))
+            # train_log['Acc.'].update(acc, inputs.size(0))
             train_log['Top1 Acc.'].update(prec.item(), inputs.size(0))
         if args.attn_type == "kep_svgp":
             train_log['CE Loss'].update(loss_ce.item(), inputs.size(0))
@@ -199,18 +195,14 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     msg = '####### --- Training Epoch {:d} --- #######'.format(epoch)
     logger.info(msg)
 
-    for i in range(train_loader.num_batches):
-        data, inputs, inputs_mask, positional, answers = train_loader.__load_next__()
-        inputs = inputs.to(f'cuda:{args.gpu}')
-        inputs_mask = inputs_mask.to(f'cuda:{args.gpu}')
-        positional = positional.to(f'cuda:{args.gpu}')
-        answers = answers.to(f'cuda:{args.gpu}')
+    for i, batch in enumerate(train_loader):
+        inputs, targets = batch['input_ids'].cuda(), batch['labels'].cuda()
 
         optimizer.zero_grad()
-        outs = diffusion_model(inputs, positional, data)
-        ce_loss = compute_loss(ce_criterion, outs, answers)
+        outs = diffusion_model(inputs)
+        ce_loss = compute_loss(ce_criterion, outs, targets)
         with torch.no_grad(): #to be uncomment
-            _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs, positional, inputs_mask, data)
+            _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs)
         means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_ViT, train=True)
         # print(x_t_from_diffusion[0].shape) # for debug only
         # print(means_x_minus[0].shape) # for debug only

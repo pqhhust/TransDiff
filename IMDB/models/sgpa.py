@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import numpy.random as npr
 import torch.nn as nn   
-from allennlp.modules.elmo import batch_to_ids, Elmo
+# from allennlp.modules.elmo import batch_to_ids, Elmo
 import math
 
 def kernel_ard(X1, X2, log_ls, log_sf):
