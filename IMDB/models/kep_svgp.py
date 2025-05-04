@@ -22,7 +22,7 @@ class KEP_SVGPAttention(nn.Module):
         self.we = nn.Parameter(nn.init.orthogonal_(torch.Tensor(self.num_heads, self.low_rank * self.rank_multi, self.low_rank)))
         self.wr = nn.Parameter(nn.init.orthogonal_(torch.Tensor(self.num_heads, self.low_rank * self.rank_multi, self.low_rank)))
         self.log_lambda_sqrt_inv_diag = nn.Parameter(nn.init.uniform_(torch.Tensor(self.num_heads, self.low_rank)))
-
+        self.concate = concate
         ## sparse GP
         self.m_u = nn.Parameter(nn.init.normal_(torch.Tensor(1, self.num_heads, self.low_rank, self.low_rank)))
         self.s_sqrt_low_triangle = nn.Parameter(nn.init.normal_(torch.Tensor(1, self.num_heads, self.low_rank, self.low_rank, self.low_rank)))
@@ -57,32 +57,42 @@ class KEP_SVGPAttention(nn.Module):
         k = self.feature_map(k) 
         escore = torch.einsum('...nd,...de->...ne', q, we)
         rscore = torch.einsum('...nd,...de->...ne', k, wr)
+        if self.concate:
+            score = torch.cat((escore, rscore), dim=2)
 
         ## compute mean and covariance for the SGP
         # mean
         lambda_sqrt_inv_diag = torch.diag_embed(torch.exp(self.log_lambda_sqrt_inv_diag))
-        v1 = (escore + rscore) @ (lambda_sqrt_inv_diag.unsqueeze(0) ** 2)
+        if self.concate:
+            v1 = score @ (lambda_sqrt_inv_diag.unsqueeze(0) ** 2)
+        else:
+            v1 = (escore + rscore) @ (lambda_sqrt_inv_diag.unsqueeze(0) ** 2)
         mean = v1 @ self.m_u
         # covariance 
         s_sqrt = torch.exp(self.log_ssqrt) 
         s_sqrt_diag = torch.diag_embed(s_sqrt) 
         s_sqrt_local = s_sqrt_diag + torch.tril(self.s_sqrt_low_triangle, diagonal=-1) 
-        
+
         # choleskey factor of the covariance matrix
         # the last dimension should be the [d] dimension
-        # v2 = v1.unsqueeze(2) @ s_sqrt_local.permute(0,1,4,2,3) 
-        v2 = v1.unsqueeze(2) @ s_sqrt_local
+        v2 = v1.unsqueeze(2) @ s_sqrt_local.permute(0,1,4,2,3) 
+        
         ## samples from the approximate posterior
-        # samples = mean + (v2.permute(0,1,3,2,4) @ torch.randn(B, self.num_heads, N, mean.shape[3], 1).to(x.device)).squeeze()
-        samples = mean + (v2 @ torch.randn(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze().permute(0, 1, 3, 2)
+        if self.concate:
+            samples = mean + (v2.permute(0,1,3,2,4) @ torch.randn(B, self.num_heads, 2*N, mean.shape[3], 1).to(x.device)).squeeze()
+        else:
+            samples = mean + (v2.permute(0,1,3,2,4) @ torch.randn(B, self.num_heads, N, mean.shape[3], 1).to(x.device)).squeeze()
         attn_out = self.final_weight(samples)
+        if self.concate:
+            attn_out = self.embed_len_weight(attn_out.permute(0,1,3,2)).permute(0,1,3,2)
         attn_out = attn_out.transpose(1, 2).reshape(B, N, C)
+        # attn_out = self.proj(attn_out)
         attn_out = self.proj_drop(attn_out)
 
         ## compute the KL divergence 
         # Tr(\Lambda^{-2}S_{uu}) term 
         # where Tr(AA^\top) = ||A||_F^2
-        v3 = (lambda_sqrt_inv_diag[None,None,...] ** 2) @ s_sqrt_local.permute(0, 2, 1, 3, 4)
+        v3 = (lambda_sqrt_inv_diag[None,None,...] ** 2) @ s_sqrt_local.permute(0,4,1,2,3)
         kl = 0.5 * torch.sum(v3.pow(2)) 
         # m_u^\top\Lambda^{-2}m_u term:
         mu_d = self.m_u.permute(0,1,3,2).unsqueeze(-1)

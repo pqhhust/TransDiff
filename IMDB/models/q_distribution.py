@@ -89,11 +89,11 @@ class KEP_SVGPAttention(nn.Module):
         s_sqrt_local = s_sqrt_diag + torch.tril(self.s_sqrt_low_triangle, diagonal=-1) # (1, num_heads, low_rank, low_rank, low_rank) 
         # choleskey factor of the covariance matrix
         # the last dimension should be the [d] dimension
-        v2 = v1.unsqueeze(2) @ s_sqrt_local
+        v2 = v1.unsqueeze(2) @ s_sqrt_local.permute(0,1,4,2,3)
         
         ## samples from the approximate posterior
-        samples = mean + (v2 @ torch.randn(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze().permute(0, 1, 3, 2)
-        covariance = (v2 @ torch.ones(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze().permute(0, 1, 3, 2)
+        samples = mean + (v2.permute(0,1,3,2,4) @ torch.randn(B, self.num_heads, N, mean.shape[3], 1).to(x.device)).squeeze()
+        covariance = (v2.permute(0,1,3,2,4) @ torch.ones(B, self.num_heads, N, mean.shape[3], 1).to(x.device)).squeeze()
 
         attn_out = self.final_weight(samples)
         mean = self.final_weight(mean)
