@@ -561,7 +561,7 @@ def main_distillation(args):
                 msg = f'Accuracy improved from {best_acc:.2f} to {acc:.2f}!!!'
                 logger.info(msg)
                 best_acc = acc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}_diffusion_{args.backbone}.pth'))
+                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}_{args.temperature}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth'))
                 # torch.save(pretrained_ViT.state_dict(), os.path.join(save_path, f'best_acc_net_{run + 1}_vit_fc.pth'))
             
             if res['AUROC'] > best_auroc:
@@ -569,16 +569,16 @@ def main_distillation(args):
                 msg = f'AUROC improved from {best_auroc:.2f} to {auroc:.2f}!!!'
                 logger.info(msg)
                 best_auroc = auroc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}_diffusion_{args.backbone}.pth'))
+                # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}_diffusion_{args.backbone}.pth'))
         
             if res['AURC'] < best_aurc:
                 aurc = res['AURC']
                 msg = f'AURC decreased from {best_aurc:.2f} to {aurc:.2f}!!!'
                 logger.info(msg)
                 best_aurc = aurc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
+                # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
         
-        torch.save(net.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
+        torch.save(net.state_dict(), os.path.join(save_path, f'last_net_{run+1}.pth'))
         
 if __name__ == '__main__':
     args = utils.train_utils.get_args_parser()
@@ -594,7 +594,7 @@ if __name__ == '__main__':
     #     wandb.finish()
     if args.model == 'diffusion_distillation' or args.model == 'vit_cifar_distillation':
         main_distillation(args)
-        test.test_diffusion(args)
+        test.test_distillation(args)
         wandb.finish()
     else:
         main(args)
