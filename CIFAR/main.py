@@ -279,6 +279,15 @@ def main_diffusion(args):
                 msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
                 logger.info(msg)
                 wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
+                
+                test_results = val.validation_diffusion(test_loader, net, args, pretrained_ViT)
+                # if epoch % args.update_ema_interval == 0:
+                #     restore_ema(args, ema, net)
+        
+                log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
+                msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+                logger.info(msg)
+                wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
 
                 # Save best models based on metrics
                 if res['Acc.'] > best_acc:
