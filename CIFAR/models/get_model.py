@@ -31,6 +31,8 @@ def get_model(model_name, nb_cls, logger, args):
             net = models.diffusion.Diffusion_MLPMixer()
         if args.backbone == 'lstm' or args.backbone == 'gru':
             net = models.diffusion.Diffusion_RNN(args=args, rnn_hidden=args.rnn_hidden, rnn_num_layers=args.rnn_num_layers, dropout=args.rnn_dropout, ViT_depth=args.depth, low_dim=args.rnn_low_dim)
+    if model_name == 'vit_cifar_teacher':
+        net = models.vit_cifar.vit_cifar_teacher(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
     msg = 'Using {} ...'.format(model_name)
     logger.info(msg)
     return net

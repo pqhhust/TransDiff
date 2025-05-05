@@ -240,6 +240,90 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
 
     # Replace writer.add_scalar with wandb.log
     wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
+    
+def train_distillation(train_loader, diffusion_model, optimizer, epoch, logger, args, vit_model):
+    """
+    Train the Diffusion model by aligning its layers with the ViT model's layers using MSE loss.
+    
+    Parameters:
+        train_loader (DataLoader): Training data loader.
+        diffusion_model (nn.Module): Diffusion model to be trained.
+        optimizer (Optimizer): Optimizer for the Diffusion model.
+        epoch (int): Current epoch number.
+        logger (Logger): Logger for logging information.
+        args (Namespace): Command-line arguments.
+        vit_model (nn.Module): Pre-trained ViT model for layer alignment.
+    """
+    diffusion_model.train()
+    vit_model.eval()  # Ensure ViT is in evaluation mode
+
+    # Freeze ViT model parameters
+    # for param in diffusion_model.parameters():
+    #     param.requires_grad = False
+
+    for param in vit_model.parameters():
+        param.requires_grad = False
+
+    # for param in vit_model.fc.parameters():
+    #     param.requires_grad = True
+
+    # Define loss function
+    mse_criterion = nn.MSELoss() #to be uncomment
+
+    ce_criterion = nn.CrossEntropyLoss()
+
+    # Initialize training logs
+    train_log = {
+        'CE Loss': utils.utils.AverageMeter(),
+        'Soft Targets Loss': utils.utils.AverageMeter(),
+        'Tot. Loss': utils.utils.AverageMeter(),
+        'LR': utils.utils.AverageMeter(),
+    }
+
+    msg = '####### --- Training Epoch {:d} --- #######'.format(epoch)
+    logger.info(msg)
+
+    for i, (inputs, targets) in enumerate(train_loader):
+        inputs, targets = inputs.cuda(), targets.cuda()
+        optimizer.zero_grad()
+        
+        T = args.temperature
+        
+        student_logits = diffusion_model(inputs)
+
+        ce_loss = ce_criterion(student_logits, targets)
+        with torch.no_grad(): #to be uncomment
+            teacher_logits = vit_model(inputs)
+        # print(x_t_from_diffusion[0].shape) # for debug only
+        # print(means_x_minus[0].shape) # for debug only
+        #to be uncomment
+        soft_targets = nn.functional.softmax(teacher_logits / T, dim=-1)
+        log_soft_prob = nn.functional.log_softmax(student_logits / T, dim=-1)
+        soft_targets_loss = nn.functional.kl_div(log_soft_prob, soft_targets, reduction='batchmean') * (T**2)
+        loss = args.lambda_mean * soft_targets_loss + args.lambda_ce * ce_loss
+        loss.backward()
+        optimizer.step()
+
+        for param_group in optimizer.param_groups:
+            lr = param_group["lr"]
+            break
+        
+        train_log['CE Loss'].update(ce_loss.item(), inputs.size(0))
+        train_log['Soft Targets Loss'].update(soft_targets_loss.item(), inputs.size(0))
+        train_log['Tot. Loss'].update(loss.item(), inputs.size(0))
+        train_log['LR'].update(lr, inputs.size(0))
+
+        if i % 100 == 99:
+            log = ['LR : {:.5f}'.format(train_log['LR'].avg)] + [
+                key + ': {:.2f}'.format(train_log[key].avg) for key in train_log if key != 'LR'
+            ]
+            msg = 'Epoch {:d} \t Batch {:d}\t'.format(epoch, i) + '\t'.join(log)
+            logger.info(msg)
+            for key in train_log:
+                train_log[key] = utils.utils.AverageMeter()
+
+    # Replace writer.add_scalar with wandb.log
+    wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
 
 def train_diffusion_stage2(train_loader, diffusion_model, optimizer, epoch, logger, args, vit_model):
     diffusion_model.eval()

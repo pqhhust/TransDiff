@@ -73,6 +73,10 @@ def vit_cifar(args, attn_type, num_classes, ksvd_layers, low_rank, rank_multi):
     return ViT(args=args, attn_type=attn_type, ksvd_layers=ksvd_layers, num_classes=num_classes, low_rank=low_rank, rank_multi=rank_multi, \
                 img_size=32, patch=8, dropout=0.1, num_layers=args.depth, hidden=args.hdim, head=args.num_heads, mlp_hidden=args.hdim, is_cls_token=False) 
 
+def vit_cifar_teacher(args, attn_type, num_classes, ksvd_layers, low_rank, rank_multi):
+    return ViT(args=args, attn_type=attn_type, ksvd_layers=ksvd_layers, num_classes=num_classes, low_rank=low_rank, rank_multi=rank_multi, \
+                img_size=32, patch=8, dropout=0.1, num_layers=args.teacher_depth, hidden=args.hdim, head=args.num_heads, mlp_hidden=args.hdim, is_cls_token=False)
+
 if __name__ == "__main__":
     b,c,h,w = 100, 3, 32, 32
     x = torch.randn(b, c, h, w).cuda()

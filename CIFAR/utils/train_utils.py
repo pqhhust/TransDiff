@@ -13,7 +13,7 @@ def get_args_parser():
     parser.add_argument('--wandb-key', default=None, type=str, help='Set wandb key for tracking progresses')
     
     ## Model
-    parser.add_argument('--model', default='vit_cifar', type=str, choices = ['vit_cifar', 'diffusion', 'svdkl'], help='Models name to use')
+    parser.add_argument('--model', default='vit_cifar', type=str, choices = ['vit_cifar', 'diffusion', 'svdkl', 'diffusion_distillation', 'vit_cifar_distillation'], help='Models name to use')
     parser.add_argument('--depth', type=int, default=7)
     parser.add_argument('--hdim', type=int, default=384)
     parser.add_argument('--num_heads', type=int, default=12)
@@ -97,6 +97,8 @@ def get_args_parser():
     parser.add_argument('--trans_num_heads', type=int, help='number of heads of a DiTBlock')
     parser.add_argument('--trans_mlp_ratio', type=float, help='ratio between mlp hidden dimension of a transformer layer and d_model')
     parser.add_argument('--trans_dropout', type=float, help='dropout rate for transformer backbone')
+    parser.add_argument('--temperature', type=float, help='temperature for softmax')
+    parser.add_argument('--teacher_depth', type=int, default=7, help='number of layers for teacher model')
     # diffusion setting
     # Diffusion = subparsers.add_parser("Diffusion",
     #                                  description='Dataset parser for training on Diffusion',
