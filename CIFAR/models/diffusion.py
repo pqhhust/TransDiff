@@ -117,6 +117,22 @@ class Diffusion_Transformer(nn.Module):
                 means.append(mean)
                 stds.append(std)
             return means, stds
+        
+class Diffusion_Transformer_Pretrained(Diffusion_Transformer):
+    def forward(self, x):
+        x = self._to_words(x)
+        x = self.emb(x)
+        x = x + self.pos_emb
+        means = []
+        stds = []
+        x_t = [x]
+        for t in range(self.ViT_depth):
+            t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
+            mean, std, x = self.forward_step(x, t_tensor)
+            means.append(mean)
+            stds.append(std)
+            x_t.append(x)
+        return x_t, means, stds
 
 class Diffusion_UNet1D(Unet1D):
     def __init__(

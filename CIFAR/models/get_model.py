@@ -10,7 +10,7 @@ def get_model(model_name, nb_cls, logger, args):
     #     feature_extractor = models.svdkl.vit_cifar(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
     #     net = models.svdkl.DKLModel(feature_extractor, num_dim=args.hdim)
     if model_name == "q_distribution":
-        net = models.q_distribution.vit_cifar(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
+        net = models.diffusion.Diffusion_Transformer_Pretrained(d_model=args.hdim, depth=args.trans_depth, num_heads=args.trans_num_heads, mlp_ratio=args.trans_mlp_ratio, dropout=args.trans_dropout, ViT_depth=args.depth, nb_cls=args.nb_cls)
     if model_name == "vit_cifar":
         if args.attn_type == "sgpa":
             net = models.sgpa.ViT(device=f'cuda:{args.gpu}', depth=args.depth, patch_size=4, in_channels=3, max_len = 64, num_class=args.nb_cls, hdim=args.hdim, num_heads=args.num_heads, sample_size=1, jitter=1e-6, drop_rate=0.1, keys_len=16, kernel_type='ard', flag_sgp=True).cuda()

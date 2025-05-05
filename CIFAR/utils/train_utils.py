@@ -87,6 +87,8 @@ def get_args_parser():
     parser.add_argument('--run_name', default=None, type=str, help='name of wandb run')
     parser.add_argument('--adversarial_noise', default=0.01, type=float, help='std of adversarial noise')
     parser.add_argument('--adversarial_samples', default=0, type=int, help='number of adversarial samples')
+    parser.add_argument('--burnout_epoch', default=20, type=int, help='number of epochs to burn out')
+    parser.add_argument('--update_pretrain_every', default=5, type=int, help='update pretrain every k epochs')
 
     parser.add_argument('--rnn_hidden', default=384, type=int, help='hidden dimension of rnn backbone')
     parser.add_argument('--rnn_num_layers', default=1, type=int, help='number of layers of rnn backbone')

@@ -186,7 +186,7 @@ def test_diffusion(args):
         print(nb_cls)
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
         pretrained_ViT = None
-        net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_diffusion_{args.backbone}.pth')))
+        net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_diffusion_{args.backbone}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth')))
         net = net.cuda()
         process_results_diffusion(args, test_loader, net, metrics, logger, "MSP", results_storage, pretrained_ViT)
 

@@ -278,8 +278,8 @@ def main_diffusion(args):
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}")
         elif args.backbone == 'transformer':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
-        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
-        group = "VIT-DiT"
+        # pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
+        group = "VIT-DiT-Without_Pretrained_Model"
     elif args.attn_type == 'kep_svgp':
         if args.backbone == 'mlp':
             save_path = os.path.join(
@@ -296,11 +296,11 @@ def main_diffusion(args):
                 args.save_dir,
                 f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}"
             )
-        pretrained_path = os.path.join(
-            args.pretrained_dir,
-            f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
-        )
-        group = "KEP-SVGP-DiT"
+        # pretrained_path = os.path.join(
+        #     args.pretrained_dir,
+        #     f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
+        # )
+        group = "KEP-SVGP-DiT-Without_Pretrained_Model"
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -332,14 +332,14 @@ def main_diffusion(args):
         print(net)
         print(sum(p.numel() for p in net.parameters() if p.requires_grad))
         net.cuda()
-        pretrained_ViT = models.get_model.get_model('q_distribution', nb_cls, logger, args)
-        pretrained_ViT.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_acc_net_{run + 1}.pth')))
-        pretrained_ViT.cuda()
-        net.emb.load_state_dict(pretrained_ViT.emb.state_dict())
-        net.pos_emb.data.copy_(pretrained_ViT.pos_emb.data)
-        net.ln.load_state_dict(pretrained_ViT.enc[args.depth - 1].la2.state_dict())
-        net.solution_head_1.load_state_dict(pretrained_ViT.enc[args.depth - 1].mlp.state_dict())
-        net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
+        # pretrained_ViT = models.get_model.get_model('q_distribution', nb_cls, logger, args)
+        # pretrained_ViT.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_acc_net_{run + 1}.pth')))
+        # pretrained_ViT.cuda()
+        # net.emb.load_state_dict(pretrained_ViT.emb.state_dict())
+        # net.pos_emb.data.copy_(pretrained_ViT.pos_emb.data)
+        # net.ln.load_state_dict(pretrained_ViT.enc[args.depth - 1].la2.state_dict())
+        # net.solution_head_1.load_state_dict(pretrained_ViT.enc[args.depth - 1].mlp.state_dict())
+        # net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
         
         ## define optimizer with warm-up
         optimizer = torch.optim.Adam(
@@ -366,8 +366,15 @@ def main_diffusion(args):
         best_acc, best_auroc, best_aurc = 0, 0, 1e6
 
         ## start training
+        pretrained_net = None
         for epoch in range(args.nb_epochs):
-            train.train_diffusion(train_loader, net, optimizer, epoch, logger, args, pretrained_ViT)
+            if epoch == args.burnout_epoch:
+                pretrained_net = models.get_model.get_model('q_distribution', nb_cls, logger, args)
+                pretrained_net.cuda()
+                pretrained_net.load_state_dict(net.state_dict())
+            if epoch > args.burnout_epoch and (epoch - args.burnout_epoch + 1) % args.update_pretrain_every == 0: 
+                pretrained_net.load_state_dict(net.state_dict())
+            train.train_diffusion(train_loader, net, optimizer, epoch, logger, args, pretrained_net)
 
             # if epoch % args.update_ema_interval == 0:
             #     step_ema(args, ema, net, epoch)
@@ -380,14 +387,14 @@ def main_diffusion(args):
             # if epoch % args.update_ema_interval == 0:
             #     apply_ema(args, ema, net)
             net_val = net
-            res = val.validation_diffusion(val_loader, net_val, args, pretrained_ViT) 
+            res = val.validation_diffusion(val_loader, net_val, args, pretrained_net) 
             log = [f"{key}: {res[key]:.3f}" for key in res]
             msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
             logger.info(msg)
 
             wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
 
-            test_results = val.validation_diffusion(test_loader, net_val, args, pretrained_ViT)
+            test_results = val.validation_diffusion(test_loader, net_val, args, pretrained_net)
             # if epoch % args.update_ema_interval == 0:
             #     restore_ema(args, ema, net)
     
@@ -401,7 +408,7 @@ def main_diffusion(args):
                 msg = f'Accuracy improved from {best_acc:.2f} to {acc:.2f}!!!'
                 logger.info(msg)
                 best_acc = acc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}_diffusion_{args.backbone}.pth'))
+                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}_diffusion_{args.backbone}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth'))
                 # torch.save(pretrained_ViT.state_dict(), os.path.join(save_path, f'best_acc_net_{run + 1}_vit_fc.pth'))
             
             if res['AUROC'] > best_auroc:
@@ -409,16 +416,16 @@ def main_diffusion(args):
                 msg = f'AUROC improved from {best_auroc:.2f} to {auroc:.2f}!!!'
                 logger.info(msg)
                 best_auroc = auroc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}_diffusion_{args.backbone}.pth'))
+                # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}_diffusion_{args.backbone}.pth'))
         
             if res['AURC'] < best_aurc:
                 aurc = res['AURC']
                 msg = f'AURC decreased from {best_aurc:.2f} to {aurc:.2f}!!!'
                 logger.info(msg)
                 best_aurc = aurc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
+                # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}_diffusion_{args.backbone}.pth'))
         
-        torch.save(net.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}.pth'))
+        torch.save(net.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth'))
 
 
 if __name__ == '__main__':
