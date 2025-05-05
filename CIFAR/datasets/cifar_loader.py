@@ -3,6 +3,7 @@ import torchvision.transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 # import datasets.cifar_loader
+from transformers import ViTImageProcessor
 
 def TrainDataLoader(img_dir, transform_train, batch_size):
     train_set = ImageFolder(img_dir, transform_train)
@@ -24,14 +25,22 @@ def get_loader(dataset, train_dir, val_dir, test_dir, batch_size):
         norm_mean, norm_std = (0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)
         nb_cls = 100
 
-    transform_train = torchvision.transforms.Compose([torchvision.transforms.RandomCrop(32, padding=4),
-                                                        torchvision.transforms.RandomHorizontalFlip(),
-                                                        torchvision.transforms.ToTensor(),
-                                                        torchvision.transforms.Normalize(norm_mean, norm_std)])
+    # transform_train = torchvision.transforms.Compose([torchvision.transforms.RandomCrop(32, padding=4),
+    #                                                     torchvision.transforms.RandomHorizontalFlip(),
+    #                                                     torchvision.transforms.ToTensor(),
+    #                                                     torchvision.transforms.Normalize(norm_mean, norm_std)])
 
-    # transformation of the test set
-    transform_test = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
-                                                        torchvision.transforms.Normalize(norm_mean, norm_std)])
+    # # transformation of the test set
+    # transform_test = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
+    #                                                     torchvision.transforms.Normalize(norm_mean, norm_std)])
+    processor = ViTImageProcessor.from_pretrained("aaraki/vit-base-patch16-224-in21k-finetuned-cifar10")
+    transform_test = torchvision.transforms.Compose([
+        torchvision.transforms.Lambda(lambda x: processor(x, return_tensors="pt")['pixel_values'].squeeze()),
+    ])
+    transform_train = torchvision.transforms.Compose([
+        torchvision.transforms.Lambda(lambda x: processor(x, return_tensors="pt")['pixel_values'].squeeze()),
+    ])
+
 
     train_loader = TrainDataLoader(train_dir, transform_train, batch_size)
     val_loader = TestDataLoader(val_dir, transform_test, batch_size)

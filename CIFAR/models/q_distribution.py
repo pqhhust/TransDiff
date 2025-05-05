@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torchvision.models import vit_b_16
 from torchvision.models import ViT_B_16_Weights
 from torchvision.models import VisionTransformer
+from transformers import ViTForImageClassification
 
 class KEP_SVGPAttention(nn.Module):
     def __init__(self, dim, num_heads=8, embed_len=64, low_rank=10, rank_multi=10, concate=False, \
@@ -309,7 +310,26 @@ class ViT_ImageNet(nn.Module):
             x = x + out
         return None, x_t, means, stds
             
-        
+class CustomViT(nn.Module):
+    def __init__(self, args):
+        super().__init__()
+        if args.dataset == 'cifar10':
+            self.model = ViTForImageClassification.from_pretrained(
+                'aaraki/vit-base-patch16-224-in21k-finetuned-cifar10'
+            )
+            self.config = self.model.config   
+    def forward(self, pixel_values):
+        x_t = []
+        hidden_states = self.model.vit.embeddings(pixel_values)
+        x_t.append(hidden_states)
+        for i, layer in enumerate(self.model.vit.encoder.layer):
+            x = layer.attention(layer.layernorm_before(hidden_states), output_attentions=False)
+            x = x[0] + hidden_states
+            x_t.append(x)
+            hidden_states = layer.output(layer.intermediate(layer.layernorm_after(x)), hidden_states)
+        means = x_t[1:]
+        stds = [torch.zeros_like(x) for x in means]
+        return None, x_t, means, stds
 
 def vit_cifar(args, attn_type, num_classes, ksvd_layers, low_rank, rank_multi):
     return ViT(args=args, attn_type=attn_type, ksvd_layers=ksvd_layers, num_classes=num_classes, low_rank=low_rank, rank_multi=rank_multi, \

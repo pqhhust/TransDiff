@@ -4,6 +4,8 @@ from models.layers import TransformerEncoder  # Adjust if necessary
 from models.DiT import DiT
 from models.UNet1D import Unet1D
 from torchvision.models.vision_transformer import MLPBlock
+from transformers.models.vit.modeling_vit import ViTEmbeddings, ViTIntermediate, ViTOutput
+from transformers import AutoModelForImageClassification
 
 import math
 
@@ -16,18 +18,24 @@ class Diffusion_Transformer(nn.Module):
         mlp_ratio=1.0,
         dropout=0.1,
         ViT_depth=7,
-        nb_cls=10
+        nb_cls=10,
+        CONFIG=None
     ):
         super().__init__()
+        # if nb_cls == 10:
+        #     CONFIG = AutoModelForImageClassification.from_pretrained("aaraki/vit-base-patch16-224-in21k-finetuned-cifar10").config
+        # else: 
+        #     CONFIG = None
         self.ViT_depth = ViT_depth
         self.d_model = d_model
         self.patch_size = 16
         self.image_size = 224
-        self.conv_proj = nn.Conv2d(
-            in_channels=3, out_channels=d_model, kernel_size=self.patch_size, stride=self.patch_size
-        )
-        self.class_token = nn.Parameter(torch.zeros(1, 1, d_model))
-        self.pos_embedding = nn.Parameter(torch.empty(1, 197, d_model).normal_(std=0.02)) 
+        # self.conv_proj = nn.Conv2d(
+        #     in_channels=3, out_channels=d_model, kernel_size=self.patch_size, stride=self.patch_size
+        # )
+        # self.class_token = nn.Parameter(torch.zeros(1, 1, d_model))
+        # self.pos_embedding = nn.Parameter(torch.empty(1, 197, d_model).normal_(std=0.02)) 
+        self.embedding = ViTEmbeddings(CONFIG)
         self.share_params = DiT(hidden_size=d_model, depth=depth, num_heads=num_heads, mlp_ratio=mlp_ratio)
         self.mean_model = nn.Sequential(
             nn.LayerNorm(d_model),
@@ -41,10 +49,11 @@ class Diffusion_Transformer(nn.Module):
             nn.GELU(),
             nn.Dropout(dropout)
         )
-        self.ln_1 = nn.LayerNorm(d_model)
-        self.solution_head_1 = MLPBlock(in_dim=d_model, mlp_dim=d_model * 4, dropout=dropout)
-        self.ln_2 = nn.LayerNorm(d_model)
-        self.solution_head_2 = nn.Linear(d_model, nb_cls)
+        self.intermediate = ViTIntermediate(CONFIG)
+        self.output = ViTOutput(CONFIG)
+        self.layernorm_after = nn.LayerNorm(d_model, eps=CONFIG.layer_norm_eps)
+        self.layernorm = nn.LayerNorm(d_model, eps=CONFIG.layer_norm_eps)
+        self.classifier = nn.Linear(d_model, nb_cls)
 
     def _process_input(self, x: torch.Tensor) -> torch.Tensor:
         n, c, h, w = x.shape
@@ -77,16 +86,14 @@ class Diffusion_Transformer(nn.Module):
 
     def forward(self, x, train=False):
         if not train:
-            x = self._process_input(x)
-            n = x.shape[0]
-            batch_class_token = self.class_token.expand(n, -1, -1)
-            x = torch.cat([batch_class_token, x], dim=1)
-            x = x + self.pos_embedding
+            x = self.embedding(x)
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 x = self.forward_step(x, t_tensor)[-1]
-            x = self.solution_head_1(self.ln_1(x)) + x
-            return self.solution_head_2(self.ln_2(x)[:, 0])
+            x_layer = self.layernorm_after(x)
+            x_layer = self.intermediate(x_layer)
+            x_layer = self.output(x_layer, x)
+            return self.classifier(self.layernorm(x_layer)[:, 0, :])
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"

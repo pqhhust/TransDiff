@@ -148,8 +148,8 @@ def main_diffusion(args):
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}")
         elif args.backbone == 'transformer':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
-        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
-        group = "ViT-b-16-imagenet1k"
+        # pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
+        group = "ViT-b-16-cifar"
     elif args.attn_type == 'kep_svgp':
         if args.backbone == 'mlp':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.rnn_low_dim}_{args.lr}_{args.clip}_{args.nb_epochs}")
@@ -157,7 +157,7 @@ def main_diffusion(args):
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}")
         elif args.backbone == 'transformer':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
-        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}")
+        # pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}")
         group = "KEP-SVGP-DiT"
 
     # Get rank information from environment variables set by torchrun
@@ -216,7 +216,8 @@ def main_diffusion(args):
             logger.info(100*'#' + '\n' + prefix)
 
         # Define and initialize the model
-        net = models.get_model.get_model(args.model, nb_cls, logger, args)
+        pretrained_ViT = models.get_model.get_model('q_distribution_imagenet', nb_cls, logger, args)
+        net = models.get_model.get_model(args.model, nb_cls, logger, (args, pretrained_ViT.config))
         net = net.cuda()
         net = nn.parallel.DistributedDataParallel(net, device_ids=[local_rank])  # Wrap model with DDP
 
@@ -225,7 +226,6 @@ def main_diffusion(args):
             print(net)
             print(sum(p.numel() for p in net.parameters() if p.requires_grad))
 
-        pretrained_ViT = models.get_model.get_model('q_distribution_imagenet', nb_cls, logger, args)
         pretrained_ViT = nn.parallel.DistributedDataParallel(pretrained_ViT.cuda(), device_ids=[local_rank])
 
         # Define optimizer and scheduler
@@ -251,13 +251,12 @@ def main_diffusion(args):
             start_epoch = training_state_checkpoint['epoch'] + 1
             # logger.info(f"Resuming training from epoch {start_epoch}...")
         else:
-            net.module.conv_proj.load_state_dict(pretrained_ViT.module.model.conv_proj.state_dict())
-            net.module.class_token.data.copy_(pretrained_ViT.module.model.class_token.data)
-            net.module.pos_embedding.data.copy_(pretrained_ViT.module.model.encoder.pos_embedding.data)
-            net.module.ln_1.load_state_dict(pretrained_ViT.module.model.encoder.layers[-1].ln_2.state_dict())
-            net.module.solution_head_1.load_state_dict(pretrained_ViT.module.model.encoder.layers[-1].mlp.state_dict())
-            net.module.ln_2.load_state_dict(pretrained_ViT.module.model.encoder.ln.state_dict())
-            net.module.solution_head_2.load_state_dict(pretrained_ViT.module.model.heads[0].state_dict())
+            net.module.embedding.load_state_dict(pretrained_ViT.module.model.vit.embeddings.state_dict())
+            net.module.intermediate.load_state_dict(pretrained_ViT.module.model.vit.encoder.layer[-1].intermediate.state_dict())
+            net.module.output.load_state_dict(pretrained_ViT.module.model.vit.encoder.layer[-1].output.state_dict())
+            net.module.layernorm_after.load_state_dict(pretrained_ViT.module.model.vit.encoder.layer[-1].layernorm_after.state_dict())
+            net.module.layernorm.load_state_dict(pretrained_ViT.module.model.vit.layernorm.state_dict())
+            net.module.classifier.load_state_dict(pretrained_ViT.module.model.classifier.state_dict())
         # Training loop over epochs
         for epoch in range(start_epoch, args.nb_epochs):
             # Set epoch for sampler to ensure shuffling is consistent across processes
