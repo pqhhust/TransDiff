@@ -205,10 +205,11 @@ def main_diffusion(args):
             args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
         )
         train_sampler = DistributedSampler(train_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=True)
-        val_sampler = DistributedSampler(val_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=False)
+        # val_sampler = DistributedSampler(val_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=False)
         train_loader = DataLoader(train_loader.dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=8, drop_last=True)
         if global_rank == 0:
             val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=None, num_workers=8, drop_last=False)
+            test_loader = DataLoader(test_loader.dataset, batch_size=args.batch_size, sampler=None, num_workers=8, drop_last=False)
 
     for run in range(args.nb_run):
         if global_rank == 0:
