@@ -47,60 +47,53 @@ class MCDropout(nn.Module):
         self.num_estimators = num_estimators
         self.filtered_modules = filtered_modules
 
+    def train(self, mode: bool = True) -> nn.Module:
+        """Override the default train method to set the training mode of
+        each submodule to be the same as the module itself except for the
+        selected dropout modules.
+
+        Args:
+            mode (bool, optional): whether to set the module to training
+                mode. Defaults to True.
+        """
+        if not isinstance(mode, bool):
+            raise TypeError("Training mode is expected to be boolean")
+        self.training = mode
+        for module in self.children():
+            module.train(mode)
+        for module in self.filtered_modules:
+            module.train()
+        return self
+
     def forward(
         self,
         x: Tensor,
-        positional,
-        inputs_mask,
-        data
     ) -> Tensor:
         """Forward pass of the model.
 
-        During training, the forward pass is the same as the core model.
-        During evaluation, applies softmax to each forward pass output and averages the softmax probabilities across num_estimators.
+        During training, the forward pass is the same as of the core model.
+        During evaluation, the forward pass is repeated `num_estimators` times
+        either on the batch size or in a for loop depending on
+        :attr:`last_layer`.
 
         Args:
             x (Tensor): input tensor of shape (B, ...)
-            positional: positional encodings
-            inputs_mask: attention mask
-            data: additional data
 
         Returns:
-            Tensor: averaged softmax probabilities of shape (B, C)
+            Tensor: output tensor of shape (:attr:`num_estimators` * B, ...)
         """
         if self.training:
-            return self.core_model(x, positional, inputs_mask, data)
-
+            return self.core_model(x)
         if self.on_batch:
-            # Repeat input batch for num_estimators
-            x = x.repeat(self.num_estimators, *([1] * (x.dim() - 1)))
-            # Repeat positional, inputs_mask, data if they are tensors
-            if isinstance(positional, Tensor):
-                positional = positional.repeat(self.num_estimators, *([1] * (positional.dim() - 1)))
-            if isinstance(inputs_mask, Tensor):
-                inputs_mask = inputs_mask.repeat(self.num_estimators, *([1] * (inputs_mask.dim() - 1)))
-            if isinstance(data, Tensor):
-                data = data.repeat(self.num_estimators, *([1] * (data.dim() - 1)))
-
-            # Forward pass
-            output = self.core_model(x, positional, inputs_mask, data)
-            # Apply softmax to get probabilities
-            probs = torch.softmax(output, dim=1)
-            # Reshape and average probabilities
-            B, C = x.size(0) // self.num_estimators, probs.size(1)
-            probs = probs.view(B, self.num_estimators, C)
-            output = probs.mean(dim=1)  # Average softmax probabilities
+            x = x.repeat(self.num_estimators, 1, 1, 1)
+            output = self.core_model(x)
+            B, C = x.size(0), output.size(1)
+            output = output.view(B, self.num_estimators, C).mean(1)
             return output
-
         # Else, for loop
-        probs_list = []
-        for _ in range(self.num_estimators):
-            output = self.core_model(x, positional, inputs_mask, data)
-            probs = torch.softmax(output, dim=1)
-            probs_list.append(probs)
-        # Stack and average probabilities
-        probs = torch.stack(probs_list, dim=1)  # Shape: (B, num_estimators, C)
-        output = probs.mean(dim=1)  # Shape: (B, C)
+        output = torch.cat([self.core_model(x) for _ in range(self.num_estimators)], dim=0)
+        B, C = x.size(0), output.size(1)
+        output = output.view(B, self.num_estimators, C).mean(1)
         return output
 
 

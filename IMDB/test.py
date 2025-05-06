@@ -30,7 +30,7 @@ def test(args):
     if args.attn_type == 'sgpa':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
     if args.attn_type == 'softmax':
-        args_model = 'vit_cola' if args.model == 'temperature_scaling' or args.model == 'mc_dropout' else args.model
+        args_model = 'transformer_imdb' if args.model == 'temperature_scaling' or args.model == 'mc_dropout' else args.model
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args_model + '_' + str(args.seed)
     elif args.attn_type == 'kep_svgp':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.seed)

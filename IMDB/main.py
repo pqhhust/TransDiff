@@ -483,9 +483,8 @@ def main_diffusion(args):
 
 if __name__ == '__main__':
     args = utils.train_utils.get_args_parser()
-    if args.model == 'diffusion':
-        if args.nb_epochs > 0: 
-            main_diffusion(args)
+    if args.model == 'diffusion': 
+        main_diffusion(args)
         test.test_diffusion(args)
         wandb.finish()
     # elif args.model == 'diffusion' and args.stage == 2:
@@ -495,7 +494,6 @@ if __name__ == '__main__':
     #     test.test(args)
     #     wandb.finish()
     else:
-        if args.nb_epochs > 0:
-            main(args)
+        main(args)
         test.test(args)
         wandb.finish()

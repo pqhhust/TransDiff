@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.metrics import matthews_corrcoef
 from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
+from data_loader import get_imdb_data
 # from data_loader import get_data, get_vocab, DataLoader
 # import gpytorch
 
@@ -12,21 +13,15 @@ from utils.mc_dropout import mc_dropout
 def validation(loader, net, args, method=None):
     # if args.model == 'svdkl':
     #     method = 'svdkl'
-    # if args.model == "temperature_scaling":
-    #     data_train,gold_train,data_test,gold_test,data_ood,gold_ood=\
-    #         get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
-    #     word_to_int, _ = get_vocab(data_train, args.min_word_count)
-    #     vocab_size = len(word_to_int)
-
-    #     train_loader = DataLoader(data_train,gold_train,args.batch_size,word_to_int,'cuda:0')
-    #     test_loader = DataLoader(data_test,gold_test,args.batch_size,word_to_int,'cuda:0',shuffle=False)
-    #     net = ModelWithTemperature(net)
-    #     net.set_temperature(test_loader)
-    # elif args.model == "mc_dropout":
-    #     net = mc_dropout(net, num_estimators=10, last_layer=True, on_batch=False)
-    # elif args.model == 'svdkl':
-    #     net, likelihood = net
-    #     likelihood.eval()
+    if args.model == "temperature_scaling":
+        train_loader, val_loader, test_loader, tokenizer = get_imdb_data('./data', args.batch_size)
+        net = ModelWithTemperature(net)
+        net.set_temperature(val_loader)
+    elif args.model == "mc_dropout":
+        net = mc_dropout(net, num_estimators=10, last_layer=True, on_batch=False)
+    elif args.model == 'svdkl':
+        net, likelihood = net
+        likelihood.eval()
 
     net.eval()
     

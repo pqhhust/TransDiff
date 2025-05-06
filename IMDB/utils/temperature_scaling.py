@@ -16,8 +16,8 @@ class ModelWithTemperature(nn.Module):
         self.model = model
         self.temperature = nn.Parameter(torch.ones(1) * 1.5)
 
-    def forward(self, input, positional, inputs_mask, data):
-        logits = self.model(input, positional, inputs_mask, data)
+    def forward(self, input):
+        logits = self.model(input)
         if type(logits).__name__ == 'tuple':
             logits = logits[0]
             return [self.temperature_scale(logits)]
@@ -46,17 +46,13 @@ class ModelWithTemperature(nn.Module):
         logits_list = []
         labels_list = []
         with torch.no_grad():
-            for i in range(valid_loader.num_batches):
-                data, inputs, inputs_mask, positional, answers = valid_loader.__load_next__()
-                inputs = inputs.to(f'cuda:0')
-                inputs_mask = inputs_mask.to(f'cuda:0')
-                positional = positional.to(f'cuda:0')
-                answers = answers.to(f'cuda:0')
-                logits = self.model(inputs, positional, inputs_mask, data)
+            for batch in valid_loader:
+                input, label = batch['input_ids'].cuda(), batch['labels'].cuda()
+                logits = self.model(input)
                 if type(logits).__name__ == 'tuple':
                     logits = logits[0]
                 logits_list.append(logits)
-                labels_list.append(answers)
+                labels_list.append(label)
             logits = torch.cat(logits_list).cuda()
             labels = torch.cat(labels_list).cuda()
 
