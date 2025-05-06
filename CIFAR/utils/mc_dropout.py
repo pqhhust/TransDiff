@@ -91,9 +91,14 @@ class MCDropout(nn.Module):
             output = output.view(B, self.num_estimators, C).mean(1)
             return output
         # Else, for loop
-        output = torch.cat([self.core_model(x) for _ in range(self.num_estimators)], dim=0)
-        B, C = x.size(0), output.size(1)
-        output = output.view(B, self.num_estimators, C).mean(1)
+        probs_list = []
+        for _ in range(self.num_estimators):
+            output = self.core_model(x)
+            probs = torch.softmax(output, dim=1)
+            probs_list.append(probs)
+        # Stack and average probabilities
+        probs = torch.stack(probs_list, dim=1)  # Shape: (B, num_estimators, C)
+        output = probs.mean(dim=1)  # Shape: (B, C)
         return output
 
 

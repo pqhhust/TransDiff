@@ -13,12 +13,12 @@ from utils.mc_dropout import mc_dropout
 def validation(loader, net, args, method=None):
     if args.model == 'svdkl':
         method = 'svdkl'
-    if method == "temperature_scaling":
+    if args.model == "temperature_scaling":
         _, valid_loader, _, _ = cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
                                                                        args.test_dir, args.batch_size)
         net = ModelWithTemperature(net)
         net.set_temperature(valid_loader)
-    elif method == "mc_dropout":
+    elif args.model == "mc_dropout":
         net = mc_dropout(net, num_estimators=10, last_layer=False, on_batch=False)
     elif method == "svdkl":
         net, likelihood = net
@@ -48,6 +48,9 @@ def validation(loader, net, args, method=None):
             pass
             # softmax = la(inputs)
             # output = torch.zeros_like(softmax)
+        elif args.model == 'mc_dropout':
+            softmax = net(inputs)
+            output = torch.zeros_like(softmax)
         else:  
             if args.attn_type == "softmax":
                 if method == "mc_dropout":
@@ -91,7 +94,7 @@ def validation(loader, net, args, method=None):
     # calibration measure ece , mce, rmsce
     ece = utils.metrics.calc_ece(val_log['softmax'], val_log['target'], bins=15)
     # brier, nll
-    if method == 'svdkl' or method == 'kflla':
+    if args.model == 'svdkl' or args.model == 'kflla' or args.model == 'mc_dropout':
         softmax = val_log['softmax'].astype(np.float32)
         targets = val_log['target'].astype(np.int64)
         log_probs = np.log(softmax[range(len(targets)), targets] + 1e-10)
