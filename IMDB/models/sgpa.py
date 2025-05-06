@@ -64,13 +64,13 @@ class ClassficationHead(torch.nn.Module):
         self.fc = nn.Sequential(nn.Linear(hdim, num_class), nn.Dropout(drop_rate))
         self.ln = nn.LayerNorm(hdim)
 
-    def forward(self, x, input_mask):
-        input_mask = input_mask.unsqueeze(-1).unsqueeze(1)
-        res = x* input_mask
+    def forward(self, x):
+        res = x
         res = torch.mean(res, 2)
         res = self.ln(res)
         res = self.fc(res)
         return res
+
 class SGP_LAYER(nn.Module):
     def __init__(self, device, num_heads, hdim, kernel_type, sample_size, jitter, keys_len, drop_rate, flag_sgp, inference_mode):
         super(SGP_LAYER, self).__init__()
@@ -123,7 +123,7 @@ class SGP_LAYER(nn.Module):
         else:
             return q, k_gamma, v_gamma
         
-    def forward(self, x, cur_k, mask):
+    def forward(self, x, cur_k):
         # We set W_q = W_k to maintain a valid symmetric deep kernel, so q = k_gamma below when kernel_type='exponential' or 'ard'.
         # We can use different projection matrices if necessary.
         if self.flag_sgp:
@@ -168,14 +168,14 @@ class SGP_LAYER(nn.Module):
         else:
             raise ValueError("The argument 'kernel_type' should be either 'exponential' or 'ard'.")
         
-        mask1 = mask.unsqueeze(-1).view(mask.shape[0],-1, mask.shape[1]).unsqueeze(1)
-        mask2=mask.unsqueeze(1).view(mask.shape[0],mask.shape[1],-1).unsqueeze(1)
-        v_gamma = v_gamma * mask2
+        # mask1 = mask.unsqueeze(-1).view(mask.shape[0],-1, mask.shape[1]).unsqueeze(1)
+        # mask2=mask.unsqueeze(1).view(mask.shape[0],mask.shape[1],-1).unsqueeze(1)
+        # v_gamma = v_gamma * mask2
         if not self.flag_sgp: 
             mean = K_qk_gamma @ v_gamma
             samples = mean.unsqueeze(2) 
             samples = torch.flatten(samples.permute(0,2,3,1,4),-2,-1) 
-            samples = self.W_O(samples) * mask2
+            samples = self.W_O(samples) 
             return samples, None
         else:
             s_sqrt = torch.exp(log_ssqrt) 
@@ -206,8 +206,8 @@ class SGP_LAYER(nn.Module):
                     except Exception:
                         jitter = jitter * 10
 
-                v1 = torch.linalg.solve_triangular(chol_K_kk, K_k_beta_k_gamma, upper=False) * mask1
-                v2 = torch.linalg.solve_triangular(chol_K_kk, K_k_beta_k_gamma @ v_gamma, upper=False)
+                v1 = torch.triangular_solve(K_k_beta_k_gamma, chol_K_kk, upper=False).solution 
+                v2 = torch.triangular_solve(K_k_beta_k_gamma @ v_gamma, chol_K_kk, upper=False).solution
                 v3 = v1.unsqueeze(2).permute(0,1,2,4,3) @ s_sqrt_local
                 mean1 = K_qk_gamma @ v_gamma
                 mean = mean1 - v1.permute(0,1,3,2) @ v2 + K_qk_beta @ v_beta
@@ -219,7 +219,7 @@ class SGP_LAYER(nn.Module):
                 
             samples = mean.unsqueeze(2) + chol_covar * torch.randn((mean.shape[0], mean.shape[1], self.sample_size, mean.shape[2], mean.shape[3]), device=self.device)   
             samples = torch.flatten(samples.permute(0,2,3,1,4),-2,-1) 
-            samples = self.W_O(samples) * mask2
+            samples = self.W_O(samples) 
 
             if self.inference_mode:
                 return samples, None
@@ -232,23 +232,42 @@ class SGP_LAYER(nn.Module):
                 kl += 0.5* torch.mean(torch.sum(temp, (1,2)))
                 kl -= torch.mean(torch.sum(log_ssqrt, (-1, -2, -3))) 
                 return samples, kl
-            
+                
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout= 0.1, max_len=5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        """
+        Arguments:
+            x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+        """
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)
+
 class Embeddings(torch.nn.Module):
     def __init__(self,vocab_size,max_len,emb_size,h_size, drop_rate):
         super(Embeddings,self).__init__()
         
         self.token_embeds=nn.Embedding(vocab_size,emb_size,padding_idx=0)
-        self.pos_embeds=nn.Embedding(max_len,emb_size)
+        self.pos_embeds=PositionalEncoding(emb_size, drop_rate, max_len)
         self.layer_norm=nn.LayerNorm(h_size)
             
         self.project=nn.Linear(emb_size,h_size)
         self.dropout = nn.Dropout(drop_rate)
         
-    def forward(self,input_data,pos):
+    def forward(self,input_data):
         rep=self.token_embeds(input_data)
-        pos=self.pos_embeds(pos)
+        output=self.pos_embeds(rep)
       
-        output=rep+pos
         output=self.project(output)
         output = self.dropout(output)
         
@@ -288,9 +307,9 @@ class Transformer(torch.nn.Module):
                  keys_len=self.keys_len, sample_size=1, jitter=jitter, flag_sgp=self.flag_sgp, inference_mode=inference_mode))
             self.mlp_layer_list.append(FC(hdim=hdim, drop_rate=self.drop_rate))
 
-    def forward(self, input_data,positional, mask):
-        emb_ln, emb = self.embedding.forward(input_data, positional)         
-        z, total_kl = self.sgp_layer_list[0].forward(emb_ln, self.keys[0], mask) 
+    def forward(self, input_data):
+        emb_ln, emb = self.embedding.forward(input_data)         
+        z, total_kl = self.sgp_layer_list[0].forward(emb_ln, self.keys[0]) 
         z_prime = emb.unsqueeze(1) + z
         z_ln = self.ln(z_prime) 
         
@@ -304,7 +323,7 @@ class Transformer(torch.nn.Module):
             z_ln = self.ln(z_prev)  
             if self.flag_sgp:
               cur_k = self.ln(cur_k) 
-            z, kl = self.sgp_layer_list[i].forward(z_ln, cur_k, mask) 
+            z, kl = self.sgp_layer_list[i].forward(z_ln, cur_k) 
             if total_kl:
                 total_kl += kl
             z_prime = z_prev.unsqueeze(1) + z
@@ -312,11 +331,11 @@ class Transformer(torch.nn.Module):
             z = self.mlp_layer_list[i].forward(z_ln) + z_prime
             if self.flag_sgp and i < self.depth-1:
                 cur_k = self.mlp_layer_list[i].forward(self.keys[i+1]) + self.keys[i+1] 
-        logits = self.class_head.forward(z, mask).squeeze(1)
+        logits = self.class_head.forward(z).squeeze(1)
         return logits, total_kl 
     
-    def loss(self, input_data,answers,positional,input_mask, anneal_kl=1.):
-        logits, total_kl = self.forward(input_data,positional,input_mask) 
+    def loss(self, input_data,answers, anneal_kl=1.):
+        logits, total_kl = self.forward(input_data) 
         ce_loss = nn.CrossEntropyLoss()
         answers = torch.unsqueeze(answers,1) 
         answers = torch.tile(torch.unsqueeze(answers, 1), (1, self.sample_size, 1)).view(-1, answers.shape[1]) 
