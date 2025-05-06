@@ -13,7 +13,7 @@ import test
 import models.get_model
 import datasets.cifar_loader
 import utils.train_utils
-# import gpytorch
+import gpytorch
 from utils.seed_utils import set_seed
 from utils.ema import EMA
 import utils.utils
@@ -146,129 +146,130 @@ def main(args):
                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth'))
                 
 
-# def main_svdkl(args):
-#     if args.attn_type == 'softmax':
-#         save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
-#         pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
-#         group = "SVDKL-VIT-CIFAR"
+def main_svdkl(args):
+    if args.attn_type == 'softmax':
+        save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
+        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}")
+        group = "SVDKL-VIT-CIFAR"
 
-#     if not os.path.exists(save_path):
-#         os.makedirs(save_path)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
 
-#     wandb.init(project='Difformer', 
-#                group=group,
-#                name=f"Seed_{args.seed}_svdkl",
-#                config=vars(args))
+    wandb.init(project='Difformer', 
+               group=group,
+               name=f"Seed_{args.seed}_svdkl",
+               config=vars(args))
 
-#     # Set seed everything
-#     set_seed(args.seed)
+    # Set seed everything
+    set_seed(args.seed)
 
-#     logger = utils.utils.get_logger(save_path)
-#     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
-#     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    logger = utils.utils.get_logger(save_path)
+    logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-#     train_loader, val_loader, _, nb_cls = datasets.cifar_loader.get_loader(
-#         args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
-#     )
+    train_loader, val_loader, _, nb_cls = datasets.cifar_loader.get_loader(
+        args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
+    )
 
-#     for run in range(args.nb_run):
-#         prefix = f'{run + 1} / {args.nb_run} Running'
-#         logger.info(100*'#' + '\n' + prefix)
+    for run in range(args.nb_run):
+        prefix = f'{run + 1} / {args.nb_run} Running'
+        logger.info(100*'#' + '\n' + prefix)
 
-#         ## define model
-#         net = models.get_model.get_model(args.model, nb_cls, logger, args)
-#         net.feature_extractor.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_acc_net_{run + 1}.pth')))
-#         for params in net.feature_extractor.parameters():
-#             params.requires_grad = False
-#         print(net)
-#         print(sum(p.numel() for p in net.parameters() if p.requires_grad))
-#         net.cuda()
-#         likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=nb_cls).cuda()
-#         ## define optimizer with warm-up
-#         args.lr = 0.1
-#         optimizer = torch.optim.SGD([
-#             {'params': net.feature_extractor.parameters(), 'weight_decay': 1e-4},
-#             {'params': net.gp_layer.hyperparameters(), 'lr': args.lr * 0.01},
-#             {'params': net.gp_layer.variational_parameters()},
-#             {'params': likelihood.parameters()},
-#         ], lr=args.lr, momentum=0.9, nesterov=True, weight_decay=0)
-#         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[0.5 * args.nb_epochs, 0.75 * args.nb_epochs], gamma=0.1)
-#         mll = gpytorch.mlls.VariationalELBO(likelihood, net.gp_layer, num_data=len(train_loader.dataset))
+        ## define model
+        net = models.get_model.get_model(args.model, nb_cls, logger, args)
+        net.feature_extractor.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_acc_net_{run + 1}.pth')))
+        for params in net.feature_extractor.parameters():
+            params.requires_grad = False
+        print(net)
+        print(sum(p.numel() for p in net.parameters() if p.requires_grad))
+        net.cuda()
+        likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=nb_cls).cuda()
+        ## define optimizer with warm-up
+        args.lr = 0.1
+        optimizer = torch.optim.SGD([
+            {'params': net.feature_extractor.parameters(), 'weight_decay': 1e-4},
+            {'params': net.gp_layer.hyperparameters(), 'lr': args.lr * 0.01},
+            {'params': net.gp_layer.variational_parameters()},
+            {'params': likelihood.parameters()},
+        ], lr=args.lr, momentum=0.9, nesterov=True, weight_decay=0)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[0.5 * args.nb_epochs, 0.75 * args.nb_epochs], gamma=0.1)
+        mll = gpytorch.mlls.VariationalELBO(likelihood, net.gp_layer, num_data=len(train_loader.dataset))
         
-#         ## make logger
-#         best_acc, best_auroc, best_aurc = 0, 0, 1e6
+        ## make logger
+        best_acc, best_auroc, best_aurc = 0, 0, 1e6
 
-#         ## start training
-#         for epoch in range(args.nb_epochs):
-#             train_log = {
-#                 'Tot. Loss': utils.utils.AverageMeter(),
-#                 'LR': utils.utils.AverageMeter(),
-#             }
-#             msg = '####### --- Training Epoch {:d} --- #######'.format(epoch)
-#             logger.info(msg)
-#             # train.train(train_loader, net, optimizer, epoch, logger, args)
-#             with gpytorch.settings.use_toeplitz(False):
-#                 net.train()
-#                 likelihood.train()
+        ## start training
+        for epoch in range(args.nb_epochs):
+            train_log = {
+                'Tot. Loss': utils.utils.AverageMeter(),
+                'LR': utils.utils.AverageMeter(),
+            }
+            msg = '####### --- Training Epoch {:d} --- #######'.format(epoch)
+            logger.info(msg)
+            # train.train(train_loader, net, optimizer, epoch, logger, args)
+            with gpytorch.settings.use_toeplitz(False):
+                net.train()
+                likelihood.train()
                 
-#                 for i, (data, target) in enumerate(train_loader):
-#                     data, target = data.cuda(), target.cuda()
-#                     optimizer.zero_grad()
-#                     output = net(data)
-#                     loss = -mll(output, target)
-#                     loss.backward()
-#                     optimizer.step()
+                for i, (data, target) in enumerate(train_loader):
+                    data, target = data.cuda(), target.cuda()
+                    optimizer.zero_grad()
+                    output = net(data)
+                    loss = -mll(output, target)
+                    loss.backward()
+                    optimizer.step()
             
-#                     for param_group in optimizer.param_groups:
-#                         lr = param_group["lr"]
-#                         break
+                    for param_group in optimizer.param_groups:
+                        lr = param_group["lr"]
+                        break
 
-#                     train_log['Tot. Loss'].update(loss.item(), data.size(0))
-#                     train_log['LR'].update(lr, data.size(0))
+                    train_log['Tot. Loss'].update(loss.item(), data.size(0))
+                    train_log['LR'].update(lr, data.size(0))
 
-#                     if i % 100 == 99:
-#                         log = ['LR : {:.5f}'.format(train_log['LR'].avg)] + [
-#                             key + ': {:.2f}'.format(train_log[key].avg) for key in train_log if key != 'LR'
-#                         ]
-#                         msg = 'Epoch {:d} \t Batch {:d}\t'.format(epoch, i) + '\t'.join(log)
-#                         logger.info(msg)
-#                         for key in train_log:
-#                             train_log[key] = utils.utils.AverageMeter()
+                    if i % 100 == 99:
+                        log = ['LR : {:.5f}'.format(train_log['LR'].avg)] + [
+                            key + ': {:.2f}'.format(train_log[key].avg) for key in train_log if key != 'LR'
+                        ]
+                        msg = 'Epoch {:d} \t Batch {:d}\t'.format(epoch, i) + '\t'.join(log)
+                        logger.info(msg)
+                        for key in train_log:
+                            train_log[key] = utils.utils.AverageMeter()
 
-#                 # Replace writer.add_scalar with wandb.log
-#                 wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
+                # Replace writer.add_scalar with wandb.log
+                wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
             
-#             scheduler.step()
+            scheduler.step()
 
-#             # validation
-#             net_val = net
-#             res = val.validation(val_loader, (net_val, likelihood), args, method='svdkl') 
-#             log = [f"{key}: {res[key]:.3f}" for key in res]
-#             msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
-#             logger.info(msg)
+            # validation
+            net_val = net
+            res = val.validation(val_loader, (net_val, likelihood), args, method='svdkl') 
+            log = [f"{key}: {res[key]:.3f}" for key in res]
+            msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+            logger.info(msg)
 
-#             wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
+            wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
 
-#             if res['Acc.'] > best_acc:
-#                 acc = res['Acc.']
-#                 msg = f'Accuracy improved from {best_acc:.2f} to {acc:.2f}!!!'
-#                 logger.info(msg)
-#                 best_acc = acc
-#                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}.pth'))
+            if res['Acc.'] > best_acc:
+                acc = res['Acc.']
+                msg = f'Accuracy improved from {best_acc:.2f} to {acc:.2f}!!!'
+                logger.info(msg)
+                best_acc = acc
+                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}.pth'))
+                torch.save(likelihood.state_dict(), os.path.join(save_path, f'best_acc_likelihood_{run+1}.pth'))
             
-#             if res['AUROC'] > best_auroc:
-#                 auroc = res['AUROC']
-#                 msg = f'AUROC improved from {best_auroc:.2f} to {auroc:.2f}!!!'
-#                 logger.info(msg)
-#                 best_auroc = auroc
-#                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}.pth'))
+            if res['AUROC'] > best_auroc:
+                auroc = res['AUROC']
+                msg = f'AUROC improved from {best_auroc:.2f} to {auroc:.2f}!!!'
+                logger.info(msg)
+                best_auroc = auroc
+                # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}.pth'))
         
-#             if res['AURC'] < best_aurc:
-#                 aurc = res['AURC']
-#                 msg = f'AURC decreased from {best_aurc:.2f} to {aurc:.2f}!!!'
-#                 logger.info(msg)
-#                 best_aurc = aurc
-#                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth')) 
+            if res['AURC'] < best_aurc:
+                aurc = res['AURC']
+                msg = f'AURC decreased from {best_aurc:.2f} to {aurc:.2f}!!!'
+                logger.info(msg)
+                best_aurc = aurc
+                # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth')) 
       
 def main_diffusion(args):
     if args.attn_type == 'softmax':
@@ -588,10 +589,10 @@ if __name__ == '__main__':
         wandb.finish()
     # elif args.model == 'diffusion' and args.stage == 2:
     #     main_diffusion_stage2(args)
-    # if args.model == 'svdkl':
-    #     main_svdkl(args)
-    #     test.test(args)
-    #     wandb.finish()
+    if args.model == 'svdkl':
+        main_svdkl(args)
+        test.test(args)
+        wandb.finish()
     if args.model == 'diffusion_distillation' or args.model == 'vit_cifar_distillation':
         main_distillation(args)
         test.test_distillation(args)

@@ -11,6 +11,7 @@ import csv
 from torch.utils.data import DataLoader
 import torchvision.transforms
 import wandb
+import gpytorch
 
 def process_results(args, loader, model, metrics, logger, method_name, results_storage):
     res = val.validation(loader, model, args, method_name)
@@ -125,6 +126,11 @@ def test(args):
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
         net = net.cuda()
+        if args.model == 'svdkl':
+            # pass
+            likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=args.nb_cls).cuda()
+            likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_likelihood_{r + 1}.pth')))
+            net = (net, likelihood) 
         process_results(args, test_loader, net, metrics, logger, "MSP", results_storage)
 
         if args.dataset == 'cifar10':

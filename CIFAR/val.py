@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-# import gpytorch
+import gpytorch
 import utils.metrics
 import numpy as np  
 import sklearn.metrics as skm
@@ -38,13 +38,13 @@ def validation(loader, net, args, method=None):
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         if method == 'svdkl':
-            pass
-            # with gpytorch.settings.num_likelihood_samples(10):
-            #     gp_output = net(inputs)
-            #     output_dist = likelihood(gp_output)
-            #     softmax = output_dist.probs.mean(0)
-            #     output = torch.zeros_like(softmax)
-        if method == 'kflla':
+            # pass
+            with gpytorch.settings.num_likelihood_samples(10):
+                gp_output = net(inputs)
+                output_dist = likelihood(gp_output)
+                softmax = output_dist.probs.mean(0)
+                output = torch.zeros_like(softmax)
+        elif method == 'kflla':
             pass
             # softmax = la(inputs)
             # output = torch.zeros_like(softmax)
