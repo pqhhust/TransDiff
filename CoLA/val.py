@@ -5,8 +5,9 @@ import numpy as np
 from sklearn.metrics import matthews_corrcoef
 from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
-from data_loader import get_data, get_vocab, DataLoader
+from data_loader import get_data, get_vocab, DataLoader, DataLoader_KFLLA
 import gpytorch
+from laplace import Laplace
 
 @torch.no_grad()
 def validation(loader, net, args, method=None):
@@ -35,10 +36,10 @@ def validation(loader, net, args, method=None):
         word_to_int, _ = get_vocab(data_train, args.min_word_count)
         vocab_size = len(word_to_int)
 
-        train_loader = DataLoader(data_train,gold_train,args.batch_size,word_to_int,'cuda:0')
-        test_loader = DataLoader(data_test,gold_test,args.batch_size,word_to_int,'cuda:0',shuffle=False)
+        train_loader = DataLoader_KFLLA(data_train,gold_train,5,word_to_int,'cuda:0')
+        test_loader = DataLoader_KFLLA(data_test,gold_test,args.batch_size,word_to_int,'cuda:0',shuffle=False)
         with torch.enable_grad():
-            la.fit(train_loader.num_batches)
+            la.fit(train_loader)
             la.optimize_prior_precision(method='marglik')
     
 
@@ -60,6 +61,16 @@ def validation(loader, net, args, method=None):
                 output_dist = likelihood(gp_output)
                 softmax = output_dist.probs.mean(0)
                 output = torch.zeros_like(softmax)
+        elif args.model == 'kflla':
+            batch_data = {
+                'sentences': data,
+                'input_ids': inputs,
+                'attention_mask': inputs_mask,
+                'position_ids': positional,
+                'labels': answers
+            }
+            softmax = la(batch_data)
+            output = torch.zeros_like(softmax)
         elif args.model == 'mc_dropout':
             softmax = net(inputs, positional, inputs_mask, data)
             output = torch.zeros_like(softmax)
