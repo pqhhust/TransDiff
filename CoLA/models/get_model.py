@@ -3,8 +3,11 @@ import models.q_distribution
 import models.diffusion
 import models.sgpa
 import models.svdkl
+import models.kflla
 
 def get_model(model_name, vocab_size, logger, args):
+    if model_name == "kflla":
+        net = models.kflla.vit_cola(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi)
     if model_name == "svdkl":
         feature_extractor = models.svdkl.vit_cola(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi)
         net = models.svdkl.DKLModel(feature_extractor, num_dim=args.hdim)
