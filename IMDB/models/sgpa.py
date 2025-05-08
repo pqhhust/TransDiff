@@ -206,8 +206,8 @@ class SGP_LAYER(nn.Module):
                     except Exception:
                         jitter = jitter * 10
 
-                v1 = torch.triangular_solve(K_k_beta_k_gamma, chol_K_kk, upper=False).solution 
-                v2 = torch.triangular_solve(K_k_beta_k_gamma @ v_gamma, chol_K_kk, upper=False).solution
+                v1 = torch.linalg.solve_triangular( chol_K_kk, K_k_beta_k_gamma, upper=False)
+                v2 = torch.linalg.solve_triangular(chol_K_kk, K_k_beta_k_gamma @ v_gamma, upper=False)
                 v3 = v1.unsqueeze(2).permute(0,1,2,4,3) @ s_sqrt_local
                 mean1 = K_qk_gamma @ v_gamma
                 mean = mean1 - v1.permute(0,1,3,2) @ v2 + K_qk_beta @ v_beta
