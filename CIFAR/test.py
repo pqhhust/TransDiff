@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 import torchvision.transforms
 import wandb
 import gpytorch
+from laplace import Laplace
 
 def process_results(args, loader, model, metrics, logger, method_name, results_storage):
     res = val.validation(loader, model, args, method_name)
@@ -112,7 +113,7 @@ def test(args):
     if args.attn_type == 'sgpa':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
     if args.attn_type == 'softmax':
-        args_model = 'vit_cifar' if args.model == 'temperature_scaling' or args.model == 'mc_dropout' else args.model
+        args_model = 'vit_cifar' if args.model == 'temperature_scaling' or args.model == 'mc_dropout' or args.model == 'kflla' else args.model
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args_model + '_' + str(args.seed)
     elif args.attn_type == 'kep_svgp':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.seed)
@@ -120,7 +121,7 @@ def test(args):
 
     for r in range(args.nb_run):
         logger.info(f'Testing model_{r + 1} ...')
-        _, valid_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
+        train_loader, valid_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
                                                                        args.test_dir, args.batch_size)
         print(nb_cls)
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
@@ -131,6 +132,13 @@ def test(args):
             likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=args.nb_cls).cuda()
             likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_likelihood_{r + 1}.pth')))
             net = (net, likelihood) 
+        if args.model == "kflla":
+            net.train()
+            la = Laplace(net, 'classification', subset_of_weights='last_layer', hessian_structure='kron')
+            with torch.enable_grad():
+                la.fit(train_loader)
+                la.optimize_prior_precision(method='marglik')
+            net = la
         process_results(args, test_loader, net, metrics, logger, "MSP", results_storage)
 
         if args.dataset == 'cifar10':

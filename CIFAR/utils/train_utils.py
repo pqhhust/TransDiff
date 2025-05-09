@@ -13,7 +13,7 @@ def get_args_parser():
     parser.add_argument('--wandb-key', default=None, type=str, help='Set wandb key for tracking progresses')
     
     ## Model
-    parser.add_argument('--model', default='vit_cifar', type=str, choices = ['vit_cifar', 'diffusion', 'svdkl', 'diffusion_distillation', 'vit_cifar_distillation', 'temperature_scaling', 'mc_dropout'], help='Models name to use')
+    parser.add_argument('--model', default='vit_cifar', type=str, choices = ['vit_cifar', 'diffusion', 'svdkl', 'diffusion_distillation', 'vit_cifar_distillation', 'temperature_scaling', 'mc_dropout', 'kflla'], help='Models name to use')
     parser.add_argument('--depth', type=int, default=7)
     parser.add_argument('--hdim', type=int, default=384)
     parser.add_argument('--num_heads', type=int, default=12)

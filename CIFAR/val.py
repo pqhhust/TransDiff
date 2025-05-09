@@ -31,23 +31,23 @@ def validation(loader, net, args, method=None):
     #     with torch.enable_grad():
     #         la.fit(train_loader)
     #         la.optimize_prior_precision(method='marglik')
-    net.eval()
+    if args.model != 'kflla':
+        net.eval()
     
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
 
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
-        if method == 'svdkl':
+        if args.model == 'svdkl':
             # pass
             with gpytorch.settings.num_likelihood_samples(10):
                 gp_output = net(inputs)
                 output_dist = likelihood(gp_output)
                 softmax = output_dist.probs.mean(0)
                 output = torch.zeros_like(softmax)
-        elif method == 'kflla':
-            pass
-            # softmax = la(inputs)
-            # output = torch.zeros_like(softmax)
+        elif args.model == 'kflla':
+            softmax = net(inputs)
+            output = torch.zeros_like(softmax)
         elif args.model == 'mc_dropout':
             softmax = net(inputs)
             output = torch.zeros_like(softmax)
