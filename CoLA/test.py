@@ -8,9 +8,10 @@ import models.get_model
 import csv
 from torch.utils.data import DataLoader
 import wandb
-import gpytorch
+# import gpytorch
+from laplace import Laplace
 
-from data_loader import get_data, get_vocab, DataLoader
+from data_loader import get_data, get_vocab, DataLoader, DataLoader_KFLLA
 
 
 def process_results(args, loader, model, metrics, logger, method_name, results_storage):
@@ -56,6 +57,21 @@ def test(args):
             likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=2).cuda()
             likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_likelihood_{r + 1}.pth')))
             net = (net, likelihood) 
+        if args.model == "kflla":
+            net.train()
+            la = Laplace(net, 'classification', subset_of_weights='last_layer', hessian_structure='kron')
+            data_train,gold_train,data_test,gold_test,data_ood,gold_ood=\
+                get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
+            word_to_int, _ = get_vocab(data_train, args.min_word_count)
+            vocab_size = len(word_to_int)
+
+            train_loader = DataLoader_KFLLA(data_train,gold_train,5,word_to_int,'cuda:0')
+            test_loader = DataLoader_KFLLA(data_test,gold_test,args.batch_size,word_to_int,'cuda:0',shuffle=False)
+            with torch.enable_grad():
+                la.fit(train_loader)
+                la.optimize_prior_precision(method='marglik')
+            net.eval()
+            net = la
         process_results(args, test_loader, net, metrics, logger, "Test Evaluation", results_storage)
         process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage_ood)
 
