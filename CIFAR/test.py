@@ -138,6 +138,7 @@ def test(args):
             with torch.enable_grad():
                 la.fit(train_loader)
                 la.optimize_prior_precision(method='marglik')
+            net.eval()
             net = la
         process_results(args, test_loader, net, metrics, logger, "MSP", results_storage)
 
