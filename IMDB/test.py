@@ -8,7 +8,8 @@ import models.get_model
 import csv
 from torch.utils.data import DataLoader
 import wandb
-import gpytorch
+# import gpytorch
+from laplace import Laplace
 
 from data_loader import get_imdb_data
 
@@ -30,7 +31,7 @@ def test(args):
     if args.attn_type == 'sgpa':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
     if args.attn_type == 'softmax':
-        args_model = 'transformer_imdb' if args.model == 'temperature_scaling' or args.model == 'mc_dropout' else args.model
+        args_model = 'transformer_imdb' if args.model == 'temperature_scaling' or args.model == 'mc_dropout' or args.model == 'kflla' else args.model
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args_model + '_' + str(args.seed)
     elif args.attn_type == 'kep_svgp':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.seed)
@@ -44,18 +45,25 @@ def test(args):
 
     # test_loader = DataLoader(data_test,gold_test,args.batch_size,word_to_int,device,shuffle=False)
     # ood_loader = DataLoader(data_ood,gold_ood,args.batch_size,word_to_int,device,shuffle=False)
-    _, _, test_loader, tokenizer = get_imdb_data('./data', args.batch_size)
+    train_loader, val_loader, test_loader, tokenizer = get_imdb_data('./data', args.batch_size)
     for r in range(args.nb_run):
         logger.info(f'Testing model_{r + 1} ...')
         
         net = models.get_model.get_model(args.model, len(tokenizer.vocab), logger, args)
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
         net = net.cuda()
-        if args.model == 'svdkl':
-            # pass
-            likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=2).cuda()
-            likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_likelihood_{r + 1}.pth')))
-            net = (net, likelihood) 
+        # if args.model == 'svdkl':
+        #     # pass
+        #     likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=2).cuda()
+        #     likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_likelihood_{r + 1}.pth')))
+        #     net = (net, likelihood) 
+        if args.model == "kflla":
+            net.train()
+            la = Laplace(net, 'classification', subset_of_weights='last_layer', hessian_structure='kron')
+            with torch.enable_grad():
+                la.fit(train_loader)
+                la.optimize_prior_precision(method='marglik')
+            net = la
         process_results(args, test_loader, net, metrics, logger, "Test Evaluation", results_storage)
         # process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage_ood)
 

@@ -36,7 +36,7 @@ def get_args_parser():
     parser.add_argument('--nb-worker', default=4, type=int, help='Nb of workers')
     
     ## Model
-    parser.add_argument('--model', default='transformer_imdb', type=str, choices = ['transformer_imdb', 'diffusion', 'svdkl', 'temperature_scaling', 'mc_dropout'], help='Models name to use')
+    parser.add_argument('--model', default='transformer_imdb', type=str, choices = ['transformer_imdb', 'diffusion', 'svdkl', 'temperature_scaling', 'mc_dropout', 'kflla'], help='Models name to use')
     parser.add_argument('--emb_dim',type=int,default=128)
     parser.add_argument('--depth',type=int,default=5)
     parser.add_argument('--hdim',type=int,default=128)

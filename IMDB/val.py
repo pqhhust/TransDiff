@@ -7,7 +7,7 @@ from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
 from data_loader import get_imdb_data
 # from data_loader import get_data, get_vocab, DataLoader
-import gpytorch
+# import gpytorch
 
 @torch.no_grad()
 def validation(loader, net, args, method=None):
@@ -23,7 +23,8 @@ def validation(loader, net, args, method=None):
         net, likelihood = net
         likelihood.eval()
 
-    net.eval()
+    if args.model != 'kflla':
+        net.eval()
     
     # mcc_list = []
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
@@ -37,7 +38,7 @@ def validation(loader, net, args, method=None):
                 output_dist = likelihood(gp_output)
                 softmax = output_dist.probs.mean(0)
                 output = torch.zeros_like(softmax)
-        elif args.model == 'mc_dropout':
+        elif args.model == 'mc_dropout' or args.model == 'kflla':
             softmax = net(inputs)
             output = torch.zeros_like(softmax)
         else:
