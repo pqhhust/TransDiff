@@ -8,7 +8,7 @@ import models.get_model
 import csv
 from torch.utils.data import DataLoader
 import wandb
-# import gpytorch
+import gpytorch
 
 from data_loader import get_imdb_data
 
@@ -52,10 +52,10 @@ def test(args):
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
         net = net.cuda()
         if args.model == 'svdkl':
-            pass
-            # likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=2).cuda()
-            # likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_likelihood_{r + 1}.pth')))
-            # net = (net, likelihood) 
+            # pass
+            likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=2).cuda()
+            likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_likelihood_{r + 1}.pth')))
+            net = (net, likelihood) 
         process_results(args, test_loader, net, metrics, logger, "Test Evaluation", results_storage)
         # process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage_ood)
 

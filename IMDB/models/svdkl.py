@@ -4,18 +4,26 @@ import math
 
 from models.transformer_imdb import Transformer
 
-class ViTFeatureExtractor(ViT):
-    def forward(self, input_data, positional, inputs_mask, data):
-        out = self.embedding.forward(input_data, positional, data) 
+class ViTFeatureExtractor(Transformer):
+    def forward(self, x):
+        out = self.embedding(x)
+        out = self.pos_encoder(out)
+        # if self.is_cls_token:
+        #     out = torch.cat([self.cls_token.repeat(out.size(0),1,1), out],dim=1)
+        # out = out + self.pos_emb
+
         for enc in self.enc:
-            out = enc(out, inputs_mask)
+            if enc.attn_type == "softmax":
+                out = enc(out)
+        
 
         out = out.mean(1)
+        
         return out
             
-def vit_cola(args, vocab_size, attn_type, ksvd_layers, low_rank, rank_multi):
+def transformer_imdb(args, vocab_size, attn_type, ksvd_layers, low_rank, rank_multi):
     return ViTFeatureExtractor(args=args, vocab_size=vocab_size, attn_type=attn_type, ksvd_layers=ksvd_layers, num_classes=args.num_classes, low_rank=low_rank, rank_multi=rank_multi, \
-                dropout=0.1, num_layers=args.depth, hidden=args.hdim, head=args.num_heads, mlp_hidden=args.hdim)
+                dropout=0.1, num_layers=args.depth, hidden=args.hdim, head=args.num_heads, mlp_hidden=args.hdim) 
     
 class GaussianProcessLayer(gpytorch.models.ApproximateGP):
     def __init__(self, num_dim, grid_bounds=(-10., 10.), grid_size=64):
@@ -60,8 +68,8 @@ class DKLModel(gpytorch.Module):
         # This module will scale the NN features so that they're nice values
         self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(self.grid_bounds[0], self.grid_bounds[1])
 
-    def forward(self, input_data, positional, inputs_mask, data):
-        features = self.feature_extractor(input_data, positional, inputs_mask, data)
+    def forward(self, x):
+        features = self.feature_extractor(x)
         # print(features.shape)
         features = self.scale_to_bounds(features)
         # This next line makes it so that we learn a GP for each feature

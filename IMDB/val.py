@@ -7,7 +7,7 @@ from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
 from data_loader import get_imdb_data
 # from data_loader import get_data, get_vocab, DataLoader
-# import gpytorch
+import gpytorch
 
 @torch.no_grad()
 def validation(loader, net, args, method=None):
@@ -28,15 +28,15 @@ def validation(loader, net, args, method=None):
     # mcc_list = []
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
 
-    for batch in loader:
-        inputs, targets = batch['input_ids'].cuda(), batch['labels'].cuda()
+    for inputs, targets in loader:
+        inputs, targets = inputs.cuda(), targets.cuda()
         if args.model == 'svdkl':
-            pass
-            # with gpytorch.settings.num_likelihood_samples(10):
-            #     gp_output = net(inputs, positional, inputs_mask, data)
-            #     output_dist = likelihood(gp_output)
-            #     softmax = output_dist.probs.mean(0)
-            #     output = torch.zeros_like(softmax)
+            # pass
+            with gpytorch.settings.num_likelihood_samples(10):
+                gp_output = net(inputs)
+                output_dist = likelihood(gp_output)
+                softmax = output_dist.probs.mean(0)
+                output = torch.zeros_like(softmax)
         elif args.model == 'mc_dropout':
             softmax = net(inputs)
             output = torch.zeros_like(softmax)

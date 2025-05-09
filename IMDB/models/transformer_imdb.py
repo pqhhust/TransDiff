@@ -39,7 +39,7 @@ class Transformer(nn.Module):
         self.hidden = hidden
         self.dropout = dropout
 
-        self.embedding = nn.Embedding(self.vocab_size, self.emb_dim)
+        self.embedding = nn.Embedding(30522, self.emb_dim)
         self.pos_encoder = PositionalEncoding(self.emb_dim, self.dropout, self.max_len)
         
         enc_list = [TransformerEncoder(args=args, attn_type="softmax", low_rank=low_rank, rank_multi=rank_multi, \

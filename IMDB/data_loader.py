@@ -10,12 +10,12 @@ class IMDbDataset(Dataset):
         self.labels = labels
     
     def __getitem__(self, idx):
-        item = {
-            'input_ids': self.encodings['input_ids'][idx],
-            'attention_mask': self.encodings['attention_mask'][idx],
-            'labels': torch.tensor(self.labels[idx], dtype=torch.long)
-        }
-        return item
+        # item = {
+        #     'input_ids': self.encodings['input_ids'][idx],
+        #     'attention_mask': self.encodings['attention_mask'][idx],
+        #     'labels': torch.tensor(self.labels[idx], dtype=torch.long)
+        # }
+        return self.encodings['input_ids'][idx], torch.tensor(self.labels[idx], dtype=torch.long)
     
     def __len__(self):
         return len(self.labels)

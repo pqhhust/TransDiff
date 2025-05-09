@@ -4,6 +4,7 @@ import numpy as np
 import torch.nn.functional as F
 import utils.utils
 import wandb
+import gpytorch
 
 
 def compute_loss(cls_criterion, preds, targets, score_list=None, lambda_sqrt_inv_list=None, kl_list=None, eta_ksvd=1., eta_kl=1.):

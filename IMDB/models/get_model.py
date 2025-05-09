@@ -2,12 +2,12 @@ import models.transformer_imdb
 import models.q_distribution
 import models.diffusion
 import models.sgpa
-# import models.svdkl
+import models.svdkl
 
 def get_model(model_name, vocab_size, logger, args):
-    # if model_name == "svdkl":
-    #     feature_extractor = models.svdkl.vit_cola(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi)
-    #     net = models.svdkl.DKLModel(feature_extractor, num_dim=args.hdim)
+    if model_name == "svdkl":
+        feature_extractor = models.svdkl.transformer_imdb(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi)
+        net = models.svdkl.DKLModel(feature_extractor, num_dim=args.hdim)
     if model_name == "q_distribution":
         net = models.q_distribution.transformer_imdb(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi)
     if model_name == "transformer_imdb" or model_name == 'temperature_scaling' or model_name == 'mc_dropout':
