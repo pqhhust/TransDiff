@@ -66,7 +66,7 @@ def test(args):
             vocab_size = len(word_to_int)
 
             train_loader = DataLoader_KFLLA(data_train,gold_train,5,word_to_int,'cuda:0')
-            test_loader = DataLoader_KFLLA(data_test,gold_test,args.batch_size,word_to_int,'cuda:0',shuffle=False)
+            # test_loader = DataLoader_KFLLA(data_test,gold_test,args.batch_size,word_to_int,'cuda:0',shuffle=False)
             with torch.enable_grad():
                 la.fit(train_loader)
                 la.optimize_prior_precision(method='marglik')
