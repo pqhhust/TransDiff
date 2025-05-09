@@ -7,7 +7,7 @@ from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
 from data_loader import get_data, get_vocab, DataLoader, DataLoader_KFLLA
 import gpytorch
-from laplace import Laplace
+# from laplace import Laplace
 
 @torch.no_grad()
 def validation(loader, net, args, method=None):
@@ -29,18 +29,19 @@ def validation(loader, net, args, method=None):
         net, likelihood = net
         likelihood.eval()
     if args.model == "kflla":
-        net.train()
-        la = Laplace(net, 'classification', subset_of_weights='last_layer', hessian_structure='kron')
-        data_train,gold_train,data_test,gold_test,data_ood,gold_ood=\
-            get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
-        word_to_int, _ = get_vocab(data_train, args.min_word_count)
-        vocab_size = len(word_to_int)
+        pass
+        # net.train()
+        # la = Laplace(net, 'classification', subset_of_weights='last_layer', hessian_structure='kron')
+        # data_train,gold_train,data_test,gold_test,data_ood,gold_ood=\
+        #     get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
+        # word_to_int, _ = get_vocab(data_train, args.min_word_count)
+        # vocab_size = len(word_to_int)
 
-        train_loader = DataLoader_KFLLA(data_train,gold_train,5,word_to_int,'cuda:0')
-        test_loader = DataLoader_KFLLA(data_test,gold_test,args.batch_size,word_to_int,'cuda:0',shuffle=False)
-        with torch.enable_grad():
-            la.fit(train_loader)
-            la.optimize_prior_precision(method='marglik')
+        # train_loader = DataLoader_KFLLA(data_train,gold_train,5,word_to_int,'cuda:0')
+        # test_loader = DataLoader_KFLLA(data_test,gold_test,args.batch_size,word_to_int,'cuda:0',shuffle=False)
+        # with torch.enable_grad():
+        #     la.fit(train_loader)
+        #     la.optimize_prior_precision(method='marglik')
     
 
     net.eval()
