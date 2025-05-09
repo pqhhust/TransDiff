@@ -39,12 +39,12 @@ def validation(loader, net, args, method=None):
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         if args.model == 'svdkl':
-            # pass
-            with gpytorch.settings.num_likelihood_samples(10):
-                gp_output = net(inputs)
-                output_dist = likelihood(gp_output)
-                softmax = output_dist.probs.mean(0)
-                output = torch.zeros_like(softmax)
+            pass
+            # with gpytorch.settings.num_likelihood_samples(10):
+            #     gp_output = net(inputs)
+            #     output_dist = likelihood(gp_output)
+            #     softmax = output_dist.probs.mean(0)
+            #     output = torch.zeros_like(softmax)
         elif args.model == 'kflla':
             softmax = net(inputs)
             output = torch.zeros_like(softmax)
