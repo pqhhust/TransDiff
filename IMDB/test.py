@@ -54,7 +54,7 @@ def test(args):
         if args.model == 'svdkl':
             # pass
             likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=2).cuda()
-            likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_mcc_likelihood_{r + 1}.pth')))
+            likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_likelihood_{r + 1}.pth')))
             net = (net, likelihood) 
         process_results(args, test_loader, net, metrics, logger, "Test Evaluation", results_storage)
         # process_results(args, ood_loader, net, metrics, logger, "OOD Robustness", results_storage_ood)
