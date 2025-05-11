@@ -45,8 +45,8 @@ def get_data(path_list, ood_path, seed):
     train_size = math.ceil(N* 0.7)
     test_size = math.ceil(N* 0.2)
     val_size = N-train_size-test_size
-    random.seed(seed)
-    random.shuffle(data_gold)
+    # random.seed(42)
+    random.Random(42).shuffle(data_gold)
     data_train = []
     gold_train = []
     data_test = []
