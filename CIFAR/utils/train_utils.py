@@ -40,6 +40,10 @@ def get_args_parser():
     parser.add_argument('--save-dir', default='./output', type=str, help='Output directory')
     parser.add_argument('--gpu', default='0', type=str, help='GPU id to use')
 
+    parser.add_argument('--ood_data', default=None, type=str, help='name of ood data')
+    parser.add_argument('--ood_test_dir', default=None, type=str, help='test directory for ood')
+    
+
     ## diffusion
     # parser.add_argument('--stage', default=1, type=int, help='Stage of the training')
 

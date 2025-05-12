@@ -11,7 +11,7 @@ import csv
 from torch.utils.data import DataLoader
 import torchvision.transforms
 import wandb
-# import gpytorch
+import gpytorch
 from laplace import Laplace
 
 def process_results(args, loader, model, metrics, logger, method_name, results_storage):
@@ -106,7 +106,7 @@ def ood_test(args):
 
 def test(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    metrics = ['Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
+    metrics = ['softmax/AUROC', 'softmax/AUPR', 'softmax/FPR95', 'entropy/AUROC', 'entropy/AUPR', 'entropy/FPR95', 'AUROC', 'AUPR', 'FPR95']
     results_storage = {metric: [] for metric in metrics}
     cor_results_all_models = {}
 
@@ -123,15 +123,17 @@ def test(args):
         logger.info(f'Testing model_{r + 1} ...')
         train_loader, valid_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
                                                                        args.test_dir, args.batch_size)
-        print(nb_cls)
+        ood_test_loader = datasets.cifar_loader.get_ood_loader(args.ood_data,
+                                                            args.ood_test_dir,
+                                                            args.batch_size)                                                               
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
         net = net.cuda()
-        # if args.model == 'svdkl':
-        #     # pass
-        #     likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=args.nb_cls).cuda()
-        #     likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_likelihood_{r + 1}.pth')))
-        #     net = (net, likelihood) 
+        if args.model == 'svdkl':
+            # pass
+            likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=args.nb_cls).cuda()
+            likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_likelihood_{r + 1}.pth')))
+            net = (net, likelihood) 
         if args.model == "kflla":
             net.train()
             la = Laplace(net, 'classification', subset_of_weights='last_layer', hessian_structure='kron')
@@ -140,31 +142,16 @@ def test(args):
                 la.optimize_prior_precision(method='marglik')
             net.eval()
             net = la
-        process_results(args, test_loader, net, metrics, logger, "MSP", results_storage)
-
-        if args.dataset == 'cifar10':
-            transform_test = torchvision.transforms.Compose([
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-            ])
-
-            cor_results_storage = test_cifar_c_corruptions(args.dataset, net, args.corruption_dir, transform_test, args.batch_size,
-                                                            metrics, logger, args)
-            cor_results = {corruption: {
-                severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
-                in range(1, 6)} for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
-            cor_results_all_models[f"model_{r + 1}"] = cor_results
+        process_results_ood(args, test_loader, ood_test_loader, net, metrics, logger, "MSP", results_storage)
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
     wandb.log({f"Test_final/{metric}": results[metric]['mean'] for metric in results})
     test_results_path = os.path.join(save_path, 'test_results.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
-    if args.dataset == 'cifar10':
-        utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
 
 def test_diffusion(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    metrics = ['Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
+    metrics = ['softmax/AUROC', 'softmax/AUPR', 'softmax/FPR95', 'entropy/AUROC', 'entropy/AUPR', 'entropy/FPR95', 'AUROC', 'AUPR', 'FPR95']
     results_storage = {metric: [] for metric in metrics}
     cor_results_all_models = {}
 
@@ -199,32 +186,21 @@ def test_diffusion(args):
         logger.info(f'Testing model_{r + 1} ...')
         _, valid_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
                                                                        args.test_dir, args.batch_size)
-        print(nb_cls)
+        ood_test_loader = datasets.cifar_loader.get_ood_loader(args.ood_data,
+                                                            args.ood_test_dir,
+                                                            args.batch_size)
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
         pretrained_ViT = None
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_diffusion_{args.backbone}.pth')))
         net = net.cuda()
-        process_results_diffusion(args, test_loader, net, metrics, logger, "MSP", results_storage, pretrained_ViT)
-
-        if args.dataset == 'cifar10':
-            transform_test = torchvision.transforms.Compose([
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-            ])
-
-            cor_results_storage = test_cifar_c_corruptions_diffusion(args.dataset, net, args.corruption_dir, transform_test, args.batch_size,
-                                                            metrics, logger, pretrained_ViT, args)
-            cor_results = {corruption: {
-                severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
-                in range(1, 6)} for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
-            cor_results_all_models[f"model_{r + 1}"] = cor_results
+        process_results_ood(args, test_loader, ood_test_loader, net, metrics, logger, "MSP", results_storage)
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
     wandb.log({f"Test_final/{metric}": results[metric]['mean'] for metric in results})
     test_results_path = os.path.join(save_path, 'test_results_diffusion.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
-    if args.dataset == 'cifar10':
-        utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
+    # if args.dataset == 'cifar10':
+    #     utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
 
 def test_distillation(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -270,46 +246,31 @@ def test_distillation(args):
             net = models.get_model.get_model('vit_cifar', nb_cls, logger, args)
             
         pretrained_ViT = None
-        net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_{args.temperature}_{args.lambda_mean}_{args.lambda_var}_{args.lambda_ce}.pth')))
+        net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_diffusion_{args.backbone}.pth')))
         net = net.cuda()
-        process_results_diffusion(args, test_loader, net, metrics, logger, "MSP", results_storage, pretrained_ViT)
-
-        if args.dataset == 'cifar10':
-            transform_test = torchvision.transforms.Compose([
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-            ])
-
-            cor_results_storage = test_cifar_c_corruptions_diffusion(args.dataset, net, args.corruption_dir, transform_test, args.batch_size,
-                                                            metrics, logger, pretrained_ViT, args)
-            cor_results = {corruption: {
-                severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
-                in range(1, 6)} for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
-            cor_results_all_models[f"model_{r + 1}"] = cor_results
+        process_results_ood(args, test_loader, ood_test_loader, net, metrics, logger, "MSP", results_storage)
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
     wandb.log({f"Test_final/{metric}": results[metric]['mean'] for metric in results})
     test_results_path = os.path.join(save_path, 'test_results_diffusion.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
-    if args.dataset == 'cifar10':
-        utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
 
-if __name__ == '__main__':
-    wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-    args = utils.test_utils.get_args_parser()
-    if args.attn_type == 'kep_svgp':
-        group = 'KEP-SVGP'
-    else:
-        group = 'VIT'
-    wandb.init(project='Difformer',     
-               group=group,
-               name=f"Seed_{args.seed}",
-               config=vars(args))
-    print(args)
-    set_seed(args.seed)
-    if args.ood_data is None and args.model == 'diffusion':
-        test_diffusion(args)
-    elif args.ood_data is None and args.model == 'vit_cifar':
-        test(args)
-    else:
-        ood_test(args)
+# if __name__ == '__main__':
+#     wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+#     args = utils.test_utils.get_args_parser()
+#     if args.attn_type == 'kep_svgp':
+#         group = 'KEP-SVGP'
+#     else:
+#         group = 'VIT'
+#     wandb.init(project='Difformer',     
+#                group=group,
+#                name=f"Seed_{args.seed}",
+#                config=vars(args))
+#     print(args)
+#     set_seed(args.seed)
+#     if args.ood_data is None and args.model == 'diffusion':
+#         test_diffusion(args)
+#     elif args.ood_data is None and args.model == 'vit_cifar':
+#         test(args)
+#     else:
+#         ood_test(args)
