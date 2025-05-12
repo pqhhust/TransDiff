@@ -6,3 +6,6 @@ __pycache__
 # CIFAR10_out 
 CIFAR/log_slurm
 CIFAR/results
+CIFAR/data/LSUN*
+CIFAR/data/test_32x32.mat
+CIFAR/data/selected_test_32x32.mat
