@@ -154,7 +154,10 @@ def validation_ood(loader, ood_loader, net, args):
 
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
-        if args.model == 'svdkl':
+        if args.model == 'diffusion':
+            output = net(inputs)
+            softmax = F.softmax(output, dim=1)
+        elif args.model == 'svdkl':
             # pass
             with gpytorch.settings.num_likelihood_samples(10):
                 gp_output = net(inputs)
@@ -205,7 +208,10 @@ def validation_ood(loader, ood_loader, net, args):
     # Out-of-distribution data
     for batch_idx, (inputs, targets) in enumerate(ood_loader):
         inputs, targets = inputs.cuda(), targets.cuda()
-        if args.model == 'svdkl':
+        if args.model == 'diffusion':
+            output = net(inputs)
+            softmax = F.softmax(output, dim=1)
+        elif args.model == 'svdkl':
             # pass
             with gpytorch.settings.num_likelihood_samples(10):
                 gp_output = net(inputs)
