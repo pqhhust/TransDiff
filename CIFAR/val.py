@@ -155,8 +155,11 @@ def validation_ood(loader, ood_loader, net, args):
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         if args.model == 'diffusion':
-            output = net(inputs)
-            softmax = F.softmax(output, dim=1)
+            for _ in range(10):
+                output = net(inputs)
+                softmax = F.softmax(output, dim=1)
+                softmax_list.append(softmax)
+            softmax = torch.mean(torch.stack(softmax_list), 0)
         elif args.model == 'svdkl':
             # pass
             with gpytorch.settings.num_likelihood_samples(10):
@@ -209,8 +212,11 @@ def validation_ood(loader, ood_loader, net, args):
     for batch_idx, (inputs, targets) in enumerate(ood_loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         if args.model == 'diffusion':
-            output = net(inputs)
-            softmax = F.softmax(output, dim=1)
+            for _ in range(10):
+                output = net(inputs)
+                softmax = F.softmax(output, dim=1)
+                softmax_list.append(softmax)
+            softmax = torch.mean(torch.stack(softmax_list), 0)
         elif args.model == 'svdkl':
             # pass
             with gpytorch.settings.num_likelihood_samples(10):
