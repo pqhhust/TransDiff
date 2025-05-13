@@ -155,6 +155,7 @@ def validation_ood(loader, ood_loader, net, args):
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         if args.model == 'diffusion':
+            softmax_list = []
             for _ in range(10):
                 output = net(inputs)
                 softmax = F.softmax(output, dim=1)
@@ -212,6 +213,7 @@ def validation_ood(loader, ood_loader, net, args):
     for batch_idx, (inputs, targets) in enumerate(ood_loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         if args.model == 'diffusion':
+            softmax_list = []
             for _ in range(10):
                 output = net(inputs)
                 softmax = F.softmax(output, dim=1)
