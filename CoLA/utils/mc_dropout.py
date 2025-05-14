@@ -47,6 +47,24 @@ class MCDropout(nn.Module):
         self.num_estimators = num_estimators
         self.filtered_modules = filtered_modules
 
+    def train(self, mode: bool = True) -> nn.Module:
+        """Override the default train method to set the training mode of
+        each submodule to be the same as the module itself except for the
+        selected dropout modules.
+
+        Args:
+            mode (bool, optional): whether to set the module to training
+                mode. Defaults to True.
+        """
+        if not isinstance(mode, bool):
+            raise TypeError("Training mode is expected to be boolean")
+        self.training = mode
+        for module in self.children():
+            module.train(mode)
+        for module in self.filtered_modules:
+            module.train()
+        return self
+
     def forward(
         self,
         x: Tensor,
