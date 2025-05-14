@@ -18,7 +18,7 @@ def validation(loader, net, args, method=None):
         net = ModelWithTemperature(net)
         net.set_temperature(val_loader)
     elif args.model == "mc_dropout":
-        net = mc_dropout(net, num_estimators=10, last_layer=True, on_batch=False)
+        net = mc_dropout(net, num_estimators=10, last_layer=False, on_batch=False)
     elif args.model == 'svdkl':
         net, likelihood = net
         likelihood.eval()
