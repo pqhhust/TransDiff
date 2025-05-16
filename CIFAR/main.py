@@ -592,7 +592,7 @@ if __name__ == '__main__':
     #     main_svdkl(args)
     #     test.test(args)
     #     wandb.finish()
-    if args.model == 'diffusion_distillation' or args.model == 'vit_cifar_distillation':
+    elif args.model == 'diffusion_distillation' or args.model == 'vit_cifar_distillation':
         main_distillation(args)
         test.test_distillation(args)
         wandb.finish()
