@@ -125,27 +125,29 @@ def test(args):
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
         net = net.cuda()
+        logger.info('Start inference.')
         process_results(args, test_loader, net, metrics, logger, "MSP", results_storage)
+        logger.info('End inference.')
 
-        if args.dataset == 'cifar10':
-            transform_test = torchvision.transforms.Compose([
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-            ])
+        # if args.dataset == 'cifar10':
+        #     transform_test = torchvision.transforms.Compose([
+        #         torchvision.transforms.ToTensor(),
+        #         torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+        #     ])
 
-            cor_results_storage = test_cifar_c_corruptions(args.dataset, net, args.corruption_dir, transform_test, args.batch_size,
-                                                            metrics, logger, args)
-            cor_results = {corruption: {
-                severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
-                in range(1, 6)} for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
-            cor_results_all_models[f"model_{r + 1}"] = cor_results
+        #     cor_results_storage = test_cifar_c_corruptions(args.dataset, net, args.corruption_dir, transform_test, args.batch_size,
+        #                                                     metrics, logger, args)
+        #     cor_results = {corruption: {
+        #         severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
+        #         in range(1, 6)} for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
+        #     cor_results_all_models[f"model_{r + 1}"] = cor_results
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
     wandb.log({f"Test_final/{metric}": results[metric]['mean'] for metric in results})
     test_results_path = os.path.join(save_path, 'test_results.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
-    if args.dataset == 'cifar10':
-        utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
+    # if args.dataset == 'cifar10':
+    #     utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
 
 def test_diffusion(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -189,27 +191,29 @@ def test_diffusion(args):
         pretrained_ViT = None
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_diffusion_{args.backbone}.pth')))
         net = net.cuda()
+        logger.info('Start inference.')
         process_results_diffusion(args, test_loader, net, metrics, logger, "MSP", results_storage, pretrained_ViT)
+        logger.info('End inference.')
 
-        if args.dataset == 'cifar10':
-            transform_test = torchvision.transforms.Compose([
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-            ])
+        # if args.dataset == 'cifar10':
+        #     transform_test = torchvision.transforms.Compose([
+        #         torchvision.transforms.ToTensor(),
+        #         torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+        #     ])
 
-            cor_results_storage = test_cifar_c_corruptions_diffusion(args.dataset, net, args.corruption_dir, transform_test, args.batch_size,
-                                                            metrics, logger, pretrained_ViT, args)
-            cor_results = {corruption: {
-                severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
-                in range(1, 6)} for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
-            cor_results_all_models[f"model_{r + 1}"] = cor_results
+        #     cor_results_storage = test_cifar_c_corruptions_diffusion(args.dataset, net, args.corruption_dir, transform_test, args.batch_size,
+        #                                                     metrics, logger, pretrained_ViT, args)
+        #     cor_results = {corruption: {
+        #         severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
+        #         in range(1, 6)} for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
+        #     cor_results_all_models[f"model_{r + 1}"] = cor_results
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
     wandb.log({f"Test_final/{metric}": results[metric]['mean'] for metric in results})
     test_results_path = os.path.join(save_path, 'test_results_diffusion.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
-    if args.dataset == 'cifar10':
-        utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
+    # if args.dataset == 'cifar10':
+    #     utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
 
 def test_distillation(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu

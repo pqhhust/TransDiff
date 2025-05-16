@@ -61,14 +61,14 @@ def validation(loader, net, args, method=None):
                     output = net(inputs)    
             elif args.attn_type == "kep_svgp":
                 results = []
-                for _ in range(10):
+                for _ in range(1):
                     results.append(net(inputs)[0])
                 outputs = torch.stack(results)
                 output = torch.mean(outputs, 0)
             
             elif args.attn_type == "sgpa":
                 results = []
-                for _ in range(10):
+                for _ in range(1):
                     results.append(net(inputs)[0])
                 outputs = torch.stack(results)
                 output = torch.mean(outputs, 0)
