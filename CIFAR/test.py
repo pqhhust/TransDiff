@@ -11,6 +11,7 @@ import csv
 from torch.utils.data import DataLoader
 import torchvision.transforms
 import wandb
+import time
 
 def process_results(args, loader, model, metrics, logger, method_name, results_storage):
     res = val.validation(loader, model, args, method_name)
@@ -126,8 +127,12 @@ def test(args):
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
         net = net.cuda()
         logger.info('Start inference.')
+        start_time = time.time()
         process_results(args, test_loader, net, metrics, logger, "MSP", results_storage)
+        end_time = time.time()
         logger.info('End inference.')
+        inference_time = end_time - start_time
+        wandb.log({"inference_time_seconds": inference_time})
 
         # if args.dataset == 'cifar10':
         #     transform_test = torchvision.transforms.Compose([
@@ -192,8 +197,12 @@ def test_diffusion(args):
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_diffusion_{args.backbone}.pth')))
         net = net.cuda()
         logger.info('Start inference.')
+        start_time = time.time()
         process_results_diffusion(args, test_loader, net, metrics, logger, "MSP", results_storage, pretrained_ViT)
+        end_time = time.time()
         logger.info('End inference.')
+        inference_time = end_time - start_time
+        wandb.log({"inference_time_seconds": inference_time})
 
         # if args.dataset == 'cifar10':
         #     transform_test = torchvision.transforms.Compose([
