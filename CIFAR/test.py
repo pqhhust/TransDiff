@@ -11,7 +11,7 @@ import csv
 from torch.utils.data import DataLoader
 import torchvision.transforms
 import wandb
-# import gpytorch
+import gpytorch
 from laplace import Laplace
 
 def process_results(args, loader, model, metrics, logger, method_name, results_storage):
@@ -127,11 +127,11 @@ def test(args):
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
         net = net.cuda()
-        # if args.model == 'svdkl':
-        #     # pass
-        #     likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=args.nb_cls).cuda()
-        #     likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_likelihood_{r + 1}.pth')))
-        #     net = (net, likelihood) 
+        if args.model == 'svdkl':
+            # pass
+            likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=args.nb_cls).cuda()
+            likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_likelihood_{r + 1}.pth')))
+            net = (net, likelihood) 
         if args.model == "kflla":
             net.train()
             la = Laplace(net, 'classification', subset_of_weights='last_layer', hessian_structure='kron')
@@ -295,7 +295,6 @@ def test_distillation(args):
         utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
 
 if __name__ == '__main__':
-    wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
     args = utils.test_utils.get_args_parser()
     if args.attn_type == 'kep_svgp':
         group = 'KEP-SVGP'
