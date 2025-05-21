@@ -10,7 +10,6 @@ def get_args_parser():
     parser.add_argument('--batch-size', default=128, type=int, help='Batch size')
     parser.add_argument('--nb-worker', default=4, type=int, help='Nb of workers')
     parser.add_argument('--seed', default=0, type=int, help='Set seed for reproducibility')
-    parser.add_argument('--wandb-key', default=None, type=str, help='Set wandb key for tracking progresses')
     
     ## Model
     parser.add_argument('--model', default='vit_cifar', type=str, choices = ['vit_cifar', 'diffusion', 'svdkl', 'diffusion_distillation', 'vit_cifar_distillation', 'temperature_scaling', 'mc_dropout', 'kflla'], help='Models name to use')
@@ -40,8 +39,8 @@ def get_args_parser():
     parser.add_argument('--save-dir', default='./output', type=str, help='Output directory')
     parser.add_argument('--gpu', default='0', type=str, help='GPU id to use')
 
-    ## diffusion
-    # parser.add_argument('--stage', default=1, type=int, help='Stage of the training')
+    parser.add_argument('--ood_data', default=None, type=str, help='name of ood data')
+    parser.add_argument('--ood_test_dir', default=None, type=str, help='test directory for ood')
 
     ## dataset setting
     subparsers = parser.add_subparsers(title="dataset setting", dest="subcommand")
@@ -85,8 +84,6 @@ def get_args_parser():
     parser.add_argument('--lambda_var', default=1., type=float, help='weight of var_loss')
     parser.add_argument('--lambda_ce', default=1., type=float, help='weight of ce_loss')
     parser.add_argument('--run_name', default=None, type=str, help='name of wandb run')
-    parser.add_argument('--adversarial_noise', default=0.01, type=float, help='std of adversarial noise')
-    parser.add_argument('--adversarial_samples', default=0, type=int, help='number of adversarial samples')
 
     parser.add_argument('--rnn_hidden', default=384, type=int, help='hidden dimension of rnn backbone')
     parser.add_argument('--rnn_num_layers', default=1, type=int, help='number of layers of rnn backbone')
