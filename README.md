@@ -324,3 +324,6 @@ python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epoch
 python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model transformer_imdb --lr 1e-3 --seed 3 --save-dir ./results/vit_out
 python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model transformer_imdb --lr 1e-3 --seed 4 --save-dir ./results/vit_out
 ```
+
+## Acknowledgement
+This repository is based on official codes in: [SGPA](https://github.com/chenw20/SGPA/), [KEP-SVGPs](https://github.com/yingyichen-cyy/KEP-SVGP/), [DiT](https://github.com/facebookresearch/DiT), [IMDB Sentiment Analysis](https://www.kaggle.com/code/dhaniyapudina/sentiment-analysis-on-imdb-movie-review-using-bert#4.-Tokenizing-Data-with-BERT-Tokenizer), [TS](https://github.com/gpleiss/temperature_scaling/blob/master/temperature_scaling.py), [MCD](https://torch-uncertainty.github.io/_modules/torch_uncertainty/models/wrappers/mc_dropout.html#mc_dropout), [KFLLA](https://aleximmer.com/Laplace/calibration_example/), [SVDKL](https://docs.gpytorch.ai/en/stable/examples/06_PyTorch_NN_Integration_DKL/Deep_Kernel_Learning_DenseNet_CIFAR_Tutorial.html)
