@@ -22,6 +22,8 @@ from data_loader import get_imdb_data
 
 import warmup_scheduler
 
+wandb.login()
+
 def main(args):
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
     if args.attn_type == 'softmax':

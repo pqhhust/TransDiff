@@ -19,6 +19,7 @@ import utils.utils
 
 import warmup_scheduler
 
+wandb.login()
 def main(args):
     if args.attn_type == 'softmax':
         save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}")
