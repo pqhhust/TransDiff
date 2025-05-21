@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.metrics import matthews_corrcoef
 from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
-from data_loader import get_data, get_vocab, DataLoader, DataLoader_KFLLA
+from data_loader import get_data, get_vocab, DataLoader
 import gpytorch
 # from laplace import Laplace
 

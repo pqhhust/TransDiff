@@ -6,7 +6,6 @@ from sklearn.metrics import matthews_corrcoef
 from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
 from data_loader import get_imdb_data
-# from data_loader import get_data, get_vocab, DataLoader
 import gpytorch
 
 @torch.no_grad()
@@ -68,15 +67,11 @@ def validation(loader, net, args, method=None):
         val_log['softmax'].append(softmax.cpu().data.numpy())
         val_log['logit'].append(output.cpu().data.numpy())
         val_log['target'].append(targets.cpu().data.numpy())
-
-        # mcc_list.append(matthews_corrcoef(answers.cpu().numpy(), pred_cls.detach().cpu().numpy()))
         
     for key in val_log : 
         val_log[key] = np.concatenate(val_log[key])
     ## acc
     acc = 100. * val_log['correct'].mean()
-    ## mcc
-    # mcc = 100. * np.array(mcc_list).mean()
 
     # aurc, eaurc
     aurc, eaurc = utils.metrics.calc_aurc_eaurc(val_log['softmax'], val_log['correct'])

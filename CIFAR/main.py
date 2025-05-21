@@ -18,8 +18,6 @@ from utils.seed_utils import set_seed
 import utils.utils
 
 import warmup_scheduler
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def main(args):
     if args.attn_type == 'softmax':
@@ -37,18 +35,7 @@ def main(args):
             f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}"
         )
         group = "SGPA-CIFAR"
-    elif args.attn_type == 'cgpt':
-        save_path = os.path.join(
-            args.save_dir,
-            f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}"
-        )
-        group = "CGPT-CIFAR"
-    elif args.attn_type == 'scgpt':
-        save_path = os.path.join(
-            args.save_dir,
-            f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}"
-        )
-        group = "SCGPT-CIFAR"
+  
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
@@ -551,8 +538,6 @@ if __name__ == '__main__':
         main_diffusion(args)
         test.test_diffusion(args)
         wandb.finish()
-    # elif args.model == 'diffusion' and args.stage == 2:
-    #     main_diffusion_stage2(args)
     elif args.model == 'svdkl':
         main_svdkl(args)
         test.test(args)

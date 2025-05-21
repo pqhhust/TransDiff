@@ -17,9 +17,6 @@ from data_loader import get_data, get_vocab, DataLoader
 import gpytorch
 
 import warmup_scheduler
-# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
-
 
 def main(args):
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
@@ -375,8 +372,6 @@ if __name__ == '__main__':
         main_diffusion(args)
         test.test_diffusion(args)
         wandb.finish()
-    # elif args.model == 'diffusion' and args.stage == 2:
-    #     main_diffusion_stage2(args)
     elif args.model == 'svdkl':
         main_svdkl(args)
         test.test(args)

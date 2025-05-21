@@ -16,18 +16,11 @@ import models.get_model
 import utils.train_utils
 from utils.seed_utils import set_seed
 
-# from transformers import BertTokenizer
-# from torchtext.legacy import data
-# from torchtext import datasets
-
 import gpytorch
 
 from data_loader import get_imdb_data
 
 import warmup_scheduler
-# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
-
 
 def main(args):
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
@@ -62,59 +55,6 @@ def main(args):
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-    # tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    # max_input_length = tokenizer.model_max_length
-    
-    # # Define processing functions
-    # def tokenize_and_cut(sentence):
-    #     tokens = tokenizer.tokenize(sentence) 
-    #     tokens = tokens[:max_input_length-2]  # Account for [CLS] and [SEP]
-    #     return tokens
-        
-    # # Define fields
-    # TEXT = data.Field(batch_first=True,
-    #                 use_vocab=False,
-    #                 tokenize=tokenize_and_cut,
-    #                 preprocessing=tokenizer.convert_tokens_to_ids,
-    #                 init_token=tokenizer.cls_token_id,
-    #                 eos_token=tokenizer.sep_token_id,
-    #                 pad_token=tokenizer.pad_token_id,
-    #                 unk_token=tokenizer.unk_token_id)
-
-    # LABEL = data.LabelField(dtype=torch.float)
-    
-    # # Load data from CSV files
-    # fields = [('text', TEXT), ('label', LABEL)]
-    
-    # train_data, val_data, test_data = data.TabularDataset.splits(
-    #     path='./data/imdb_reviews',
-    #     train='train/reviews.csv',
-    #     validation='val/reviews.csv',
-    #     test='test/reviews.csv',
-    #     format='csv',
-    #     skip_header=True,
-    #     fields=fields
-    # )
-    
-    # # Build vocabulary (only needed for the label field in this case)
-    # LABEL.build_vocab(train_data)
-    
-    # print(f"Number of training examples: {len(train_data)}")
-    # print(f"Number of validation examples: {len(val_data)}")
-    # print(f"Number of testing examples: {len(test_data)}")
-    
-    # # Create iterators
-    
-    # train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
-    #     (train_data, val_data, test_data), 
-    #     batch_size=args.batch_size,
-    #     sort_key=lambda x: len(x.text),  # Sort by length for efficient batching
-    #     sort_within_batch=True,  # Sort within each batch
-    #     device=device,
-    #     shuffle=True,
-    #     repeat=False
-    # )
-
     train_loader, val_loader, test_loader, tokenizer = get_imdb_data('./data', args.batch_size)
 
     for run in range(args.nb_run):
@@ -148,15 +88,6 @@ def main(args):
             logger.info(msg)
             wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
 
-            # test_results = val.validation(test_loader, net_val, args)
-            # # if epoch % args.update_ema_interval == 0:
-            # #     restore_ema(args, ema, net)
-    
-            # log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
-            # msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
-            # logger.info(msg)
-            # wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
-
             if res['Acc.'] > best_acc :
                 acc = res['Acc.']
                 msg = f'ACC improved from {best_acc:.2f} to {acc:.2f}!!!'
@@ -169,14 +100,14 @@ def main(args):
                 msg = f'AUROC improved from {best_auroc:.2f} to {auroc:.2f}!!!'
                 logger.info(msg)
                 best_auroc = auroc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}.pth'))
+                # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}.pth'))
         
             if res['AURC'] < best_aurc :
                 aurc = res['AURC']
                 msg = f'AURC decreased from {best_aurc:.2f} to {aurc:.2f}!!!'
                 logger.info(msg)
                 best_aurc = aurc
-                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth'))
+                # torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth'))
 
 
 def main_svdkl(args):
@@ -237,7 +168,7 @@ def main_svdkl(args):
             }
             msg = '####### --- Training Epoch {:d} --- #######'.format(epoch)
             logger.info(msg)
-            # train.train(train_loader, net, optimizer, epoch, logger, args)
+            
             with gpytorch.settings.use_toeplitz(False):
                 net.train()
                 likelihood.train()
@@ -350,59 +281,6 @@ def main_diffusion(args):
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-    # tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    # max_input_length = tokenizer.model_max_length
-    
-    # # Define processing functions
-    # def tokenize_and_cut(sentence):
-    #     tokens = tokenizer.tokenize(sentence) 
-    #     tokens = tokens[:max_input_length-2]  # Account for [CLS] and [SEP]
-    #     return tokens
-        
-    # # Define fields
-    # TEXT = data.Field(batch_first=True,
-    #                 use_vocab=False,
-    #                 tokenize=tokenize_and_cut,
-    #                 preprocessing=tokenizer.convert_tokens_to_ids,
-    #                 init_token=tokenizer.cls_token_id,
-    #                 eos_token=tokenizer.sep_token_id,
-    #                 pad_token=tokenizer.pad_token_id,
-    #                 unk_token=tokenizer.unk_token_id)
-
-    # LABEL = data.LabelField(dtype=torch.float)
-    
-    # # Load data from CSV files
-    # fields = [('text', TEXT), ('label', LABEL)]
-    
-    # train_data, val_data, test_data = data.TabularDataset.splits(
-    #     path='./data/imdb_reviews',
-    #     train='train/reviews.csv',
-    #     validation='val/reviews.csv',
-    #     test='test/reviews.csv',
-    #     format='csv',
-    #     skip_header=True,
-    #     fields=fields
-    # )
-    
-    # # Build vocabulary (only needed for the label field in this case)
-    # LABEL.build_vocab(train_data)
-    
-    # print(f"Number of training examples: {len(train_data)}")
-    # print(f"Number of validation examples: {len(val_data)}")
-    # print(f"Number of testing examples: {len(test_data)}")
-    
-    # # Create iterators
-    
-    # train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
-    #     (train_data, val_data, test_data), 
-    #     batch_size=args.batch_size,
-    #     sort_key=lambda x: len(x.text),  # Sort by length for efficient batching
-    #     sort_within_batch=True,  # Sort within each batch
-    #     device=device,
-    #     shuffle=True,
-    #     repeat=False
-    # )
-
     train_loader, val_loader, test_loader, tokenizer = get_imdb_data('./data', args.batch_size)
 
     for run in range(args.nb_run):
@@ -480,8 +358,6 @@ if __name__ == '__main__':
         main_diffusion(args)
         test.test_diffusion(args)
         wandb.finish()
-    # elif args.model == 'diffusion' and args.stage == 2:
-    #     main_diffusion_stage2(args)
     elif args.model == 'svdkl':
         main_svdkl(args)
         test.test(args)
