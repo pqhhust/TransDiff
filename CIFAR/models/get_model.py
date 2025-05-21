@@ -1,5 +1,5 @@
 import models.vit_cifar
-# import models.diffusion
+import models.diffusion
 import models.q_distribution
 import models.sgpa
 import models.svdkl
@@ -15,17 +15,16 @@ def get_model(model_name, nb_cls, logger, args):
         else:
             net = models.vit_cifar.vit_cifar(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
     if model_name == "diffusion":
-        pass
-        # if args.backbone == 'mlp':
-        #     net = models.diffusion.Diffusion_MLP(args=args, d_model=args.hdim, hdim1=args.mlp_hdim1, hdim2=args.mlp_hdim2, hdim3=args.mlp_hdim3, hdim4=args.mlp_hdim4, dropout=args.mlp_dropout, clip=args.clip, ViT_depth=args.depth)
-        # if args.backbone == 'unet1d':
-        #     net = models.diffusion.Diffusion_UNet1D()
-        # if args.backbone == 'transformer':
-        #     net = models.diffusion.Diffusion_Transformer(d_model=args.hdim, depth=args.trans_depth, num_heads=args.trans_num_heads, mlp_ratio=args.trans_mlp_ratio, dropout=args.trans_dropout, ViT_depth=args.depth, nb_cls=args.nb_cls)
-        # if args.backbone == 'mlp_mixer':
-        #     net = models.diffusion.Diffusion_MLPMixer()
-        # if args.backbone == 'lstm' or args.backbone == 'gru':
-        #     net = models.diffusion.Diffusion_RNN(args=args, rnn_hidden=args.rnn_hidden, rnn_num_layers=args.rnn_num_layers, dropout=args.rnn_dropout, ViT_depth=args.depth, low_dim=args.rnn_low_dim)
+        if args.backbone == 'mlp':
+            net = models.diffusion.Diffusion_MLP(args=args, d_model=args.hdim, hdim1=args.mlp_hdim1, hdim2=args.mlp_hdim2, hdim3=args.mlp_hdim3, hdim4=args.mlp_hdim4, dropout=args.mlp_dropout, clip=args.clip, ViT_depth=args.depth)
+        if args.backbone == 'unet1d':
+            net = models.diffusion.Diffusion_UNet1D()
+        if args.backbone == 'transformer':
+            net = models.diffusion.Diffusion_Transformer(d_model=args.hdim, depth=args.trans_depth, num_heads=args.trans_num_heads, mlp_ratio=args.trans_mlp_ratio, dropout=args.trans_dropout, ViT_depth=args.depth, nb_cls=args.nb_cls)
+        if args.backbone == 'mlp_mixer':
+            net = models.diffusion.Diffusion_MLPMixer()
+        if args.backbone == 'lstm' or args.backbone == 'gru':
+            net = models.diffusion.Diffusion_RNN(args=args, rnn_hidden=args.rnn_hidden, rnn_num_layers=args.rnn_num_layers, dropout=args.rnn_dropout, ViT_depth=args.depth, low_dim=args.rnn_low_dim)
     if model_name == 'vit_cifar_teacher':
         net = models.vit_cifar.vit_cifar_teacher(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
     msg = 'Using {} ...'.format(model_name)
