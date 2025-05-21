@@ -194,6 +194,8 @@ ood_data lsun
 ood_test_dir ./data/LSUN
 ```
 
+For additional datasets, please refer to [ATOM](https://github.com/jfc43/informative-outlier-mining) for downloading out-of-distribution test datasets.
+
 ## CoLA
 ### Environment Setup
 To begin, create a dedicated Conda environment and install the necessary dependencies for the experiments.
