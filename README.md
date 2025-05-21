@@ -230,19 +230,19 @@ Training the DIRECTOR involves two stages: (1) pre-training a transformer model 
 
 - Pre-train Transformers on CoLA using the following commands:
 ```
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 0 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 1 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 2 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 3 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 4 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 0 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 1 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 2 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 3 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 4 --save-dir ./results/vit_out
 ```
 
 - Pre-train KEP-SVGPs (configuring the `ksvd-layers` to values of 1, 2 and 5) using the commands below:
 ```
-main.py --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --weight-decay 5e-5 --seed 0 --save-dir ./results/vit_out_sum
-main.py --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --weight-decay 5e-5 --seed 1 --save-dir ./results/vit_out_sum
-main.py --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --weight-decay 5e-5 --seed 2 --save-dir ./results/vit_out_sum
-main.py --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --weight-decay 5e-5 --seed 3 --save-dir ./results/vit_out_sum
+python3 main.py --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --weight-decay 5e-5 --seed 0 --save-dir ./results/vit_out_sum
+python3 main.py --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --weight-decay 5e-5 --seed 1 --save-dir ./results/vit_out_sum
+python3 main.py --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --weight-decay 5e-5 --seed 2 --save-dir ./results/vit_out_sum
+python3 main.py --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --weight-decay 5e-5 --seed 3 --save-dir ./results/vit_out_sum
 main.py --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --weight-decay 5e-5 --seed 4 --save-dir ./results/vit_out_sum
 ```
 
@@ -257,58 +257,58 @@ python3 main.py --model diffusion --seed 4 --depth 5 --attn-type softmax --batch
 
 - Train the diffusion model to align with the pre-trained KEP-SVGP (configuring the `ksvd-layers` to values of 1, 2 and 5) using the commands below:
 ```
-main.py --model diffusion --seed 0 --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --lr 5e-3 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out_sum --pretrained_seed 0 --trans_depth 1 --trans_num_heads 4 --trans_mlp_ratio 1 --trans_dropout 0.1 --lambda_mean 0.5 --lambda_var 0.2 --lambda_ce 0.3
-main.py --model diffusion --seed 1 --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --lr 5e-3 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out_sum --pretrained_seed 1 --trans_depth 1 --trans_num_heads 4 --trans_mlp_ratio 1 --trans_dropout 0.1 --lambda_mean 0.5 --lambda_var 0.2 --lambda_ce 0.3
-main.py --model diffusion --seed 2 --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --lr 5e-3 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out_sum --pretrained_seed 2 --trans_depth 1 --trans_num_heads 4 --trans_mlp_ratio 1 --trans_dropout 0.1 --lambda_mean 0.5 --lambda_var 0.2 --lambda_ce 0.3
-main.py --model diffusion --seed 3 --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --lr 5e-3 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out_sum --pretrained_seed 3 --trans_depth 1 --trans_num_heads 4 --trans_mlp_ratio 1 --trans_dropout 0.1 --lambda_mean 0.5 --lambda_var 0.2 --lambda_ce 0.3
-main.py --model diffusion --seed 4 --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --lr 5e-3 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out_sum --pretrained_seed 4 --trans_depth 1 --trans_num_heads 4 --trans_mlp_ratio 1 --trans_dropout 0.1 --lambda_mean 0.5 --lambda_var 0.2 --lambda_ce 0.3
+python3 main.py --model diffusion --seed 0 --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --lr 5e-3 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out_sum --pretrained_seed 0 --trans_depth 1 --trans_num_heads 4 --trans_mlp_ratio 1 --trans_dropout 0.1 --lambda_mean 0.5 --lambda_var 0.2 --lambda_ce 0.3
+python3 main.py --model diffusion --seed 1 --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --lr 5e-3 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out_sum --pretrained_seed 1 --trans_depth 1 --trans_num_heads 4 --trans_mlp_ratio 1 --trans_dropout 0.1 --lambda_mean 0.5 --lambda_var 0.2 --lambda_ce 0.3
+python3 main.py --model diffusion --seed 2 --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --lr 5e-3 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out_sum --pretrained_seed 2 --trans_depth 1 --trans_num_heads 4 --trans_mlp_ratio 1 --trans_dropout 0.1 --lambda_mean 0.5 --lambda_var 0.2 --lambda_ce 0.3
+python3 main.py --model diffusion --seed 3 --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --lr 5e-3 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out_sum --pretrained_seed 3 --trans_depth 1 --trans_num_heads 4 --trans_mlp_ratio 1 --trans_dropout 0.1 --lambda_mean 0.5 --lambda_var 0.2 --lambda_ce 0.3
+python3 main.py --model diffusion --seed 4 --depth 5 --attn-type kep_svgp --ksvd-layers 1 --eta-ksvd 1 --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --lr 5e-3 --weight-decay 5e-5 --save-dir ./results/diffusion --backbone transformer --pretrained_dir ./results/vit_out_sum --pretrained_seed 4 --trans_depth 1 --trans_num_heads 4 --trans_mlp_ratio 1 --trans_dropout 0.1 --lambda_mean 0.5 --lambda_var 0.2 --lambda_ce 0.3
 ```
 
 ### Baselines
 Run the following commands to reproduce results for compared baselines.
 - Temperature Scaling
 ```
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model temperature_scaling --lr 5e-4 --seed 0 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model temperature_scaling --lr 5e-4 --seed 1 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model temperature_scaling --lr 5e-4 --seed 2 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model temperature_scaling --lr 5e-4 --seed 3 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model temperature_scaling --lr 5e-4 --seed 4 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model temperature_scaling --lr 5e-4 --seed 0 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model temperature_scaling --lr 5e-4 --seed 1 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model temperature_scaling --lr 5e-4 --seed 2 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model temperature_scaling --lr 5e-4 --seed 3 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model temperature_scaling --lr 5e-4 --seed 4 --save-dir ./results/vit_out
 ```
 
 - MC Dropout
 ```
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model mc_dropout --lr 5e-4 --seed 0 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model mc_dropout --lr 5e-4 --seed 1 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model mc_dropout --lr 5e-4 --seed 2 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model mc_dropout --lr 5e-4 --seed 3 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model mc_dropout --lr 5e-4 --seed 4 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model mc_dropout --lr 5e-4 --seed 0 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model mc_dropout --lr 5e-4 --seed 1 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model mc_dropout --lr 5e-4 --seed 2 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model mc_dropout --lr 5e-4 --seed 3 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model mc_dropout --lr 5e-4 --seed 4 --save-dir ./results/vit_out
 ```
 
 - KFLLA
 ```
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model kflla --lr 5e-4 --seed 0 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model kflla --lr 5e-4 --seed 1 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model kflla --lr 5e-4 --seed 2 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model kflla --lr 5e-4 --seed 3 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model kflla --lr 5e-4 --seed 4 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model kflla --lr 5e-4 --seed 0 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model kflla --lr 5e-4 --seed 1 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model kflla --lr 5e-4 --seed 2 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model kflla --lr 5e-4 --seed 3 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 0 --nb-run 1 --model kflla --lr 5e-4 --seed 4 --save-dir ./results/vit_out
 ```
 
 - SVDKL
 ```
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --model svdkl --lr 1e-2 --seed 0 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --model svdkl --lr 1e-2 --seed 1 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --model svdkl --lr 1e-2 --seed 2 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --model svdkl --lr 1e-2 --seed 3 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --model svdkl --lr 1e-2 --seed 4 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --model svdkl --lr 1e-2 --seed 0 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --model svdkl --lr 1e-2 --seed 1 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --model svdkl --lr 1e-2 --seed 2 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --model svdkl --lr 1e-2 --seed 3 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 50 --nb-run 1 --model svdkl --lr 1e-2 --seed 4 --save-dir ./results/vit_out
 ```
 
 - SGPA
 ```
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 0 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 1 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 2 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 3 --save-dir ./results/vit_out
-main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 4 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 0 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 1 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 2 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 3 --save-dir ./results/vit_out
+python3 main.py --depth 5 --attn-type softmax --batch-size 32 --gpu 0 --nb-epochs 100 --nb-run 1 --model vit_cola --lr 5e-4 --seed 4 --save-dir ./results/vit_out
 ```
 
 ## IMDB
