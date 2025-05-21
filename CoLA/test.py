@@ -8,7 +8,7 @@ import models.get_model
 import csv
 from torch.utils.data import DataLoader
 import wandb
-# import gpytorch
+import gpytorch
 from laplace import Laplace
 
 from data_loader import get_data, get_vocab, DataLoader, DataLoader_KFLLA

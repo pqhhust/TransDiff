@@ -10,3 +10,5 @@ pip install timm
 pip install warmup_scheduler
 pip install wandb
 pip install einops
+pip install gpytorch
+pip install laplace-torch

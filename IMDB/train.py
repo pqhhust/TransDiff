@@ -4,7 +4,7 @@ import numpy as np
 import torch.nn.functional as F
 import utils.utils
 import wandb
-import gpytorch
+# import gpytorch
 
 
 def compute_loss(cls_criterion, preds, targets, score_list=None, lambda_sqrt_inv_list=None, kl_list=None, eta_ksvd=1., eta_kl=1.):
@@ -51,19 +51,6 @@ def compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_mi
         means_mse += mean_loss / len(means_from_diffusion)
     
     for layer_idx, (std_diff_out, cov_vit_out) in enumerate(zip(stds_from_diffusion, covariances_x_minus)):
-        # Compute MSE loss between Diffusion output and ViT output
-        # if args.attn_type == 'softmax':
-        #     break
-        # else:
-        #     if args.depth == args.ksvd_layers:
-        #         std_loss = mse_criterion(std_diff_out, cov_vit_out)
-        #         stds_mse += std_loss #/ len(stds_from_diffusion)
-        #     else: 
-        #         if layer_idx < (args.depth - args.ksvd_layers):
-        #             continue
-        #         else:
-        #             std_loss = mse_criterion(std_diff_out, cov_vit_out)
-        #             stds_mse += std_loss
         std_loss = mse_criterion(std_diff_out, cov_vit_out)
         stds_mse += std_loss / len(stds_from_diffusion)
     
@@ -169,15 +156,10 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     diffusion_model.train()
     vit_model.eval()  # Ensure ViT is in evaluation mode
 
-    # Freeze ViT model parameters
-    # for param in diffusion_model.parameters():
-    #     param.requires_grad = False
 
     for param in vit_model.parameters():
         param.requires_grad = False
 
-    # for param in vit_model.fc.parameters():
-    #     param.requires_grad = True
 
     # Define loss function
     mse_criterion = nn.MSELoss() #to be uncomment
@@ -205,8 +187,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
         with torch.no_grad(): #to be uncomment
             _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs)
         means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_ViT, train=True)
-        # print(x_t_from_diffusion[0].shape) # for debug only
-        # print(means_x_minus[0].shape) # for debug only
+       
         means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus)#to be uncomment
         loss = args.lambda_mean*means_loss + args.lambda_var*stds_loss + args.lambda_ce*ce_loss
         loss.backward()

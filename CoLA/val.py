@@ -6,13 +6,11 @@ from sklearn.metrics import matthews_corrcoef
 from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
 from data_loader import get_data, get_vocab, DataLoader, DataLoader_KFLLA
-# import gpytorch
+import gpytorch
 # from laplace import Laplace
 
 @torch.no_grad()
 def validation(loader, net, args, method=None):
-    # if args.model == 'svdkl':
-    #     method = 'svdkl'
     if args.model == "temperature_scaling":
         data_train,gold_train,data_test,gold_test,data_ood,gold_ood=\
             get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
@@ -43,12 +41,12 @@ def validation(loader, net, args, method=None):
         positional = positional.to(f'cuda:{args.gpu}')
         answers = answers.to(f'cuda:{args.gpu}')
         if args.model == 'svdkl':
-            pass
-            # with gpytorch.settings.num_likelihood_samples(10):
-            #     gp_output = net(inputs, positional, inputs_mask, data)
-            #     output_dist = likelihood(gp_output)
-            #     softmax = output_dist.probs.mean(0)
-            #     output = torch.zeros_like(softmax)
+            # pass
+            with gpytorch.settings.num_likelihood_samples(10):
+                gp_output = net(inputs, positional, inputs_mask, data)
+                output_dist = likelihood(gp_output)
+                softmax = output_dist.probs.mean(0)
+                output = torch.zeros_like(softmax)
         elif args.model == 'kflla':
             batch_data = {
                 'sentences': data,

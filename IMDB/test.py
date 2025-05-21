@@ -8,7 +8,7 @@ import models.get_model
 import csv
 from torch.utils.data import DataLoader
 import wandb
-# import gpytorch
+import gpytorch
 from laplace import Laplace
 
 from data_loader import get_imdb_data
@@ -38,13 +38,7 @@ def test(args):
     logger = utils.utils.get_logger(save_path)
 
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
-    # data_train, gold_train, data_test, gold_test, data_ood, gold_ood=\
-    #         get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
-    # word_to_int, _ = get_vocab(data_train, args.min_word_count)
-    # vocab_size = len(word_to_int)
 
-    # test_loader = DataLoader(data_test,gold_test,args.batch_size,word_to_int,device,shuffle=False)
-    # ood_loader = DataLoader(data_ood,gold_ood,args.batch_size,word_to_int,device,shuffle=False)
     train_loader, val_loader, test_loader, tokenizer = get_imdb_data('./data', args.batch_size)
     for r in range(args.nb_run):
         logger.info(f'Testing model_{r + 1} ...')
@@ -52,11 +46,11 @@ def test(args):
         net = models.get_model.get_model(args.model, len(tokenizer.vocab), logger, args)
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
         net = net.cuda()
-        # if args.model == 'svdkl':
-        #     # pass
-        #     likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=2).cuda()
-        #     likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_likelihood_{r + 1}.pth')))
-        #     net = (net, likelihood) 
+        if args.model == 'svdkl':
+            # pass
+            likelihood = gpytorch.likelihoods.SoftmaxLikelihood(num_features=args.hdim, num_classes=2).cuda()
+            likelihood.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_likelihood_{r + 1}.pth')))
+            net = (net, likelihood) 
         if args.model == "kflla":
             net.train()
             la = Laplace(net, 'classification', subset_of_weights='last_layer', hessian_structure='kron')
