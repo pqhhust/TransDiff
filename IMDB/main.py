@@ -325,12 +325,6 @@ def main_diffusion(args):
 
             wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
 
-            test_results = val.validation(test_loader, net_val, args)
-            log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
-            msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
-            logger.info(msg)
-            wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
-
             if res['Acc.'] > best_acc :
                 acc = res['Acc.']
                 msg = f'Acc. improved from {best_acc:.2f} to {acc:.2f}!!!'
