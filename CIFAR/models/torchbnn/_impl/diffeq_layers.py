@@ -12,6 +12,8 @@ from torch import nn
 from torch.nn.common_types import _size_2_t
 from torch.nn.modules.utils import _pair
 
+import models.torchbnn._impl.DiT as dit
+
 from . import utils
 
 _shape_t = Union[int, List[int], torch.Size]
@@ -36,6 +38,62 @@ class DiffEqModule(abc.ABC, nn.Module):
     def _forward_unimplemented(self, *input: Any) -> None:
         pass
 
+class TimestepEmbedder()
+
+class DiTBlock(dit.DiTBlock, DiffEqModule):
+    """Building DiT"""
+
+    def __init__(self, hidden_size, num_heads, mlp_ratio, **block_kwargs):
+        # explicit_params: Register the built-in parameters if True; else use `params` argument of `forward`.
+        super(DiTBlock, self).__init__(hidden_size=hidden_size, num_heads=num_heads, mlp_ratio=mlp_ratio, **block_kwargs)
+
+    def forward(self, t, y, params: Optional[List] = None):
+        if params is None:
+            pass
+        else:
+            ## alpha * LN + beta -> Linear(d_model, 3 * d_model) -> gamma * Linear(d_model, d_model) -> alpha * LN + beta -> Linear(d_model, h_dim) -> gamma * Linear(h_dim, d_model)
+            t2n = {
+                'qkv_weight': 0,
+                'qkv_bias': 1,
+                'proj_weight': 2,
+                'proj_bias': 3,
+                'fc1_weight': 4,
+                'fc1_bias': 5,
+                'fc2_weight': 6,
+                'fc2_bias': 7,
+                'adaLN_weight': 8,
+                'adaLN_bias': 9
+            } ## type to number
+
+            B, N, C = y.shape
+            shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = F.linear(F.silu(y), params[t2n['adaLN_weight']], params[t2n['adaLN_bias']]).chunk(6, dim=1)
+            x = F.layer_norm(y, (self.hidden_size,))
+            x = x * shift_msa.unsqueeze(1) + scale_msa.unsqueeze(1)
+            qkv = F.linear(x, params[t2n['qkv_weight']], params[t2n['qkv_bias']]).reshape(B, N, 3, self.num_heads, self.hidden_size // self.num_heads).permute(2, 0, 3, 1, 4)
+            q, k, v = qkv.unbind(0)
+            # q, k = self.q_norm(q), self.k_norm(k)
+
+            q = q * ((self.hidden_size // self.num_heads) ** -0.5)
+            attn = q @ k.transpose(-2, -1)
+            attn = F.softmax(attn, dim=-1)
+            # attn = self.attn_drop(attn)
+            x = attn @ v
+
+            x = x.transpose(1, 2).reshape(B, N, C)
+            x = F.linear(x, params[t2n['proj_weight']], params[t2n['proj_bias']])
+            # x = self.proj_drop(x)
+            x = gate_msa.unsqueeze(1) * x
+            y = y + x
+
+            x = F.layer_norm(y, (hidden_size,))
+            x = x * shift_mlp.unsqueeze(1) + scale_mlp.unsqueeze(1)
+            x = F.linear(x, params[t2n['fc1_weight']], params[t2n['fc1_bias']])
+            x = F.gelu(x)
+            x = F.linear(x, params[t2n['fc2_weight']], params[t2n['fc2_bias']])
+            x = gate_mlp.unsqueeze(1) * x
+            y = y + x
+        
+        return y
 
 class DiffEqSequential(DiffEqModule):
     """Entry point for building drift on hidden state of neural network."""
@@ -70,6 +128,15 @@ class DiffEqWrapper(DiffEqModule):
     def forward(self, t, y, *args, **kwargs):
         del t, args, kwargs
         return self.module(y)
+
+class DiffEqWrapperTimestep(DiffEqModule):
+    def __init__(self, module):
+        super(DiffEqWrapper, self).__init__()
+        self.module = module
+
+    def forward(self, t, y, *args, **kwargs):
+        del y, args, kwargs
+        return self.module(t)
 
 
 class ConcatConv2d(nn.Conv2d, DiffEqModule):
@@ -271,6 +338,10 @@ class Print(DiffEqModule):
         logging.warning(msg)
         return y
 
+def make_ode_dit(depth, hidden_size, num_heads, mlp_ratio):
+    layers = [DiffEqWrapperTimestep(dit.TimestepEmbedder(hidden_size))]
+    layers.extend([DiT(hidden_size, num_heads, mlp_ratio)])
+    return DiffEqSequential(*layers)
 
 def make_ode_k3_block(input_size, activation="softplus", squeeze=False):
     """Make a block of kernel size 3 for all convolutions."""

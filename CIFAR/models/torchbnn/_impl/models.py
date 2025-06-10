@@ -3,6 +3,7 @@ import torch
 import torchsde
 from torch import nn
 from torchbnn._impl import diffeq_layers, utils
+from torchbnn._impl.DiT import DiT
 
 
 # TODO:
@@ -113,22 +114,39 @@ class SDENet(torchsde.SDEStratonovich):
                  inhomogeneous=True,
                  sigma=0.1,
                  hidden_width=128,
-                 aug_dim=0):
+                 aug_dim=0,
+                 img_size=32,
+                 patch=8,
+                 is_cls_token=None):
         super(SDENet, self).__init__(noise_type="diagonal")
         self.input_size = input_size
-        self.aug_input_size = (aug_dim + input_size[0], *input_size[1:])
-        self.aug_zeros_size = (aug_dim, *input_size[1:])
-        self.register_buffer('aug_zeros', torch.zeros(size=(1, *self.aug_zeros_size)))
+        # self.aug_input_size = (aug_dim + input_size[0], *input_size[1:])
+        # self.aug_zeros_size = (aug_dim, *input_size[1:])
+        # self.register_buffer('aug_zeros', torch.zeros(size=(1, *self.aug_zeros_size)))
+
+        ## Embedding layers
+        self.patch = patch # number of patches in one row(or col)
+        self.is_cls_token = is_cls_token
+        self.patch_size = img_size//self.patch
+        f = (img_size//self.patch)**2*input_size[0]
+        num_tokens = (self.patch**2)+1 if self.is_cls_token else (self.patch**2)
+        self.emb = nn.Linear(f, hidden_width) # (b, n, f)
+        self.cls_token = nn.Parameter(torch.randn(1, 1, hidden_width)) if is_cls_token else None
+        self.pos_emb = nn.Parameter(torch.randn(1,num_tokens, hidden_width))
 
         # Create network evolving state.
-        self.y_net, self.output_size = make_y_net(
-            input_size=input_size,
-            blocks=blocks,
-            activation=activation,
-            verbose=verbose,
-            hidden_width=hidden_width,
-            aug_dim=aug_dim
-        )
+        self.y_net = diffeq_layers.make_ode_dit(depth=1, hidden_size=hidden_width, num_heads=12, mlp_ratio=1.0)
+        self.output_size = (num_tokens, hidden_width)
+        # self.y_net, self.output_size = make_y_net(
+        #     input_size=input_size,
+        #     blocks=blocks,
+        #     activation=activation,
+        #     verbose=verbose,
+        #     hidden_width=hidden_width,
+        #     aug_dim=aug_dim
+        # )
+
+
         # Create network evolving weights.
         initial_params = self.y_net.make_initial_params()  # w0.
         flat_initial_params, unravel_params = utils.ravel_pytree(initial_params)
@@ -145,22 +163,27 @@ class SDENet(torchsde.SDEStratonovich):
 
         # Final projection layer.
         self.projection = nn.Sequential(
-            nn.Flatten(),
-            # nn.Linear(int(np.prod(self.output_size)), num_classes), # option: projection w/o ReLU
-            nn.Linear(int(np.prod(self.output_size)), 1024),
-            nn.ReLU(inplace=True),
-            nn.Linear(1024, num_classes),
+            nn.LayerNorm(hidden_width),
+            nn.Linear(hidden_width, num_classes)
         )
 
         self.register_buffer('ts', torch.tensor([0., 1.]))
         self.sigma = sigma
         self.nfe = 0
 
+    def _to_words(self, x):
+        """
+        (b, c, h, w) -> (b, n, f)
+        """
+        out = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size).permute(0,2,3,4,5,1)
+        out = out.reshape(x.size(0), self.patch**2 ,-1)
+        return out
+
     def f(self, t, y: torch.Tensor):
         input_y = y
         self.nfe += 1
         y, w, _ = y.split(split_size=(y.numel() - self.params_size - 1, self.params_size, 1), dim=1) # params_size: 606408
-        fy = self.y_net(t, y.reshape((-1, *self.aug_input_size)), self.unravel_params(w)).reshape(-1)
+        fy = self.y_net(t, y.reshape((-1, *self.output_size)), self.unravel_params(w)).reshape(-1)
         nn = self.w_net(t, w)
         fw = nn - w  # hardcoded OU prior on weights w
         fl = (nn ** 2).sum(dim=1, keepdim=True) / (self.sigma ** 2)
@@ -181,10 +204,15 @@ class SDENet(torchsde.SDEStratonovich):
         # Note: This works correctly, as long as we are requesting the nfe after each gradient update.
         #  There are obviously cleaner ways to achieve this.
         self.nfe = 0    
+        y = self._to_words(y)
+        y = self.emb(y)
+        if self.is_cls_token:
+            y = torch.cat([self.cls_token.repeat(y.size(0), 1, 1), y], dim=1)
+        y = y + self.pos_emb
         sdeint = torchsde.sdeint_adjoint if adjoint else torchsde.sdeint
-        if self.aug_zeros.numel() > 0:  # Add zero channels.
-            aug_zeros = self.aug_zeros.expand(y.shape[0], *self.aug_zeros_size)
-            y = torch.cat((y, aug_zeros), dim=1) # 235200
+        # if self.aug_zeros.numel() > 0:  # Add zero channels.
+        #     aug_zeros = self.aug_zeros.expand(y.shape[0], *self.aug_zeros_size)
+        #     y = torch.cat((y, aug_zeros), dim=1) # 235200
         aug_y = torch.cat((y.reshape(-1), self.flat_initial_params, torch.tensor([0.], device=y.device))) # 841609: (235200, 606408, 1)
         aug_y = aug_y[None]
         bm = torchsde.BrownianInterval(
@@ -196,7 +224,7 @@ class SDENet(torchsde.SDEStratonovich):
         else:
             _, aug_y1 = sdeint(self, aug_y, self.ts, bm=bm, method=method, dt=dt, adaptive=adaptive, rtol=rtol, atol=atol)
         y1 = aug_y1[:y.numel()].reshape(y.size())
-        logits = self.projection(y1)
+        logits = self.projection(y1.mean(1))
         logqp = .5 * aug_y1[-1]
         return logits, logqp
 
@@ -212,4 +240,4 @@ if __name__ == "__main__":
 
     y0 = torch.randn(batch_size, c, h, w)
     y1 = sde(y0)
-    torch.testing.assert_allclose(y0, y1)
+    torch.testing.assert_close(y0, y1)
