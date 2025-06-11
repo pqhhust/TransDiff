@@ -44,6 +44,9 @@ class DiTBlock(dit.DiTBlock, DiffEqModule):
     def __init__(self, hidden_size, num_heads, mlp_ratio, **block_kwargs):
         # explicit_params: Register the built-in parameters if True; else use `params` argument of `forward`.
         super(DiTBlock, self).__init__(hidden_size=hidden_size, num_heads=num_heads, mlp_ratio=mlp_ratio, **block_kwargs)
+        self.hidden_size = hidden_size
+        self.num_heads = num_heads
+        self.mlp_ratio = mlp_ratio
 
     def forward(self, t, y, params: Optional[List] = None):
         if params is None:
@@ -62,9 +65,11 @@ class DiTBlock(dit.DiTBlock, DiffEqModule):
                 'adaLN_weight': 8,
                 'adaLN_bias': 9
             } ## type to number
-
+            print('y_shape:', y.shape)
             B, N, C = y.shape
-            shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = F.linear(F.silu(y), params[t2n['adaLN_weight']], params[t2n['adaLN_bias']]).chunk(6, dim=1)
+            print('t_tensor_shape:', t.shape)
+            shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = F.linear(F.silu(t), params[t2n['adaLN_weight']], params[t2n['adaLN_bias']]).chunk(6, dim=1)
+            print(shift_msa.shape, scale_msa.shape, gate_msa.shape, shift_mlp.shape, scale_mlp.shape, gate_mlp.shape)
             x = F.layer_norm(y, (self.hidden_size,))
             x = x * shift_msa.unsqueeze(1) + scale_msa.unsqueeze(1)
             qkv = F.linear(x, params[t2n['qkv_weight']], params[t2n['qkv_bias']]).reshape(B, N, 3, self.num_heads, self.hidden_size // self.num_heads).permute(2, 0, 3, 1, 4)
@@ -83,7 +88,7 @@ class DiTBlock(dit.DiTBlock, DiffEqModule):
             x = gate_msa.unsqueeze(1) * x
             y = y + x
 
-            x = F.layer_norm(y, (hidden_size,))
+            x = F.layer_norm(y, (self.hidden_size,))
             x = x * shift_mlp.unsqueeze(1) + scale_mlp.unsqueeze(1)
             x = F.linear(x, params[t2n['fc1_weight']], params[t2n['fc1_bias']])
             x = F.gelu(x)
@@ -108,7 +113,12 @@ class DiffEqSequential(DiffEqModule):
                 y = layer(t, y)
         else:
             for layer, params_ in zip(self.layers, params):
-                y = layer(t, y, params_)
+                if isinstance(layer, DiffEqWrapperTimestep):
+                    # If layer is a DiffEqModule, it expects params to be passed.
+                    y, t = layer(t, y, params_)
+                    print('t_shape:', t.shape)
+                else:
+                    y = layer(t, y, params_)
         return y
 
     def make_initial_params(self):
@@ -133,8 +143,9 @@ class DiffEqWrapperTimestep(DiffEqModule):
         self.module = module
 
     def forward(self, t, y, *args, **kwargs):
-        del y, args, kwargs
-        return self.module(t)
+        del args, kwargs
+        t_tensor = torch.tensor([t], device=y.device).expand(y.shape[0])
+        return y, self.module(t_tensor)
 
 
 class ConcatConv2d(nn.Conv2d, DiffEqModule):
@@ -338,7 +349,8 @@ class Print(DiffEqModule):
 
 def make_ode_dit(depth, hidden_size, num_heads, mlp_ratio):
     layers = [DiffEqWrapperTimestep(dit.TimestepEmbedder(hidden_size))]
-    layers.extend([DiTBlock(hidden_size, num_heads, mlp_ratio)])
+    for _ in range(depth):
+        layers.extend([DiTBlock(hidden_size, num_heads, mlp_ratio)])
     return DiffEqSequential(*layers)
 
 def make_ode_k3_block(input_size, activation="softplus", squeeze=False):

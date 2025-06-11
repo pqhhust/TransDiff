@@ -169,6 +169,29 @@ def flatten_nested(possibly_sequence: Union[torch.Tensor, Sequence]):
     return torch.cat(flat_tensors, dim=0) if len(flat_tensors) > 0 else torch.tensor([])
 
 
+# def ravel_pytree(possibly_sequence: Union[Sequence, torch.Tensor]) -> Tuple[torch.Tensor, Callable]:
+#     if torch.is_tensor(possibly_sequence):
+#         return possibly_sequence.reshape(-1), lambda x: x.reshape(possibly_sequence.size())
+
+#     def make_unravel(size):  # Need this function to copy size!
+#         return lambda x: x.reshape(size)
+
+#     unravels, flats, numels = [], [], []
+#     for entry in possibly_sequence:
+#         if torch.is_tensor(entry):
+#             unravel_i = make_unravel(entry.size())
+#             flat_i = entry.reshape(-1)
+#         else:
+#             flat_i, unravel_i = ravel_pytree(entry)
+#         unravels.append(unravel_i)
+#         flats.append(flat_i)
+#         numels.append(flat_i.numel())
+
+#     def unravel(flat: torch.Tensor):
+#         return [unravel_(flat_) for flat_, unravel_ in zip_(flat.split(split_size=numels), unravels)]
+
+#     return torch.cat(flats) if len(flats) > 0 else torch.tensor([]), unravel
+
 def ravel_pytree(possibly_sequence: Union[Sequence, torch.Tensor]) -> Tuple[torch.Tensor, Callable]:
     if torch.is_tensor(possibly_sequence):
         return possibly_sequence.reshape(-1), lambda x: x.reshape(possibly_sequence.size())
@@ -188,7 +211,14 @@ def ravel_pytree(possibly_sequence: Union[Sequence, torch.Tensor]) -> Tuple[torc
         numels.append(flat_i.numel())
 
     def unravel(flat: torch.Tensor):
-        return [unravel_(flat_) for flat_, unravel_ in zip_(flat.split(split_size=numels), unravels)]
+        total_expected = sum(numels)
+        print("DEBUG: Flat shape:", flat.shape)
+        print("DEBUG: Sum of numels:", total_expected)
+        assert flat.shape[0] == total_expected, \
+            f"Flat has {flat.shape[0]} elements, but expected {total_expected}"
+        splits = torch.split(flat, numels)
+        print("DEBUG: Splits sizes:", [s.numel() for s in splits])
+        return [unravel_(s) for s, unravel_ in zip(splits, unravels)]
 
     return torch.cat(flats) if len(flats) > 0 else torch.tensor([]), unravel
 
