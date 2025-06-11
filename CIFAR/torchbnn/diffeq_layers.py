@@ -65,11 +65,11 @@ class DiTBlock(dit.DiTBlock, DiffEqModule):
                 'adaLN_weight': 8,
                 'adaLN_bias': 9
             } ## type to number
-            print('y_shape:', y.shape)
+            # print('y_shape:', y.shape)
             B, N, C = y.shape
-            print('t_tensor_shape:', t.shape)
+            # print('t_tensor_shape:', t.shape)
             shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = F.linear(F.silu(t), params[t2n['adaLN_weight']], params[t2n['adaLN_bias']]).chunk(6, dim=1)
-            print(shift_msa.shape, scale_msa.shape, gate_msa.shape, shift_mlp.shape, scale_mlp.shape, gate_mlp.shape)
+            # print(shift_msa.shape, scale_msa.shape, gate_msa.shape, shift_mlp.shape, scale_mlp.shape, gate_mlp.shape)
             x = F.layer_norm(y, (self.hidden_size,))
             x = x * shift_msa.unsqueeze(1) + scale_msa.unsqueeze(1)
             qkv = F.linear(x, params[t2n['qkv_weight']], params[t2n['qkv_bias']]).reshape(B, N, 3, self.num_heads, self.hidden_size // self.num_heads).permute(2, 0, 3, 1, 4)
@@ -115,8 +115,9 @@ class DiffEqSequential(DiffEqModule):
             for layer, params_ in zip(self.layers, params):
                 if isinstance(layer, DiffEqWrapperTimestep):
                     # If layer is a DiffEqModule, it expects params to be passed.
+                    # print('params_shape:', params_[0].shape, params_[1].shape, params_[2].shape, params_[3].shape)
                     y, t = layer(t, y, params_)
-                    print('t_shape:', t.shape)
+                    # print('t_shape:', t.shape)
                 else:
                     y = layer(t, y, params_)
         return y
@@ -142,10 +143,9 @@ class DiffEqWrapperTimestep(DiffEqModule):
         super(DiffEqWrapperTimestep, self).__init__()
         self.module = module
 
-    def forward(self, t, y, *args, **kwargs):
-        del args, kwargs
+    def forward(self, t, y, params):
         t_tensor = torch.tensor([t], device=y.device).expand(y.shape[0])
-        return y, self.module(t_tensor)
+        return y, self.module(t_tensor, params)
 
 
 class ConcatConv2d(nn.Conv2d, DiffEqModule):

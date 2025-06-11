@@ -210,15 +210,18 @@ def ravel_pytree(possibly_sequence: Union[Sequence, torch.Tensor]) -> Tuple[torc
         flats.append(flat_i)
         numels.append(flat_i.numel())
 
+    # def unravel(flat: torch.Tensor):
+    #     total_expected = sum(numels)
+    #     print("DEBUG: Flat shape:", flat.shape)
+    #     print("DEBUG: Sum of numels:", total_expected)
+    #     assert flat.shape[0] == total_expected, \
+    #         f"Flat has {flat.shape[0]} elements, but expected {total_expected}"
+    #     splits = torch.split(flat, numels)
+    #     print("DEBUG: Splits sizes:", [s.numel() for s in splits])
+    #     return [unravel_(s) for s, unravel_ in zip(splits, unravels)]
+
     def unravel(flat: torch.Tensor):
-        total_expected = sum(numels)
-        print("DEBUG: Flat shape:", flat.shape)
-        print("DEBUG: Sum of numels:", total_expected)
-        assert flat.shape[0] == total_expected, \
-            f"Flat has {flat.shape[0]} elements, but expected {total_expected}"
-        splits = torch.split(flat, numels)
-        print("DEBUG: Splits sizes:", [s.numel() for s in splits])
-        return [unravel_(s) for s, unravel_ in zip(splits, unravels)]
+        return [unravel_(flat_) for flat_, unravel_ in zip_(flat.split(split_size=numels), unravels)]
 
     return torch.cat(flats) if len(flats) > 0 else torch.tensor([]), unravel
 

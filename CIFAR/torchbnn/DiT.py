@@ -205,9 +205,14 @@ class TimestepEmbedder(nn.Module):
             embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim=-1)
         return embedding
 
-    def forward(self, t):
-        t_freq = self.timestep_embedding(t, self.frequency_embedding_size)
-        t_emb = self.mlp(t_freq)
+    def forward(self, t, params=None):
+        t_emb = self.timestep_embedding(t, self.frequency_embedding_size)
+        if params is not None:
+            t_emb = F.linear(t_emb, params[0], params[1])
+            t_emb = F.silu(t_emb)
+            t_emb = F.linear(t_emb, params[2], params[3])
+        else:    
+            t_emb = self.mlp(t_emb)
         return t_emb
 
 

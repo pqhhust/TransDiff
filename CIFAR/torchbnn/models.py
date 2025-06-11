@@ -184,16 +184,16 @@ class SDENet(torchsde.SDEStratonovich):
     def f(self, t, y: torch.Tensor):
         input_y = y
         self.nfe += 1
-        print('y_numel:', y.numel())
-        print('y_shape:', y.size())
+        # print('y_numel:', y.numel())
+        # print('y_shape:', y.size())
         y, w, _ = y.split(split_size=(y.numel() - self.params_size - 1, self.params_size, 1), dim=1) # params_size: 606408
-        print('y_reshape:', y.reshape(-1, *self.output_size).size())
+        # print('y_reshape:', y.reshape(-1, *self.output_size).size())
         fy = self.y_net(t, y.reshape((-1, *self.output_size)), self.unravel_params(w.squeeze(0))).reshape(-1).unsqueeze(0) 
         nn = self.w_net(t, w)
         fw = nn - w  # hardcoded OU prior on weights w
         fl = (nn ** 2).sum(dim=1, keepdim=True) / (self.sigma ** 2)
-        print(fy.shape, fw.shape, fl.shape)
-        print(input_y.shape)
+        # print(fy.shape, fw.shape, fl.shape)
+        # print(input_y.shape)
         assert input_y.shape == torch.cat((fy, fw, fl),dim=1).shape, f"Want: {input_y.shape} Got: {torch.cat((fy, fw, fl)).shape}. Check nblocks for dataset divisibility.\n"
         return torch.cat((fy, fw, fl),dim=1)
 
@@ -217,14 +217,14 @@ class SDENet(torchsde.SDEStratonovich):
         if self.is_cls_token:
             y = torch.cat([self.cls_token.repeat(y.size(0), 1, 1), y], dim=1)
         y = y + self.pos_emb
-        print('y_shape_before_fed:', y.shape)
+        # print('y_shape_before_fed:', y.shape)
         sdeint = torchsde.sdeint_adjoint if adjoint else torchsde.sdeint
         # if self.aug_zeros.numel() > 0:  # Add zero channels.
         #     aug_zeros = self.aug_zeros.expand(y.shape[0], *self.aug_zeros_size)
         #     y = torch.cat((y, aug_zeros), dim=1) # 235200
         aug_y = torch.cat((y.reshape(-1), self.flat_initial_params, torch.tensor([0.], device=y.device))) # 841609: (235200, 606408, 1)
         aug_y = aug_y[None]
-        print('aug_y_shape:', aug_y.shape)
+        # print('aug_y_shape:', aug_y.shape)
         bm = torchsde.BrownianInterval(
             t0=self.ts[0], t1=self.ts[-1], size=aug_y.shape, dtype=aug_y.dtype, device=aug_y.device,
             cache_size=45 if adjoint else 30  # If not adjoint, don't really need to cache.
@@ -238,6 +238,7 @@ class SDENet(torchsde.SDEStratonovich):
         y1 = aug_y1[0, :y.numel()].reshape(y.size())
         logits = self.projection(y1.mean(1))
         logqp = .5 * aug_y1[-1]
+        # return y, y1, logits, logqp
         return logits, logqp
 
     def zero_grad(self) -> None:
