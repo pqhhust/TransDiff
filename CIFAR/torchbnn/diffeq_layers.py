@@ -12,7 +12,7 @@ from torch import nn
 from torch.nn.common_types import _size_2_t
 from torch.nn.modules.utils import _pair
 
-import models.torchbnn._impl.DiT as dit
+import torchbnn.DiT as dit
 
 from . import utils
 
@@ -37,8 +37,6 @@ class DiffEqModule(abc.ABC, nn.Module):
     # https://github.com/pytorch/pytorch/issues/42305
     def _forward_unimplemented(self, *input: Any) -> None:
         pass
-
-class TimestepEmbedder()
 
 class DiTBlock(dit.DiTBlock, DiffEqModule):
     """Building DiT"""
@@ -131,7 +129,7 @@ class DiffEqWrapper(DiffEqModule):
 
 class DiffEqWrapperTimestep(DiffEqModule):
     def __init__(self, module):
-        super(DiffEqWrapper, self).__init__()
+        super(DiffEqWrapperTimestep, self).__init__()
         self.module = module
 
     def forward(self, t, y, *args, **kwargs):
@@ -340,7 +338,7 @@ class Print(DiffEqModule):
 
 def make_ode_dit(depth, hidden_size, num_heads, mlp_ratio):
     layers = [DiffEqWrapperTimestep(dit.TimestepEmbedder(hidden_size))]
-    layers.extend([DiT(hidden_size, num_heads, mlp_ratio)])
+    layers.extend([DiTBlock(hidden_size, num_heads, mlp_ratio)])
     return DiffEqSequential(*layers)
 
 def make_ode_k3_block(input_size, activation="softplus", squeeze=False):

@@ -2,8 +2,8 @@ import numpy as np
 import torch
 import torchsde
 from torch import nn
-from torchbnn._impl import diffeq_layers, utils
-from torchbnn._impl.DiT import DiT
+from torchbnn import diffeq_layers, utils
+from torchbnn.DiT import DiT
 
 
 # TODO:
@@ -28,7 +28,7 @@ def make_y_net(input_size,
                activation="softplus",
                verbose=False,
                explicit_params=True,
-               hidden_width=128,
+               hidden_width=384,
                aug_dim=0):
     _input_size = (input_size[0] + aug_dim,) + input_size[1:]
     layers = []
@@ -82,7 +82,7 @@ def make_w_net(in_features, hidden_sizes=(1, 64, 1), activation="softplus", inho
 
 
 class BaselineYNet(nn.Module):
-    def __init__(self, input_size=(3, 32, 32), num_classes=10, activation="softplus", residual=False, hidden_width=128,
+    def __init__(self, input_size=(3, 32, 32), num_classes=10, activation="softplus", residual=False, hidden_width=384,
                  aug=0):
         super(BaselineYNet, self).__init__()
         y_net, output_size = make_y_net(
@@ -113,7 +113,7 @@ class SDENet(torchsde.SDEStratonovich):
                  verbose=False,
                  inhomogeneous=True,
                  sigma=0.1,
-                 hidden_width=128,
+                 hidden_width=384,
                  aug_dim=0,
                  img_size=32,
                  patch=8,
@@ -152,6 +152,7 @@ class SDENet(torchsde.SDEStratonovich):
         flat_initial_params, unravel_params = utils.ravel_pytree(initial_params)
         self.flat_initial_params = nn.Parameter(flat_initial_params, requires_grad=True)
         self.params_size = flat_initial_params.numel()
+        print(len(initial_params[1]))
         print(f"initial_params ({self.params_size}): {flat_initial_params.shape}")
         self.unravel_params = unravel_params
         self.w_net = make_w_net(
@@ -182,6 +183,7 @@ class SDENet(torchsde.SDEStratonovich):
     def f(self, t, y: torch.Tensor):
         input_y = y
         self.nfe += 1
+        print('y_numel:', y.numel())
         y, w, _ = y.split(split_size=(y.numel() - self.params_size - 1, self.params_size, 1), dim=1) # params_size: 606408
         fy = self.y_net(t, y.reshape((-1, *self.output_size)), self.unravel_params(w)).reshape(-1)
         nn = self.w_net(t, w)
