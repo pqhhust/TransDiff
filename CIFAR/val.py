@@ -51,6 +51,9 @@ def validation(loader, net, args, method=None):
         elif args.model == 'mc_dropout':
             softmax = net(inputs)
             output = torch.zeros_like(softmax)
+        elif args.model == 'sdebnn':
+            output, _ = net(inputs, dt=0.1, adjoint=False, method='midpoint', adaptive=False, adjoint_adaptive=False) #rtol=1e-5, atol=1e-4)
+            softmax = F.softmax(output, dim=1)
         else:  
             if args.attn_type == "softmax":
                 if method == "mc_dropout":

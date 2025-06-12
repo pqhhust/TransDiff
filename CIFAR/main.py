@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.backends.cudnn
+import torch.functional as F
 import wandb
 
 import os
@@ -17,6 +18,8 @@ import utils.train_utils
 from utils.seed_utils import set_seed
 from utils.ema import EMA
 import utils.utils
+
+from torchbnn import models as bnn_models
 
 import warmup_scheduler
 wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
@@ -145,6 +148,132 @@ def main(args):
                 best_aurc = aurc
                 torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth'))
                 
+def main_sdebnn(args):
+    save_path = os.path.join(
+        args.save_dir,
+        f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}"
+    )
+    group = "SDE-BNN-CIFAR"
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    wandb.init(project='Difformer', 
+               group=group,
+               name=f"Seed_{args.seed}",
+               config=vars(args))
+
+    # Set seed everything
+    set_seed(args.seed)
+
+    logger = utils.utils.get_logger(save_path)
+    logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+
+    train_loader, val_loader, _, nb_cls = datasets.cifar_loader.get_loader(
+        args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
+    )
+
+    for run in range(args.nb_run):
+        prefix = f'{run + 1} / {args.nb_run} Running'
+        logger.info(100*'#' + '\n' + prefix)
+
+        ## define model
+        net = bnn_models.SDENet(num_classes=nb_cls, inhomogeneous=False, hidden_width=args.hdim)
+        # print(net)
+        print(sum(p.numel() for p in net.parameters() if p.requires_grad))
+        net.cuda()
+        
+        ## define optimizer with warm-up
+        optimizer = torch.optim.Adam(
+            net.parameters(),
+            lr=args.lr,
+            betas=(args.beta1, args.beta2),
+            weight_decay=args.weight_decay
+        )
+        base_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=args.nb_epochs, eta_min=args.min_lr
+        )
+        scheduler = warmup_scheduler.GradualWarmupScheduler(
+            optimizer,
+            multiplier=1.,
+            total_epoch=args.warmup_epoch,
+            after_scheduler=base_scheduler
+        )
+        
+        ## make logger
+        best_acc, best_auroc, best_aurc = 0, 0, 1e6
+
+        ## start training
+        for epoch in range(args.nb_epochs):
+            train_log = {
+                'Tot. Loss': utils.utils.AverageMeter(),
+                'LR': utils.utils.AverageMeter(),
+            }
+            msg = '####### --- Training Epoch {:d} --- #######'.format(epoch)
+            logger.info(msg)
+
+            net.train()
+            
+            for i, (data, target) in enumerate(train_loader):
+                data, target = data.cuda(), target.cuda()
+                optimizer.zero_grad()
+                output = net(data)
+                logits, logqp = net(data, dt=0.1, adjoint=False, method='midpoint', adaptive=False, adjoint_adaptive=False, rtol=1e-5, atol=1e-4)
+                xent = F.cross_entropy(logits, target, reduction='mean')
+                loss = xent + 1e-3 * logqp  
+                loss.backward()
+                optimizer.step()
+    
+                for param_group in optimizer.param_groups:
+                    lr = param_group["lr"]
+                    break
+
+                train_log['Tot. Loss'].update(loss.item(), data.size(0))
+                train_log['LR'].update(lr, data.size(0))
+
+                if i % 100 == 99:
+                    log = ['LR : {:.5f}'.format(train_log['LR'].avg)] + [
+                        key + ': {:.2f}'.format(train_log[key].avg) for key in train_log if key != 'LR'
+                    ]
+                    msg = 'Epoch {:d} \t Batch {:d}\t'.format(epoch, i) + '\t'.join(log)
+                    logger.info(msg)
+                    for key in train_log:
+                        train_log[key] = utils.utils.AverageMeter()
+
+            # Replace writer.add_scalar with wandb.log
+            wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
+            
+            scheduler.step()
+
+            # validation
+            net_val = net
+            res = val.validation(val_loader, net_val, args) 
+            log = [f"{key}: {res[key]:.3f}" for key in res]
+            msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+            logger.info(msg)
+
+            wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
+
+            if res['Acc.'] > best_acc:
+                acc = res['Acc.']
+                msg = f'Accuracy improved from {best_acc:.2f} to {acc:.2f}!!!'
+                logger.info(msg)
+                best_acc = acc
+                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}.pth'))
+            
+            if res['AUROC'] > best_auroc:
+                auroc = res['AUROC']
+                msg = f'AUROC improved from {best_auroc:.2f} to {auroc:.2f}!!!'
+                logger.info(msg)
+                best_auroc = auroc
+                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_auroc_net_{run+1}.pth'))
+        
+            if res['AURC'] < best_aurc:
+                aurc = res['AURC']
+                msg = f'AURC decreased from {best_aurc:.2f} to {aurc:.2f}!!!'
+                logger.info(msg)
+                best_aurc = aurc
+                torch.save(net_val.state_dict(), os.path.join(save_path, f'best_aurc_net_{run+1}.pth'))
 
 # def main_svdkl(args):
 #     if args.attn_type == 'softmax':
@@ -592,9 +721,13 @@ if __name__ == '__main__':
     #     main_svdkl(args)
     #     test.test(args)
     #     wandb.finish()
-    if args.model == 'diffusion_distillation' or args.model == 'vit_cifar_distillation':
+    elif args.model == 'diffusion_distillation' or args.model == 'vit_cifar_distillation':
         main_distillation(args)
         test.test_distillation(args)
+        wandb.finish()
+    elif args.model == 'sdebnn':
+        main_sdebnn(args)
+        test.test(args)
         wandb.finish()
     else:
         main(args)
