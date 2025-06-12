@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.backends.cudnn
-import torch.functional as F
+import torch.nn.functional as F
 import wandb
 
 import os
@@ -19,11 +19,13 @@ from utils.seed_utils import set_seed
 from utils.ema import EMA
 import utils.utils
 
-from torchbnn import models as bnn_models
+from torchbnn.models import SDENet
+
+import gc
 
 import warmup_scheduler
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def step_ema(args, ema, net, epoch):
         with_decay = False if epoch < args.start_ema_step else True
@@ -178,7 +180,7 @@ def main_sdebnn(args):
         logger.info(100*'#' + '\n' + prefix)
 
         ## define model
-        net = bnn_models.SDENet(num_classes=nb_cls, inhomogeneous=False, hidden_width=args.hdim)
+        net = SDENet(num_classes=nb_cls, inhomogeneous=False, hidden_width=args.hdim)
         # print(net)
         print(sum(p.numel() for p in net.parameters() if p.requires_grad))
         net.cuda()
@@ -207,20 +209,24 @@ def main_sdebnn(args):
         for epoch in range(args.nb_epochs):
             train_log = {
                 'Tot. Loss': utils.utils.AverageMeter(),
+                'CE Loss': utils.utils.AverageMeter(),
+                'KL Loss': utils.utils.AverageMeter(),
                 'LR': utils.utils.AverageMeter(),
             }
             msg = '####### --- Training Epoch {:d} --- #######'.format(epoch)
             logger.info(msg)
 
             net.train()
+
+            criterion = nn.CrossEntropyLoss()
             
             for i, (data, target) in enumerate(train_loader):
                 data, target = data.cuda(), target.cuda()
                 optimizer.zero_grad()
-                output = net(data)
+                # output = net(data)
                 logits, logqp = net(data, dt=0.1, adjoint=False, method='midpoint', adaptive=False, adjoint_adaptive=False, rtol=1e-5, atol=1e-4)
-                xent = F.cross_entropy(logits, target, reduction='mean')
-                loss = xent + 1e-3 * logqp  
+                xent = criterion(logits, target)
+                loss = xent + 1e-3 * logqp 
                 loss.backward()
                 optimizer.step()
     
@@ -229,8 +235,11 @@ def main_sdebnn(args):
                     break
 
                 train_log['Tot. Loss'].update(loss.item(), data.size(0))
+                train_log['CE Loss'].update(xent.item(), data.size(0))
+                train_log['KL Loss'].update(logqp.item(), data.size(0))
                 train_log['LR'].update(lr, data.size(0))
-
+                if i % 10 == 9:
+                    gc.collect()
                 if i % 100 == 99:
                     log = ['LR : {:.5f}'.format(train_log['LR'].avg)] + [
                         key + ': {:.2f}'.format(train_log[key].avg) for key in train_log if key != 'LR'

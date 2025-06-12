@@ -107,7 +107,7 @@ class SDENet(torchsde.SDEStratonovich):
     def __init__(self,
                  input_size=(3, 32, 32),
                  blocks=(2, 2, 2),
-                 weight_network_sizes=(1, 64, 1),
+                 weight_network_sizes=(1, 1024, 1),
                  num_classes=10,
                  activation="softplus",
                  verbose=False,
@@ -237,7 +237,7 @@ class SDENet(torchsde.SDEStratonovich):
         # print('y1_shape:', (aug_y1[:y.numel()]).shape)
         y1 = aug_y1[0, :y.numel()].reshape(y.size())
         logits = self.projection(y1.mean(1))
-        logqp = .5 * aug_y1[-1]
+        logqp = .5 * aug_y1[0, -1]
         # return y, y1, logits, logqp
         return logits, logqp
 

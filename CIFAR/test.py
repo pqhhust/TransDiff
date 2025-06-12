@@ -12,6 +12,8 @@ from torch.utils.data import DataLoader
 import torchvision.transforms
 import wandb
 
+from torchbnn.models import SDENet
+
 def process_results(args, loader, model, metrics, logger, method_name, results_storage):
     res = val.validation(loader, model, args, method_name)
     for metric in metrics:
@@ -122,7 +124,10 @@ def test(args):
         _, valid_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
                                                                        args.test_dir, args.batch_size)
         print(nb_cls)
-        net = models.get_model.get_model(args.model, nb_cls, logger, args)
+        if args.model == 'sdebnn':
+            net = SDENet(num_classes=nb_cls, inhomogeneous=False, hidden_width=args.hdim)
+        else:
+            net = models.get_model.get_model(args.model, nb_cls, logger, args)
         net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
         net = net.cuda()
         process_results(args, test_loader, net, metrics, logger, "MSP", results_storage)
