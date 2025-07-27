@@ -57,14 +57,24 @@ def validation(loader, net, args, method=None):
                     output = net(inputs)
                     B, C = inputs.size(0), output.size(1)
                     output = output.view(B, 10, C).mean(1)
+                elif args.ensembles == False:
+                    output = net(inputs)
                 else:
-                    output = net(inputs)    
+                    softmax = 0
+                    for i in range(5):
+                        output = net[i](inputs)
+                        softmax += F.softmax(output, dim=1)
+                    softmax /= 5
             elif args.attn_type == "kep_svgp":
-                results = []
-                for _ in range(10):
-                    results.append(net(inputs)[0])
-                outputs = torch.stack(results)
-                output = torch.mean(outputs, 0)
+                softmax = 0
+                for i in range(5):
+                    results = []
+                    for _ in range(10):
+                        results.append(net[i](inputs)[0])
+                    outputs = torch.stack(results)
+                    output = torch.mean(outputs, 0)
+                    softmax += F.softmax(output, dim=1)
+                softmax /= 5
             
             elif args.attn_type == "sgpa":
                 results = []
@@ -72,8 +82,11 @@ def validation(loader, net, args, method=None):
                     results.append(net(inputs)[0])
                 outputs = torch.stack(results)
                 output = torch.mean(outputs, 0)
-                
-            softmax = F.softmax(output, dim=1)
+
+            if args.ensembles == False:    
+                softmax = F.softmax(output, dim=1)
+            else:
+                output = torch.zeros_like(softmax)
         _, pred_cls = softmax.max(1)
 
         val_log['correct'].append(pred_cls.cpu().eq(targets.cpu().data.view_as(pred_cls)).numpy())
@@ -94,7 +107,7 @@ def validation(loader, net, args, method=None):
     # calibration measure ece , mce, rmsce
     ece = utils.metrics.calc_ece(val_log['softmax'], val_log['target'], bins=15)
     # brier, nll
-    if args.model == 'svdkl' or args.model == 'kflla' or args.model == 'mc_dropout':
+    if args.model == 'svdkl' or args.model == 'kflla' or args.model == 'mc_dropout' or args.ensembles == True:
         softmax = val_log['softmax'].astype(np.float32)
         targets = val_log['target'].astype(np.int64)
         log_probs = np.log(softmax[range(len(targets)), targets] + 1e-10)
@@ -193,7 +206,11 @@ def validation_diffusion(loader, net, args, pretrained_vit):
         # output = pretrained_vit._to_words(inputs)
         # output = pretrained_vit.emb(output)
         # output = output + pretrained_vit.pos_emb
-        output = net(inputs)
+        softmax = 0
+        for i in range(5):
+            output = net[i](inputs)
+            softmax += F.softmax(output, dim=1)
+        softmax /= 5
         # h = pretrained_vit.enc[args.depth - 1].la2(output)
         # h = pretrained_vit.enc[args.depth - 1].mlp(h)
         # output = output + h
@@ -209,7 +226,7 @@ def validation_diffusion(loader, net, args, pretrained_vit):
         #     outputs = torch.stack(results)
         #     output = torch.mean(outputs, 0)
             
-        softmax = F.softmax(output, dim=1)
+        output = torch.zeros_like(softmax)
         _, pred_cls = softmax.max(1)
 
         val_log['correct'].append(pred_cls.cpu().eq(targets.cpu().data.view_as(pred_cls)).numpy())
@@ -230,7 +247,13 @@ def validation_diffusion(loader, net, args, pretrained_vit):
     # calibration measure ece , mce, rmsce
     ece = utils.metrics.calc_ece(val_log['softmax'], val_log['target'], bins=15)
     # brier, nll
-    nll, brier = utils.metrics.calc_nll_brier(val_log['softmax'], val_log['logit'], val_log['target'])
+    softmax = val_log['softmax'].astype(np.float32)
+    targets = val_log['target'].astype(np.int64)
+    log_probs = np.log(softmax[range(len(targets)), targets] + 1e-10)
+    nll = -log_probs.mean()
+    one_hot = np.zeros_like(softmax)
+    one_hot[range(len(targets)), targets] = 1
+    brier = np.mean(np.sum((softmax - one_hot) ** 2, axis=1))
 
     # log
     res = {

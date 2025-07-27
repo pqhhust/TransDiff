@@ -6,3 +6,10 @@ __pycache__
 # CIFAR10_out 
 CIFAR/log_slurm
 CIFAR/results
+CoLA/
+IMDB/
+CIFAR/data/IMAGENET*
+CIFAR/data/Imagenet*
+CIFAR/data/train
+CIFAR/data/val
+.vscode/

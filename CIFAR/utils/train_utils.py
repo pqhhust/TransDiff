@@ -17,6 +17,7 @@ def get_args_parser():
     parser.add_argument('--depth', type=int, default=7)
     parser.add_argument('--hdim', type=int, default=384)
     parser.add_argument('--num_heads', type=int, default=12)
+    parser.add_argument('--ensembles', action='store_true', help='whether to use ensembles')
 
     # KEP-SVGP-attention
     parser.add_argument('--ksvd-layers', type=int, default=1, help='Number of ksvd layers applied to the transformer')
