@@ -81,6 +81,8 @@ class Diffusion_Transformer(nn.Module):
         
         mean_x_t = self.mean_model(x) + x
         std = self.var_model(x)
+        # mean_x_t = x
+        # std = torch.zeros_like(x)
             
         return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
 
@@ -93,19 +95,24 @@ class Diffusion_Transformer(nn.Module):
             x_layer = self.layernorm_after(x)
             x_layer = self.intermediate(x_layer)
             x_layer = self.output(x_layer, x)
+            # x_layer = x
             return self.classifier(self.layernorm(x_layer)[:, 0, :])
         else:
-            assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
-                f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
+            x, t = x
+            t_tensor = torch.tensor(t, device=x.device)
+            mean, std, mean_plus_std = self.forward_step(x, t_tensor)
+            return [mean], [std]
+            # assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
+            #     f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
             
-            means = []
-            stds = []
-            for t in range(self.ViT_depth):
-                t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
-                mean, std, mean_plus_std = self.forward_step(x[t], t_tensor)
-                means.append(mean)
-                stds.append(std)
-            return means, stds
+            # means = []
+            # stds = []
+            # for t in range(self.ViT_depth):
+            #     t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
+            #     mean, std, mean_plus_std = self.forward_step(x[t], t_tensor)
+            #     means.append(mean)
+            #     stds.append(std)
+            # return means, stds
 
 class Diffusion_UNet1D(Unet1D):
     def __init__(

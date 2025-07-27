@@ -25,12 +25,16 @@ import torch.distributed as dist
 import gc
 import warmup_scheduler
 
-os.environ["NCCL_BLOCKING_WAIT"] = "1"
+# os.environ["NCCL_BLOCKING_WAIT"] = "1"
+# os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
+# os.environ["NCCL_DEBUG"] = "INFO"
+# os.environ["NCCL_TIMEOUT"] = "900"
+
 os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
-os.environ["NCCL_DEBUG"] = "INFO"
+os.environ["NCCL_DEBUG"] = "WARN"
 os.environ["NCCL_TIMEOUT"] = "900"
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def step_ema(args, ema, net, epoch):
         with_decay = False if epoch < args.start_ema_step else True
@@ -252,12 +256,13 @@ def main_diffusion(args):
             start_epoch = training_state_checkpoint['epoch'] + 1
             # logger.info(f"Resuming training from epoch {start_epoch}...")
         else:
-            net.module.embedding.load_state_dict(pretrained_ViT.module.model.vit.embeddings.state_dict())
-            net.module.intermediate.load_state_dict(pretrained_ViT.module.model.vit.encoder.layer[-1].intermediate.state_dict())
-            net.module.output.load_state_dict(pretrained_ViT.module.model.vit.encoder.layer[-1].output.state_dict())
-            net.module.layernorm_after.load_state_dict(pretrained_ViT.module.model.vit.encoder.layer[-1].layernorm_after.state_dict())
-            net.module.layernorm.load_state_dict(pretrained_ViT.module.model.vit.layernorm.state_dict())
-            net.module.classifier.load_state_dict(pretrained_ViT.module.model.classifier.state_dict())
+            pass
+            # net.module.embedding.load_state_dict(pretrained_ViT.module.model.vit.embeddings.state_dict())
+            # net.module.intermediate.load_state_dict(pretrained_ViT.module.model.vit.encoder.layer[-1].intermediate.state_dict())
+            # net.module.output.load_state_dict(pretrained_ViT.module.model.vit.encoder.layer[-1].output.state_dict())
+            # net.module.layernorm_after.load_state_dict(pretrained_ViT.module.model.vit.encoder.layer[-1].layernorm_after.state_dict())
+            # net.module.layernorm.load_state_dict(pretrained_ViT.module.model.vit.layernorm.state_dict())
+            # net.module.classifier.load_state_dict(pretrained_ViT.module.model.classifier.state_dict())
         # Training loop over epochs
         for epoch in range(start_epoch, args.nb_epochs):
             # Set epoch for sampler to ensure shuffling is consistent across processes
@@ -281,14 +286,15 @@ def main_diffusion(args):
                 logger.info(msg)
                 wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
                 
-                test_results = val.validation_diffusion(test_loader, net, args, pretrained_ViT)
-                # if epoch % args.update_ema_interval == 0:
-                #     restore_ema(args, ema, net)
-        
-                log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
-                msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
-                logger.info(msg)
-                wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
+                if (epoch + 1) % 10 == 0:
+                    test_results = val.validation_diffusion(test_loader, net, args, pretrained_ViT)
+                    # if epoch % args.update_ema_interval == 0:
+                    #     restore_ema(args, ema, net)
+            
+                    log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
+                    msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+                    logger.info(msg)
+                    wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
 
                 # Save best models based on metrics
                 if res['Acc.'] > best_acc:

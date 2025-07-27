@@ -6,6 +6,8 @@ import utils.utils
 import wandb  
 import torch.distributed as dist
 import gc
+import random
+from torch.amp import autocast
 
 def compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus):
     """
@@ -90,19 +92,30 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     for i, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         # optimizer.zero_grad()
-        output = diffusion_model(inputs)
+        with autocast(device_type='cuda', dtype=torch.float16):
+            output = diffusion_model(inputs)
 
-        ce_loss = ce_criterion(output, targets)
+            ce_loss = ce_criterion(output, targets)
 
-        with torch.no_grad():
-            _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs)
-
-        means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_ViT, train=True)
-
-        means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus)
-
-        loss = args.lambda_mean * means_loss + args.lambda_var * stds_loss + args.lambda_ce * ce_loss
-        loss /= args.accumulation_steps
+            with torch.no_grad():
+                _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs)
+            t = [random.randint(0, args.depth - 1) for _ in range(args.batch_size)]
+            x_t_from_ViT = torch.stack(x_t_from_ViT, dim=0)  
+            means_x_minus = torch.stack(means_x_minus, dim=0)
+            covariances_x_minus = torch.stack(covariances_x_minus, dim=0)
+            batch_indices = torch.arange(means_x_minus.size(1))  # [0, 1, 2, ..., batch_size-1]
+            x_t_from_ViT = x_t_from_ViT[t, batch_indices] 
+            means_x_minus = [means_x_minus[t, batch_indices]]  # Shape: (batch_size, seq_len, dim)
+            covariances_x_minus = [covariances_x_minus[t, batch_indices]]  # Shape: (batch_size, seq_len, dim, dim)
+            # means_x_minus = [means_x_minus[t]]
+            # covariances_x_minus = [covariances_x_minus[t]]
+            means_from_diffusion, stds_from_diffusion = diffusion_model((x_t_from_ViT, t), train=True)
+            # print(means_from_diffusion.shape, means_x_minus.shape, stds_from_diffusion.shape, covariances_x_minus.shape)
+            means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus)
+            # means_loss = torch.tensor([0],device=inputs.device)
+            # stds_loss = torch.tensor([0],device=inputs.device)
+            loss = args.lambda_mean * means_loss + args.lambda_var * stds_loss + args.lambda_ce * ce_loss
+            loss /= args.accumulation_steps
         loss.backward() 
         if (i + 1) % args.accumulation_steps == 0: 
             nn.utils.clip_grad_value_(diffusion_model.parameters(), args.clip_grad_value)

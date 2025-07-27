@@ -37,7 +37,12 @@ def get_loader(dataset, train_dir, val_dir, test_dir, batch_size):
     transform_test = torchvision.transforms.Compose([
         torchvision.transforms.Lambda(lambda x: processor(x, return_tensors="pt")['pixel_values'].squeeze()),
     ])
+    # transform_train = torchvision.transforms.Compose([
+    #     torchvision.transforms.Lambda(lambda x: processor(x, return_tensors="pt")['pixel_values'].squeeze()),
+    # ])
+
     transform_train = torchvision.transforms.Compose([
+        torchvision.transforms.TrivialAugmentWide(),
         torchvision.transforms.Lambda(lambda x: processor(x, return_tensors="pt")['pixel_values'].squeeze()),
     ])
 
