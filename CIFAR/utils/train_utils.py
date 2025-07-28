@@ -97,6 +97,7 @@ def get_args_parser():
     parser.add_argument('--trans_num_heads', type=int, help='number of heads of a DiTBlock')
     parser.add_argument('--trans_mlp_ratio', type=float, help='ratio between mlp hidden dimension of a transformer layer and d_model')
     parser.add_argument('--trans_dropout', type=float, help='dropout rate for transformer backbone')
+    parser.add_argument('--covariance', type=str, default='diagonal', choices=['full_dimension', 'full_token', 'diagonal'], help='covariance type for the model')
     parser.add_argument('--temperature', type=float, help='temperature for softmax')
     parser.add_argument('--teacher_depth', type=int, default=7, help='number of layers for teacher model')
     # diffusion setting

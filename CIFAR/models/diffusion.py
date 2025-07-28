@@ -3,6 +3,7 @@ import torch.nn as nn
 from models.layers import TransformerEncoder  # Adjust if necessary
 from models.DiT import DiT
 from models.UNet1D import Unet1D
+from einops.layers.torch import Rearrange
 
 import math
 
@@ -15,7 +16,8 @@ class Diffusion_Transformer(nn.Module):
         mlp_ratio=1.0,
         dropout=0.1,
         ViT_depth=7,
-        nb_cls=10
+        nb_cls=10,
+        covariance='diagonal'
     ):
         super().__init__()
         self.ViT_depth = ViT_depth
@@ -25,18 +27,35 @@ class Diffusion_Transformer(nn.Module):
         self.emb = nn.Linear(48, d_model)
         self.pos_emb = nn.Parameter(torch.randn(1, 64, d_model))
         self.share_params = DiT(hidden_size=d_model, depth=depth, num_heads=num_heads, mlp_ratio=mlp_ratio)
+        self.covariance = covariance
         self.mean_model = nn.Sequential(
             nn.LayerNorm(d_model),
             nn.Linear(d_model, d_model),
             nn.GELU(),
             nn.Dropout(dropout)
         )
-        self.var_model = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model),
-            nn.GELU(),
-            nn.Dropout(dropout)
-        )
+        if covariance == 'diagonal':
+            self.var_model = nn.Sequential(
+                nn.LayerNorm(d_model),
+                nn.Linear(d_model, d_model),
+                nn.GELU(),
+                nn.Dropout(dropout)
+            )
+        elif covariance == 'full_dimension':
+            self.var_model = nn.Sequential(
+                nn.LayerNorm(d_model),
+                Rearrange('b s d -> b d s'),
+                nn.Linear(64, 64 * 64),
+                nn.GELU(),
+                nn.Dropout(dropout)
+            )
+        elif covariance == 'full_token':
+            self.var_model = nn.Sequential(
+                nn.LayerNorm(d_model),
+                nn.Linear(d_model, d_model * d_model),
+                nn.GELU(),
+                nn.Dropout()
+            )
         self.ln = nn.LayerNorm(d_model)
         self.solution_head_1 = nn.Sequential(
             nn.Linear(d_model, d_model),
@@ -91,9 +110,19 @@ class Diffusion_Transformer(nn.Module):
         x = self.share_params(x, t)
         
         mean_x_t = self.mean_model(x) + x
-        std = self.var_model(x)
-            
-        return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
+        if self.covariance == 'diagonal':
+            std = self.var_model(x)
+            return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
+        elif self.covariance == 'full_dimension':
+            chol = self.var_model(x)
+            chol = chol.view(chol.shape[0], chol.shape[1], self.patch**2, self.patch**2)
+            chol = torch.tril(chol, diagonal=0)
+            return mean_x_t, chol.sum(-1).permute(0, 2, 1), (chol @ torch.randn((chol.shape[0], chol.shape[1], self.patch**2, 1), device=chol.device)).squeeze(-1).permute(0, 2, 1) + mean_x_t
+        elif self.covariance == 'full_token':
+            chol = self.var_model(x)
+            chol = chol.view(chol.shape[0], chol.shape[1], self.d_model, self.d_model)
+            chol = torch.tril(chol, diagonal=0)
+            return mean_x_t, chol.sum(-1), (chol @ torch.randn((chol.shape[0], chol.shape[1], self.d_model, 1), device=chol.device)).squeeze(-1) + mean_x_t
 
     def forward(self, x, train=False):
         if not train:

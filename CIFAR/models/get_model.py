@@ -26,7 +26,7 @@ def get_model(model_name, nb_cls, logger, args):
         if args.backbone == 'unet1d':
             net = models.diffusion.Diffusion_UNet1D()
         if args.backbone == 'transformer':
-            net = models.diffusion.Diffusion_Transformer(d_model=args.hdim, depth=args.trans_depth, num_heads=args.trans_num_heads, mlp_ratio=args.trans_mlp_ratio, dropout=args.trans_dropout, ViT_depth=args.depth, nb_cls=args.nb_cls)
+            net = models.diffusion.Diffusion_Transformer(d_model=args.hdim, depth=args.trans_depth, num_heads=args.trans_num_heads, mlp_ratio=args.trans_mlp_ratio, dropout=args.trans_dropout, ViT_depth=args.depth, nb_cls=args.nb_cls, covariance=args.covariance)
         if args.backbone == 'mlp_mixer':
             net = models.diffusion.Diffusion_MLPMixer()
         if args.backbone == 'lstm' or args.backbone == 'gru':
