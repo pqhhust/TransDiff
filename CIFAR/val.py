@@ -31,7 +31,11 @@ def validation(loader, net, args, method=None):
     #     with torch.enable_grad():
     #         la.fit(train_loader)
     #         la.optimize_prior_precision(method='marglik')
-    net.eval()
+    if isinstance(net, list):
+        for model in net:
+            model.eval()
+    else:
+        net.eval()
     
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
 
