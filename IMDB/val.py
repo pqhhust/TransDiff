@@ -22,8 +22,12 @@ def validation(loader, net, args, method=None):
     elif args.model == 'svdkl':
         net, likelihood = net
         likelihood.eval()
-
-    net.eval()
+    
+    if args.ensembles == True:
+        for model in net:
+            model.eval()
+    else:
+        net.eval()
     
     # mcc_list = []
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
@@ -42,16 +46,37 @@ def validation(loader, net, args, method=None):
             output = torch.zeros_like(softmax)
         else:
             if args.model == 'diffusion':
-                output = net(inputs, train=False)
+                softmax = 0
+                for i in range(5):
+                    output = net[i](inputs, train=False)
+                    softmax += F.softmax(output, dim=1)
+                softmax /= 5
             elif args.attn_type == "softmax":
-                output = net(inputs)
-                
+                if args.ensembles == True:
+                    softmax = 0
+                    for i in range(5):
+                        output = net[i](inputs)
+                        softmax += F.softmax(output, dim=1)
+                    softmax /= 5
+                else:
+                    output = net(inputs)
             elif args.attn_type == "kep_svgp":
-                results = []
-                for _ in range(10):
-                    results.append(net(inputs)[0])
-                outputs = torch.stack(results)
-                output = torch.mean(outputs, 0)
+                if args.ensembles == True:
+                    softmax = 0
+                    for i in range(5):
+                        results = []
+                        for _ in range(10):
+                            results.append(net[i](inputs)[0])
+                        outputs = torch.stack(results)
+                        output = torch.mean(outputs, 0)
+                        softmax += F.softmax(output, dim=1)
+                    softmax /= 5
+                else:
+                    results = []
+                    for _ in range(10):
+                        results.append(net(inputs)[0])
+                    outputs = torch.stack(results)
+                    output = torch.mean(outputs, 0)
             
             elif args.attn_type == "sgpa":
                 results = []
@@ -60,7 +85,10 @@ def validation(loader, net, args, method=None):
                 outputs = torch.stack(results)
                 output = torch.mean(outputs, 0)
                 
-            softmax = F.softmax(output, dim=1)
+            if args.ensembles == False:    
+                softmax = F.softmax(output, dim=1)
+            else:
+                output = torch.zeros_like(softmax)
         _, pred_cls = softmax.max(1)
 
         val_log['correct'].append(pred_cls.cpu().eq(targets.cpu().data.view_as(pred_cls)).numpy())
@@ -84,7 +112,7 @@ def validation(loader, net, args, method=None):
     # calibration measure ece , mce, rmsce
     ece = utils.metrics.calc_ece(val_log['softmax'], val_log['target'], bins=15)
     # brier, nll
-    if args.model == 'svdkl' or args.model == 'mc_dropout':
+    if args.model == 'svdkl' or args.model == 'mc_dropout' or args.ensembles == True:
         softmax = val_log['softmax'].astype(np.float32)
         targets = val_log['target'].astype(np.int64)
         log_probs = np.log(softmax[range(len(targets)), targets] + 1e-10)

@@ -68,5 +68,6 @@ def get_args_parser():
     parser.add_argument('--trans_num_heads', type=int, help='number of heads of a DiTBlock')
     parser.add_argument('--trans_mlp_ratio', type=float, help='ratio between mlp hidden dimension of a transformer layer and d_model')
     parser.add_argument('--trans_dropout', type=float, help='dropout rate for transformer backbone')
+    parser.add_argument('--ensembles', action='store_true', help='whether to use ensembles')
 
     return parser.parse_args()

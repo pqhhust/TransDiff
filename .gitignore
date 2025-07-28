@@ -1,16 +1,8 @@
-CIFAR/data/CIFAR10*
-CIFAR/data/CIFAR100*
-CIFAR/data/CIFAR-10-C*
-CIFAR/data/IMAGENET*
-CIFAR/wandb
 __pycache__
-# CIFAR10_out 
-CIFAR/log_slurm
-CIFAR/results
-CoLA/data
-CoLA/results
-CoLA/wandb
 IMDB/acl*
 IMDB/data
 IMDB/results
 IMDB/wandb
+CIFAR
+CoLA
+.vscode
