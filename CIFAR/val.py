@@ -201,7 +201,11 @@ def validation_ood(loader, ood_loader, net, args):
 
 @torch.no_grad()
 def validation_diffusion(loader, net, args, pretrained_vit):
-    net.eval()
+    if isinstance(net, list):
+        for model in net:
+            model.eval()
+    else:
+        net.eval()
     # pretrained_vit.eval()
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
 
