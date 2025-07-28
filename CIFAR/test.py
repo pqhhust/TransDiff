@@ -148,10 +148,10 @@ def test(args):
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
     wandb.log({f"Test_final/{metric}": results[metric]['mean'] for metric in results})
-    test_results_path = os.path.join(save_path, 'test_results.csv')
+    test_results_path = os.path.join(save_path[0], 'test_results_ensembles.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
     if args.dataset == 'cifar10':
-        utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
+        utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path[0], metrics, cor_results_all_models)
 
 def test_diffusion(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -222,10 +222,10 @@ def test_diffusion(args):
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
     wandb.log({f"Test_final/{metric}": results[metric]['mean'] for metric in results})
-    test_results_path = os.path.join(save_path, 'test_results_diffusion.csv')
+    test_results_path = os.path.join(save_path[0], 'test_results_diffusion_ensembles.csv')
     utils.utils.csv_writter(test_results_path, args.dataset, args.model, metrics, results)
     if args.dataset == 'cifar10':
-        utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
+        utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path[0], metrics, cor_results_all_models)
 
 def test_distillation(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
