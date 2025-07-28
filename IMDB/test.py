@@ -109,7 +109,7 @@ def test_diffusion(args):
                     f"{args.dataset}_{args.attn_type}_{args.model}_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}"
                 ))
 
-    logger = utils.utils.get_logger(save_path)
+    logger = utils.utils.get_logger(save_path[0])
     
     device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() else 'cpu')
     # data_train, gold_train, data_test, gold_test, data_ood, gold_ood=\
