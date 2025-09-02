@@ -146,3 +146,101 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     # Log to wandb only on rank 0
     # if rank == 0:
     #     wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
+
+
+def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger, args, gpt2_model):
+    diffusion_model.train()
+    gpt2_model.eval()
+
+    for p in gpt2_model.parameters():
+        p.requires_grad = False
+
+    mse_criterion = nn.MSELoss()
+    ce_criterion = nn.CrossEntropyLoss()
+
+    rank = dist.get_rank() if dist.is_initialized() else 0
+    is_distributed = dist.is_initialized()
+
+    train_log = {
+        'CE Loss': utils.utils.AverageMeter(),
+        'Mean Loss': utils.utils.AverageMeter(),
+        'Var Loss': utils.utils.AverageMeter(),
+        'Tot. Loss': utils.utils.AverageMeter(),
+        'LR': utils.utils.AverageMeter(),
+    }
+
+    if rank == 0 and logger is not None:
+        logger.info('####### --- Training (Text) Epoch {:d} --- #######'.format(epoch))
+
+    for i, batch in enumerate(train_loader):
+        if isinstance(batch, dict):
+            input_ids = batch.get('input_ids').cuda(non_blocking=True)
+            attention_mask = batch.get('attention_mask', None)
+            token_type_ids = batch.get('token_type_ids', None)
+            labels = batch.get('labels') if 'labels' in batch else batch.get('targets')
+            attention_mask = attention_mask.cuda(non_blocking=True) if attention_mask is not None else None
+            token_type_ids = token_type_ids.cuda(non_blocking=True) if token_type_ids is not None else None
+            targets = labels.cuda(non_blocking=True)
+        else:
+            # Expect (input_ids, attention_mask, labels) or (input_ids, labels)
+            if len(batch) == 3:
+                input_ids, attention_mask, targets = batch
+                token_type_ids = None
+            elif len(batch) == 2:
+                input_ids, targets = batch
+                attention_mask = None
+                token_type_ids = None
+            else:
+                raise ValueError('Unsupported batch format for text training')
+            input_ids = input_ids.cuda(non_blocking=True)
+            targets = targets.cuda(non_blocking=True)
+            attention_mask = attention_mask.cuda(non_blocking=True) if attention_mask is not None else None
+
+        with torch.no_grad():
+            _, x_t_from_bert, means_x_minus, stds_x_minus = gpt2_model(
+                input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids
+            )
+        x0 = x_t_from_bert[0]
+        output = diffusion_model(x0)  # logits
+        ce_loss = ce_criterion(output, targets)
+
+        # Diffusion alignment path
+        means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_bert, train=True)
+
+        means_loss, stds_loss = compute_loss_diffusion(
+            args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, stds_x_minus
+        )
+
+        loss = args.lambda_mean * means_loss + args.lambda_var * stds_loss + args.lambda_ce * ce_loss
+        loss /= args.accumulation_steps
+        loss.backward()
+        if (i + 1) % args.accumulation_steps == 0:
+            nn.utils.clip_grad_value_(diffusion_model.parameters(), args.clip_grad_value)
+            optimizer.step()
+            optimizer.zero_grad()
+
+        # LR for logging
+        for param_group in optimizer.param_groups:
+            lr = param_group["lr"]
+            break
+
+        train_log['CE Loss'].update(ce_loss.item(), input_ids.size(0))
+        train_log['Mean Loss'].update(means_loss.item(), input_ids.size(0))
+        train_log['Var Loss'].update(stds_loss.item(), input_ids.size(0))
+        train_log['Tot. Loss'].update(loss.item(), input_ids.size(0))
+        train_log['LR'].update(lr, input_ids.size(0))
+
+        if i % 100 == 99 and rank == 0 and logger is not None:
+            log = ['LR : {:.5f}'.format(train_log['LR'].avg)] + [
+                key + ': {:.2f}'.format(train_log[key].avg) for key in train_log if key != 'LR'
+            ]
+            msg = 'Epoch {:d} \t Batch {:d}\t'.format(epoch, i) + '\t'.join(log)
+            logger.info(msg)
+            for key in train_log:
+                train_log[key] = utils.utils.AverageMeter()
+
+        if i % 100 == 99:
+            torch.cuda.empty_cache()
+            import gc; gc.collect()
+            if is_distributed:
+                dist.barrier()

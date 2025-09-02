@@ -5,6 +5,10 @@ from torchvision.models import vit_b_16
 from torchvision.models import ViT_B_16_Weights
 from torchvision.models import VisionTransformer
 from transformers import ViTForImageClassification
+from transformers import GPT2ForSequenceClassification
+from transformers.models.gpt2.modeling_gpt2 import GPT2Block
+# from transformers import T5ForConditionalGeneration
+# from transformers import BertForSequenceClassification
 
 class KEP_SVGPAttention(nn.Module):
     def __init__(self, dim, num_heads=8, embed_len=64, low_rank=10, rank_multi=10, concate=False, \
@@ -326,10 +330,57 @@ class CustomViT(nn.Module):
             x = layer.attention(layer.layernorm_before(hidden_states), output_attentions=False)
             x = x[0] + hidden_states
             x_t.append(x)
-            hidden_states = layer.output(layer.intermediate(layer.layernorm_after(x)), hidden_states)
+            hidden_states = layer.output(layer.intermediate(layer.layernorm_after(x)), x)
         means = x_t[1:]
         stds = [torch.zeros_like(x) for x in means]
         return None, x_t, means, stds
+    
+class CustomGPT2(nn.Module):
+    # Use GPT2ForSequenceClassification backbone; mirror CustomViT collection pattern
+    def __init__(self, args=None):
+        super().__init__()
+        self.model = GPT2ForSequenceClassification.from_pretrained(
+            'PavanNeerudu/gpt2-finetuned-cola'
+        )
+    
+
+    def _expand_attention_mask(self, attention_mask, dtype):
+        if attention_mask is None:
+            return None
+        # GPT-2 expects additive mask of shape (batch, 1, 1, seq_len)
+        extended = attention_mask[:, None, None, :].to(dtype)
+        extended = (1.0 - extended) * -1e4
+        return extended
+
+    def forward(self, input_ids, attention_mask=None, token_type_ids=None):
+        transformer = self.model.transformer
+        bsz, seqlen = input_ids.shape
+        device = input_ids.device
+
+        position_ids = torch.arange(0, seqlen, dtype=torch.long, device=device).unsqueeze(0)
+        hidden_states = transformer.wte(input_ids) + transformer.wpe(position_ids)
+        hidden_states = transformer.drop(hidden_states)
+
+        x_t = [hidden_states]
+        means, stds = [], []
+
+        attn_mask = self._expand_attention_mask(attention_mask, hidden_states.dtype) if attention_mask is not None else None
+
+        for block in transformer.h:
+            attn_input = block.ln_1(hidden_states)
+            attn_outputs = block.attn(attn_input, layer_past=None, attention_mask=attn_mask, use_cache=False, output_attentions=False)
+            attn_hidden = hidden_states + attn_outputs[0]
+
+            x_t.append(attn_hidden)
+            means.append(attn_hidden)
+            stds.append(torch.zeros_like(attn_hidden))
+
+            mlp_input = block.ln_2(attn_hidden)
+            mlp_out = block.mlp(mlp_input)
+            hidden_states = attn_hidden + mlp_out
+
+        return None, x_t, means, stds
+
 
 def vit_cifar(args, attn_type, num_classes, ksvd_layers, low_rank, rank_multi):
     return ViT(args=args, attn_type=attn_type, ksvd_layers=ksvd_layers, num_classes=num_classes, low_rank=low_rank, rank_multi=rank_multi, \

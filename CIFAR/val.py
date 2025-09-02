@@ -7,6 +7,7 @@ import datasets.cifar_loader as cifar_loader
 from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
 import torch.distributed as dist
+from sklearn.metrics import matthews_corrcoef
 
 @torch.no_grad()
 def validation(loader, net, args, method=None):
@@ -219,6 +220,76 @@ def validation_diffusion(loader, net, args, pretrained_vit):
 
     return res
 
+@torch.no_grad()
+def validation_text(loader, net, args):
+    net.eval()
+    
+    mcc_list = []
+    val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
 
-    
-    
+    rank = dist.get_rank() if dist.is_initialized() else 0
+
+    for batch in loader:
+        input_ids = batch['input_ids'].cuda()
+        attention_mask = batch['attention_mask'].cuda()
+        labels = batch['label'].cuda()
+
+        if args.model == 'diffusion':
+            output = net(input_ids=input_ids, attention_mask=attention_mask).logits
+        elif args.attn_type == "softmax":
+            output = net(input_ids=input_ids, attention_mask=attention_mask).logits
+
+        softmax = F.softmax(output, dim=1)
+        _, pred_cls = softmax.max(1)
+
+        val_log['correct'].append(pred_cls.cpu().eq(labels.cpu().data.view_as(pred_cls)).numpy())
+        val_log['softmax'].append(softmax.cpu().data.numpy())
+        val_log['logit'].append(output.cpu().data.numpy())
+        val_log['target'].append(labels.cpu().data.numpy())
+
+        mcc_list.append(matthews_corrcoef(labels.cpu().numpy(), pred_cls.detach().cpu().numpy()))
+
+    for key in val_log:
+        val_log[key] = np.concatenate(val_log[key])
+    ## acc
+    acc = 100. * val_log['correct'].mean()
+    ## mcc
+    mcc = 100. * np.array(mcc_list).mean()
+
+    # aurc, eaurc
+    aurc, eaurc = utils.metrics.calc_aurc_eaurc(val_log['softmax'], val_log['correct'])
+    # fpr, aupr
+    auroc, aupr_success, aupr, fpr = utils.metrics.calc_fpr_aupr(val_log['softmax'], val_log['correct'])
+    # calibration measure ece , mce, rmsce
+    ece = utils.metrics.calc_ece(val_log['softmax'], val_log['target'], bins=15)
+    # brier, nll
+    if args.model == 'svdkl' or args.model == 'mc_dropout':
+        softmax = val_log['softmax'].astype(np.float32)
+        targets = val_log['target'].astype(np.int64)
+        log_probs = np.log(softmax[range(len(targets)), targets] + 1e-10)
+        nll = -log_probs.mean()
+        one_hot = np.zeros_like(softmax)
+        one_hot[range(len(targets)), targets] = 1
+        brier = np.mean(np.sum((softmax - one_hot) ** 2, axis=1))
+    else:
+        nll, brier = utils.metrics.calc_nll_brier(val_log['softmax'], val_log['logit'], val_log['target'])
+
+    # log
+    res = {
+        'Acc.': acc,
+        'MCC': mcc,
+        'FPR' : fpr*100,
+        'AUROC': auroc*100,
+        'AUPR': aupr*100,
+        'AURC': aurc*1000,
+        'EAURC': eaurc*1000,
+        'AUPR Succ.': aupr_success*100,
+        'ECE' : ece*100,
+        'NLL' : nll*10,
+        'Brier' : brier*100
+    }
+
+    return res
+
+
+

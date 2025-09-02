@@ -5,9 +5,106 @@ from models.DiT import DiT
 from models.UNet1D import Unet1D
 from torchvision.models.vision_transformer import MLPBlock
 from transformers.models.vit.modeling_vit import ViTEmbeddings, ViTIntermediate, ViTOutput
+from transformers import GPT2Config
 from transformers import AutoModelForImageClassification
 
 import math
+
+class GPT2EmbeddingsLight(nn.Module):
+    def __init__(self, config: GPT2Config):
+        super().__init__()
+        self.wte = nn.Embedding(config.vocab_size, config.n_embd)
+        self.wpe = nn.Embedding(config.n_positions, config.n_embd)
+        self.drop = nn.Dropout(config.embd_pdrop)
+        self.n_positions = config.n_positions
+
+    def forward(self, input_ids: torch.LongTensor) -> torch.FloatTensor:
+        bsz, seq_len = input_ids.shape
+        device = input_ids.device
+        # clamp to supported range in case seq_len > n_positions
+        pos_ids = torch.arange(seq_len, device=device).clamp(max=self.n_positions - 1)
+        pos_ids = pos_ids.unsqueeze(0).expand(bsz, -1)
+        x = self.wte(input_ids) + self.wpe(pos_ids)
+        return self.drop(x)
+
+class Diffusion_Transformer_Text(nn.Module):
+    def __init__(
+        self,
+        d_model=768,
+        depth=1,
+        num_heads=12,
+        mlp_ratio=4.0,
+        dropout=0.1,
+        ViT_depth=12,
+        nb_cls=2,
+        CONFIG=None,
+    ):
+        super().__init__()
+        self.ViT_depth = ViT_depth
+        self.d_model = d_model
+
+        # GPT-2 style Embeddings (token + position + dropout)
+        if CONFIG is None or not isinstance(CONFIG, GPT2Config):
+            CONFIG = GPT2Config(n_embd=d_model, n_head=num_heads, n_layer=12, n_positions=512)
+        self.embedding = GPT2EmbeddingsLight(CONFIG)
+
+        # Shared DiT backbone across steps
+        self.share_params = DiT(hidden_size=d_model, depth=depth, num_heads=num_heads, mlp_ratio=mlp_ratio)
+        # Mean/variance heads
+        self.mean_model = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Dropout(dropout),
+        )
+        self.var_model = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Dropout(dropout),
+        )
+        # GPT-2-like MLP head (FFN) and final norms
+        self.ln_f = nn.LayerNorm(d_model, eps=CONFIG.layer_norm_epsilon)
+        self.mlp_head = nn.Sequential(
+            nn.Linear(d_model, 4 * d_model),
+            nn.GELU(),
+            nn.Dropout(CONFIG.resid_pdrop),
+            nn.Linear(4 * d_model, d_model),
+            nn.Dropout(CONFIG.resid_pdrop),
+        )
+        # Final classifier on pooled token (by default use first token position as anchor)
+        self.layernorm = nn.LayerNorm(d_model, eps=CONFIG.layer_norm_epsilon)
+        self.classifier = nn.Linear(d_model, nb_cls)
+
+    def forward_step(self, x, t):
+        x = self.share_params(x, t)
+        mean_x_t = self.mean_model(x) + x
+        std = self.var_model(x)
+        return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
+
+    def forward(self, x, train=False):
+        if not train:
+            # x can be token ids (LongTensor) or hidden states (FloatTensor)
+            if isinstance(x, torch.Tensor) and x.dtype in (torch.long, torch.int64):
+                x = self.embedding(input_ids=x)
+            for t in range(self.ViT_depth):
+                t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
+                x = self.forward_step(x, t_tensor)[-1]
+            # Apply GPT-2-like FFN with residual: x + MLP(LN(x))
+            x_layer = x + self.mlp_head(self.ln_f(x))
+            # Classify using token at position 0 by default (assumes BOS present)
+            return self.classifier(self.layernorm(x_layer)[:, 0, :])
+        else:
+            assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
+                f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
+            means, stds = [], []
+            for t in range(self.ViT_depth):
+                t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
+                mean, std, _ = self.forward_step(x[t], t_tensor)
+                means.append(mean)
+                stds.append(std)
+            return means, stds
+
 
 class Diffusion_Transformer(nn.Module):
     def __init__(

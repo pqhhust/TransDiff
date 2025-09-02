@@ -12,6 +12,7 @@ import test
 
 import models.get_model
 import datasets.cifar_loader
+import datasets.CoLA_loader
 import datasets.imagenet_loader
 import utils.train_utils
 import utils.seed_utils
@@ -245,7 +246,6 @@ def main_diffusion(args):
         if args.resume_weights:
             weights_checkpoint = torch.load(os.path.join(save_path, args.resume_weights), map_location='cpu', weights_only=True)
             net.module.load_state_dict(weights_checkpoint)
-            
             training_state_checkpoint = torch.load(os.path.join(save_path, args.resume_training_state), map_location='cpu')
             optimizer.load_state_dict(training_state_checkpoint['optimizer_state_dict'])
             lr_scheduler.load_state_dict(training_state_checkpoint['lr_scheduler_state_dict'])
@@ -258,6 +258,7 @@ def main_diffusion(args):
             net.module.layernorm_after.load_state_dict(pretrained_ViT.module.model.vit.encoder.layer[-1].layernorm_after.state_dict())
             net.module.layernorm.load_state_dict(pretrained_ViT.module.model.vit.layernorm.state_dict())
             net.module.classifier.load_state_dict(pretrained_ViT.module.model.classifier.state_dict())
+
         # Training loop over epochs
         for epoch in range(start_epoch, args.nb_epochs):
             # Set epoch for sampler to ensure shuffling is consistent across processes
@@ -322,10 +323,135 @@ def main_diffusion(args):
         wandb.finish()
 
 
+def main_diffusion_text(args):
+    # Save path and group
+    save_path = os.path.join(
+        args.save_dir,
+        f"text_{args.model}_{args.seed}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}"
+    )
+    group = "GPT2-DiT"
+
+    # Distributed init
+    local_rank = int(os.environ['LOCAL_RANK'])
+    global_rank = int(os.environ['RANK'])
+    dist.init_process_group(backend='nccl')
+    torch.cuda.set_device(local_rank)
+
+    if global_rank == 0:
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        wandb.init(
+            project='Difformer',
+            group=group,
+            name=f"DiffusionText {args.run_name}: seed_{args.seed}_lr_{args.lr}_epochs_{args.nb_epochs}",
+            config=vars(args),
+        )
+
+    utils.seed_utils.set_seed(args.seed)
+    logger = utils.utils.get_logger(save_path) if global_rank == 0 else None
+    if global_rank == 0:
+        logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
+
+    # Data loaders (expects a text loader externally provided)
+    train_loader, val_loader, test_loader = datasets.CoLA_loader.CoLALoaders(
+        batch_size=args.batch_size,
+        num_workers=8,
+        max_length=128,
+        val_ratio=0.1,
+        seed=42
+    )
+    train_sampler = DistributedSampler(train_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=True)
+    train_loader = DataLoader(train_loader.dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=8, drop_last=True)
+    nb_cls = 2
+
+    for run in range(args.nb_run):
+        if global_rank == 0:
+            prefix = f'{run + 1} / {args.nb_run} Running (Text)'
+            logger.info(100*'#' + '\n' + prefix)
+
+        pretrained_GPT2 = models.get_model.get_model('q_distribution_text', nb_cls, logger, args)
+        net = models.get_model.get_model('diffusion_text', nb_cls, logger, (args, pretrained_GPT2.config))
+        net = net.cuda()
+        net = nn.parallel.DistributedDataParallel(net, device_ids=[local_rank])
+
+        if global_rank == 0:
+            print(net)
+            print(sum(p.numel() for p in net.parameters() if p.requires_grad))
+
+        pretrained_GPT2 = nn.parallel.DistributedDataParallel(pretrained_GPT2.cuda(), device_ids=[local_rank])
+
+        optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
+        if args.warmup_epoch > 0:
+            warmup_lr_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=args.min_lr / args.lr, end_factor=1.0, total_iters=args.warmup_epoch)
+            main_lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.nb_epochs - args.warmup_epoch, eta_min=args.min_lr)
+            lr_scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warmup_lr_scheduler, main_lr_scheduler], milestones=[args.warmup_epoch])
+        else:
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.nb_epochs, eta_min=args.min_lr)
+
+        best_mcc = -1e9
+        start_epoch = 0
+        if args.resume_weights:
+            weights_checkpoint = torch.load(os.path.join(save_path, args.resume_weights), map_location='cpu')
+            net.module.load_state_dict(weights_checkpoint)
+            training_state_checkpoint = torch.load(os.path.join(save_path, args.resume_training_state), map_location='cpu')
+            optimizer.load_state_dict(training_state_checkpoint['optimizer_state_dict'])
+            lr_scheduler.load_state_dict(training_state_checkpoint['lr_scheduler_state_dict'])
+            start_epoch = training_state_checkpoint['epoch'] + 1
+        else:
+            # Initialize embeddings and classifier from teacher GPT-2
+            # Embeddings
+            net.module.embedding.wte.load_state_dict({'weight': pretrained_GPT2.module.model.transformer.wte.weight.detach().cpu()})
+            net.module.embedding.wpe.load_state_dict({'weight': pretrained_GPT2.module.model.transformer.wpe.weight.detach().cpu()})
+            # Classifier
+            net.module.classifier.load_state_dict(pretrained_GPT2.module.model.classifier.state_dict())
+
+        for epoch in range(start_epoch, args.nb_epochs):
+            if dist.get_world_size() > 1:
+                train_sampler.set_epoch(epoch)
+
+            train.train_diffusion_text(train_loader, net, optimizer, epoch, logger, args, pretrained_GPT2)
+            lr_scheduler.step()
+
+            if global_rank == 0:
+                torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_text_{args.backbone}_tuning_{args.lambda_mean}.pth'))
+                training_state_checkpoint = {
+                    'epoch': epoch,
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'lr_scheduler_state_dict': lr_scheduler.state_dict(),
+                }
+                torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_last_diffusion_text_{args.backbone}_tuning_{args.lambda_mean}.pth'))
+
+                res = val.validation_text(val_loader, net, args, pretrained_GPT2)
+                log = [f"{key}: {res[key]:.3f}" for key in res]
+                msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+                logger.info(msg)
+                wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
+
+                if res.get('MCC', -1e9) > best_mcc:
+                    mcc = res['MCC']
+                    msg = f'MCC improved from {best_mcc:.2f} to {mcc:.2f}!!!'
+                    logger.info(msg)
+                    best_mcc = mcc
+                    torch.save(net.module.state_dict(), os.path.join(save_path, f'best_mcc_net_{run+1}_diffusion_text_{args.backbone}.pth'))
+
+                test_results = val.validation_text(test_loader, net, args, pretrained_GPT2)
+                log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
+                msg = '################## \n ---> Test Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+                logger.info(msg)
+                wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
+            dist.barrier()
+
+    dist.destroy_process_group()
+    if global_rank == 0:
+        wandb.finish()
+
+
 if __name__ == '__main__':
     args = utils.train_utils.get_args_parser()
     if args.model == 'diffusion':
         main_diffusion(args)
+    elif args.model == 'diffusion_text':
+        main_diffusion_text(args)
     else:
         main(args)
         test.test(args)
