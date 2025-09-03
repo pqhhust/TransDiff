@@ -2,8 +2,8 @@ import torch
 import val
 import os
 import utils.test_utils
-import datasets.cifar_loader
-import datasets.CIFARC
+import loaders.cifar_loader
+import loaders.CIFARC
 import utils.utils
 from utils.seed_utils import set_seed
 import models.get_model
@@ -37,11 +37,11 @@ def process_results_diffusion(args, loader, model, metrics, logger, method_name,
 def test_cifar_c_corruptions(dataset, model, corruption_dir, transform_test, batch_size, metrics, logger, args):
     if dataset == "cifar10":
         cor_results_storage = {corruption: {severity: {metric: [] for metric in metrics} for severity in range(1, 6)} for
-                           corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
-        for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets:
+                           corruption in loaders.CIFARC.CIFAR10C.cifarc_subsets}
+        for corruption in loaders.CIFARC.CIFAR10C.cifarc_subsets:
             for severity in range(1, 6):
                 logger.info(f"Testing on corruption: {corruption}, severity: {severity}")
-                corrupted_test_dataset = datasets.CIFARC.CIFAR10C(root=corruption_dir, transform=transform_test, subset=corruption,
+                corrupted_test_dataset = loaders.CIFARC.CIFAR10C(root=corruption_dir, transform=transform_test, subset=corruption,
                                                             severity=severity, download=True)
                 corrupted_test_loader = DataLoader(dataset=corrupted_test_dataset, batch_size=batch_size, shuffle=False,
                                                num_workers=4, drop_last=False)
@@ -54,11 +54,11 @@ def test_cifar_c_corruptions(dataset, model, corruption_dir, transform_test, bat
 def test_cifar_c_corruptions_diffusion(dataset, model, corruption_dir, transform_test, batch_size, metrics, logger, vit_model, args):
     if dataset == "cifar10":
         cor_results_storage = {corruption: {severity: {metric: [] for metric in metrics} for severity in range(1, 6)} for
-                           corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
-        for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets:
+                           corruption in loaders.CIFARC.CIFAR10C.cifarc_subsets}
+        for corruption in loaders.CIFARC.CIFAR10C.cifarc_subsets:
             for severity in range(1, 6):
                 logger.info(f"Testing on corruption: {corruption}, severity: {severity}")
-                corrupted_test_dataset = datasets.CIFARC.CIFAR10C(root=corruption_dir, transform=transform_test, subset=corruption,
+                corrupted_test_dataset = loaders.CIFARC.CIFAR10C(root=corruption_dir, transform=transform_test, subset=corruption,
                                                             severity=severity, download=True)
                 corrupted_test_loader = DataLoader(dataset=corrupted_test_dataset, batch_size=batch_size, shuffle=False,
                                                num_workers=4, drop_last=False)
@@ -83,13 +83,13 @@ def ood_test(args):
     for r in range(args.nb_run):
         logger.info(f'Testing model {r + 1} ...')
 
-        _, _, test_loader, nb_cls = datasets.cifar_loader.get_loader(args.dataset, 
+        _, _, test_loader, nb_cls = loaders.cifar_loader.get_loader(args.dataset, 
                                                             args.train_dir, 
                                                             args.val_dir, 
                                                             args.test_dir, 
                                                             args.batch_size)
         print(nb_cls)
-        _, _, ood_test_loader, _ = datasets.cifar_loader.get_loader(args.ood_data,
+        _, _, ood_test_loader, _ = loaders.cifar_loader.get_loader(args.ood_data,
                                                                 args.ood_train_dir,
                                                                 args.ood_val_dir,
                                                                 args.ood_test_dir,
@@ -116,7 +116,7 @@ def test(args):
 
     for r in range(args.nb_run):
         logger.info(f'Testing model_{r + 1} ...')
-        _, valid_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
+        _, valid_loader, test_loader, nb_cls = loaders.cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
                                                                        args.test_dir, args.batch_size)
         print(nb_cls)
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
@@ -134,7 +134,7 @@ def test(args):
                                                             metrics, logger, args)
             cor_results = {corruption: {
                 severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
-                in range(1, 6)} for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
+                in range(1, 6)} for corruption in loaders.CIFARC.CIFAR10C.cifarc_subsets}
             cor_results_all_models[f"model_{r + 1}"] = cor_results
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}
@@ -179,7 +179,7 @@ def test_diffusion(args):
 
     for r in range(args.nb_run):
         logger.info(f'Testing model_{r + 1} ...')
-        _, valid_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
+        _, valid_loader, test_loader, nb_cls = loaders.cifar_loader.get_loader(args.dataset, args.train_dir, args.val_dir,
                                                                        args.test_dir, args.batch_size)
         print(nb_cls)
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
@@ -198,7 +198,7 @@ def test_diffusion(args):
                                                             metrics, logger, pretrained_ViT, args)
             cor_results = {corruption: {
                 severity: {metric: cor_results_storage[corruption][severity][metric][0] for metric in metrics} for severity
-                in range(1, 6)} for corruption in datasets.CIFARC.CIFAR10C.cifarc_subsets}
+                in range(1, 6)} for corruption in loaders.CIFARC.CIFAR10C.cifarc_subsets}
             cor_results_all_models[f"model_{r + 1}"] = cor_results
 
     results = {metric: utils.utils.compute_statistics(results_storage[metric]) for metric in metrics}

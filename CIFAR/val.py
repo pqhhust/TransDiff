@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import utils.metrics
 import numpy as np  
 import sklearn.metrics as skm
-import datasets.cifar_loader as cifar_loader
+import loaders.cifar_loader as cifar_loader
 from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
 import torch.distributed as dist
@@ -234,10 +234,10 @@ def validation_text(loader, net, args):
         attention_mask = batch['attention_mask'].cuda()
         labels = batch['label'].cuda()
 
-        if args.model == 'diffusion':
-            output = net(input_ids=input_ids, attention_mask=attention_mask).logits
+        if args.model == 'diffusion_text':
+            output = net(x=input_ids, attention_mask=attention_mask)
         elif args.attn_type == "softmax":
-            output = net(input_ids=input_ids, attention_mask=attention_mask).logits
+            output = net(x=input_ids, attention_mask=attention_mask)['logits']
 
         softmax = F.softmax(output, dim=1)
         _, pred_cls = softmax.max(1)

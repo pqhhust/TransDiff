@@ -6,6 +6,7 @@ from models.UNet1D import Unet1D
 from torchvision.models.vision_transformer import MLPBlock
 from transformers.models.vit.modeling_vit import ViTEmbeddings, ViTIntermediate, ViTOutput
 from transformers import GPT2Config
+from transformers.models.gpt2.modeling_gpt2 import GPT2MLP
 from transformers import AutoModelForImageClassification
 
 import math
@@ -43,9 +44,8 @@ class Diffusion_Transformer_Text(nn.Module):
         self.ViT_depth = ViT_depth
         self.d_model = d_model
 
-        # GPT-2 style Embeddings (token + position + dropout)
-        if CONFIG is None or not isinstance(CONFIG, GPT2Config):
-            CONFIG = GPT2Config(n_embd=d_model, n_head=num_heads, n_layer=12, n_positions=512)
+        print(CONFIG)
+
         self.embedding = GPT2EmbeddingsLight(CONFIG)
 
         # Shared DiT backbone across steps
@@ -64,17 +64,11 @@ class Diffusion_Transformer_Text(nn.Module):
             nn.Dropout(dropout),
         )
         # GPT-2-like MLP head (FFN) and final norms
-        self.ln_f = nn.LayerNorm(d_model, eps=CONFIG.layer_norm_epsilon)
-        self.mlp_head = nn.Sequential(
-            nn.Linear(d_model, 4 * d_model),
-            nn.GELU(),
-            nn.Dropout(CONFIG.resid_pdrop),
-            nn.Linear(4 * d_model, d_model),
-            nn.Dropout(CONFIG.resid_pdrop),
-        )
+        self.ln_mlp = nn.LayerNorm(d_model, eps=CONFIG.layer_norm_epsilon)
+        self.mlp_head = GPT2MLP(int(d_model * mlp_ratio), CONFIG)
         # Final classifier on pooled token (by default use first token position as anchor)
         self.layernorm = nn.LayerNorm(d_model, eps=CONFIG.layer_norm_epsilon)
-        self.classifier = nn.Linear(d_model, nb_cls)
+        self.classifier = nn.Linear(d_model, nb_cls, bias=False)
 
     def forward_step(self, x, t):
         x = self.share_params(x, t)
@@ -82,7 +76,7 @@ class Diffusion_Transformer_Text(nn.Module):
         std = self.var_model(x)
         return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
 
-    def forward(self, x, train=False):
+    def forward(self, x, train=False, attention_mask=None):
         if not train:
             # x can be token ids (LongTensor) or hidden states (FloatTensor)
             if isinstance(x, torch.Tensor) and x.dtype in (torch.long, torch.int64):
@@ -91,7 +85,7 @@ class Diffusion_Transformer_Text(nn.Module):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 x = self.forward_step(x, t_tensor)[-1]
             # Apply GPT-2-like FFN with residual: x + MLP(LN(x))
-            x_layer = x + self.mlp_head(self.ln_f(x))
+            x_layer = x + self.mlp_head(self.ln_mlp(x))
             # Classify using token at position 0 by default (assumes BOS present)
             return self.classifier(self.layernorm(x_layer)[:, 0, :])
         else:

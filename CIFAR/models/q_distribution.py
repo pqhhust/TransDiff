@@ -340,9 +340,9 @@ class CustomGPT2(nn.Module):
     def __init__(self, args=None):
         super().__init__()
         self.model = GPT2ForSequenceClassification.from_pretrained(
-            'PavanNeerudu/gpt2-finetuned-cola'
+            'PavanNeerudu/gpt2-finetuned-sst2'
         )
-    
+        self.config = self.model.config
 
     def _expand_attention_mask(self, attention_mask, dtype):
         if attention_mask is None:

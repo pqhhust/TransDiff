@@ -11,9 +11,9 @@ import val
 import test
 
 import models.get_model
-import datasets.cifar_loader
-import datasets.CoLA_loader
-import datasets.imagenet_loader
+import loaders.cifar_loader
+import loaders.CoLA_loader
+import loaders.imagenet_loader
 import utils.train_utils
 import utils.seed_utils
 from utils.seed_utils import set_seed
@@ -30,8 +30,8 @@ os.environ["NCCL_BLOCKING_WAIT"] = "1"
 os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
 os.environ["NCCL_DEBUG"] = "INFO"
 os.environ["NCCL_TIMEOUT"] = "900"
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def step_ema(args, ema, net, epoch):
         with_decay = False if epoch < args.start_ema_step else True
@@ -69,7 +69,7 @@ def main(args):
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-    train_loader, val_loader, _, nb_cls = datasets.cifar_loader.get_loader(
+    train_loader, val_loader, _, nb_cls = loaders.cifar_loader.get_loader(
         args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
     )
 
@@ -193,7 +193,7 @@ def main_diffusion(args):
 
     # Load data with DistributedSampler for distributed training
     if args.dataset == 'imagenet1k':
-        train_loader, val_loader, test_loader, nb_cls = datasets.imagenet_loader.get_loader(
+        train_loader, val_loader, test_loader, nb_cls = loaders.imagenet_loader.get_loader(
             args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
         )
         train_sampler = DistributedSampler(train_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=True)
@@ -202,7 +202,7 @@ def main_diffusion(args):
         if global_rank == 0:
             val_loader = DataLoader(val_loader.dataset, batch_size=args.batch_size, sampler=None, num_workers=8, drop_last=False)
     else:
-        train_loader, val_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(
+        train_loader, val_loader, test_loader, nb_cls = loaders.cifar_loader.get_loader(
             args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
         )
         train_sampler = DistributedSampler(train_loader.dataset, num_replicas=dist.get_world_size(), rank=global_rank, shuffle=True)
@@ -352,8 +352,7 @@ def main_diffusion_text(args):
     if global_rank == 0:
         logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
 
-    # Data loaders (expects a text loader externally provided)
-    train_loader, val_loader, test_loader = datasets.CoLA_loader.CoLALoaders(
+    train_loader, val_loader, test_loader = loaders.CoLA_loader.CoLALoaders(
         batch_size=args.batch_size,
         num_workers=8,
         max_length=128,
@@ -388,7 +387,7 @@ def main_diffusion_text(args):
         else:
             lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.nb_epochs, eta_min=args.min_lr)
 
-        best_mcc = -1e9
+        best_acc = 0
         start_epoch = 0
         if args.resume_weights:
             weights_checkpoint = torch.load(os.path.join(save_path, args.resume_weights), map_location='cpu')
@@ -403,7 +402,10 @@ def main_diffusion_text(args):
             net.module.embedding.wte.load_state_dict({'weight': pretrained_GPT2.module.model.transformer.wte.weight.detach().cpu()})
             net.module.embedding.wpe.load_state_dict({'weight': pretrained_GPT2.module.model.transformer.wpe.weight.detach().cpu()})
             # Classifier
-            net.module.classifier.load_state_dict(pretrained_GPT2.module.model.classifier.state_dict())
+            net.module.ln_mlp.load_state_dict(pretrained_GPT2.module.model.transformer.h[-1].ln_2.state_dict())
+            net.module.mlp_head.load_state_dict(pretrained_GPT2.module.model.transformer.h[-1].mlp.state_dict())
+            net.module.layernorm.load_state_dict(pretrained_GPT2.module.model.transformer.ln_f.state_dict())
+            net.module.classifier.load_state_dict(pretrained_GPT2.module.model.score.state_dict())
 
         for epoch in range(start_epoch, args.nb_epochs):
             if dist.get_world_size() > 1:
@@ -421,20 +423,27 @@ def main_diffusion_text(args):
                 }
                 torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_last_diffusion_text_{args.backbone}_tuning_{args.lambda_mean}.pth'))
 
-                res = val.validation_text(val_loader, net, args, pretrained_GPT2)
+                res = val.validation_text(val_loader, net, args)
                 log = [f"{key}: {res[key]:.3f}" for key in res]
                 msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
                 logger.info(msg)
                 wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
 
-                if res.get('MCC', -1e9) > best_mcc:
-                    mcc = res['MCC']
-                    msg = f'MCC improved from {best_mcc:.2f} to {mcc:.2f}!!!'
-                    logger.info(msg)
-                    best_mcc = mcc
-                    torch.save(net.module.state_dict(), os.path.join(save_path, f'best_mcc_net_{run+1}_diffusion_text_{args.backbone}.pth'))
+                # if res.get('MCC', -1e9) > best_mcc:
+                #     mcc = res['MCC']
+                #     msg = f'MCC improved from {best_mcc:.2f} to {mcc:.2f}!!!'
+                #     logger.info(msg)
+                #     best_mcc = mcc
+                #     torch.save(net.module.state_dict(), os.path.join(save_path, f'best_mcc_net_{run+1}_diffusion_text_{args.backbone}.pth'))
 
-                test_results = val.validation_text(test_loader, net, args, pretrained_GPT2)
+                if res['Acc.'] > best_acc:
+                    acc = res['Acc.']
+                    msg = f'Acc. improved from {best_acc:.2f} to {acc:.2f}!!!'
+                    logger.info(msg)
+                    best_acc = acc
+                    torch.save(net.module.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}_diffusion_text_{args.backbone}.pth'))
+
+                test_results = val.validation_text(test_loader, net, args)
                 log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
                 msg = '################## \n ---> Test Epoch {:d}\t'.format(epoch) + '\t'.join(log)
                 logger.info(msg)

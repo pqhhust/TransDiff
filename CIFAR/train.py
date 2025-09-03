@@ -173,11 +173,12 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
         logger.info('####### --- Training (Text) Epoch {:d} --- #######'.format(epoch))
 
     for i, batch in enumerate(train_loader):
+        # print(batch)
         if isinstance(batch, dict):
             input_ids = batch.get('input_ids').cuda(non_blocking=True)
             attention_mask = batch.get('attention_mask', None)
             token_type_ids = batch.get('token_type_ids', None)
-            labels = batch.get('labels') if 'labels' in batch else batch.get('targets')
+            labels = batch.get('label') if 'label' in batch else batch.get('targets')
             attention_mask = attention_mask.cuda(non_blocking=True) if attention_mask is not None else None
             token_type_ids = token_type_ids.cuda(non_blocking=True) if token_type_ids is not None else None
             targets = labels.cuda(non_blocking=True)
@@ -200,8 +201,7 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
             _, x_t_from_bert, means_x_minus, stds_x_minus = gpt2_model(
                 input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids
             )
-        x0 = x_t_from_bert[0]
-        output = diffusion_model(x0)  # logits
+        output = diffusion_model(input_ids)  # logits
         ce_loss = ce_criterion(output, targets)
 
         # Diffusion alignment path

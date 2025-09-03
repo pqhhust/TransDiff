@@ -84,6 +84,17 @@ def get_args_parser():
     ImageNet.add_argument("--test-dir", type=str, default='/scratch/user/u.th134169/IMAGENET1K/val', help="ImageNet test directory")
     ImageNet.add_argument("--nb-cls", type=int, default=1000, help="number of classes in ImageNet")
 
+    CoLA = subparsers.add_parser("CoLA",
+                                     description='Dataset parser for training on ImageNet',
+                                     add_help=True,
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                     help="Dataset parser for training on ImageNet")
+    CoLA.add_argument('--dataset', default='cola', type=str, help='Dataset name')
+    CoLA.add_argument("--train-dir", type=str, default='/scratch/user/u.th134169/IMAGENET1K/train', help="ImageNet train directory")
+    CoLA.add_argument("--val-dir", type=str, default='/scratch/user/u.th134169/IMAGENET1K/val', help="ImageNet val directory")
+    CoLA.add_argument("--test-dir", type=str, default='/scratch/user/u.th134169/IMAGENET1K/val', help="ImageNet test directory")
+    CoLA.add_argument("--nb-cls", type=int, default=2, help="number of classes in CoLA")
+
     parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer', 'lstm', 'gru'], help='Backbone name')
     parser.add_argument('--pretrained_dir', default=None, type=str, help='Pretrained diffusion model directory')
     parser.add_argument('--use_ema', type=bool, default=True, help='Whether to use EMA')
