@@ -100,6 +100,7 @@ def get_args_parser():
     parser.add_argument('--lambda_mean', default=1., type=float, help='weight of mean_loss')
     parser.add_argument('--lambda_var', default=1., type=float, help='weight of var_loss')
     parser.add_argument('--lambda_ce', default=1., type=float, help='weight of ce_loss')
+    # parser.add_argument('--var_range', default=0.1, type=float, help='var_range')
     parser.add_argument('--run_name', default=None, type=str, help='name of wandb run')
     parser.add_argument('--adversarial_noise', default=0.01, type=float, help='std of adversarial noise')
     parser.add_argument('--adversarial_samples', default=0, type=int, help='number of adversarial samples')

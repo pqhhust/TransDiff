@@ -47,6 +47,27 @@ def compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_mi
     
     return means_mse, stds_mse
 
+def interpolate_list(values, k):
+    """
+    Expand a list with linear interpolation.
+    
+    Args:
+        values (list of floats/ints): [x0, x1, ..., xn]
+        k (int): number of subdivisions between each pair of points
+
+    Returns:
+        list: expanded list with interpolated values
+    """
+    expanded = []
+    for i in range(len(values) - 1):
+        x0, x1 = values[i], values[i+1]
+        for j in range(k):
+            # Linear interpolation: weighted average
+            interp_val = (1 - j/k) * x0 + (j/k) * x1
+            expanded.append(interp_val)
+    expanded.append(values[-1])  # add the last element
+    return expanded
+
 def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, args, vit_model):
     """
     Train the Diffusion model by aligning its layers with the ViT model's layers using MSE loss.
@@ -90,24 +111,87 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     for i, (inputs, targets) in enumerate(train_loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         # optimizer.zero_grad()
-        output = diffusion_model(inputs)
+        # if epoch > args.warmup_epoch:
+        # if epoch % 2 == 0:
+        #     selected_indices_x = [0, 2, 4, 6, 8, 10, 12]
+        #     time_index = [selected_indices_x[i]*1.0/12 for i in range(len(selected_indices_x)-1)]
+        # else:
+        #     time_index = [i*1.0/12 for i in range(12)]
+        
+        selected_indices_x = [0, 2, 4, 6, 8, 10, 12]
+        # selected_indices_x = [0, 3, 6, 9, 12]
+        time_index = [selected_indices_x[i]*1.0/12 for i in range(len(selected_indices_x)-1)]
+        
+        output, means_from_diffusion, stds_from_diffusion = diffusion_model(inputs, time_index=time_index)
 
         ce_loss = ce_criterion(output, targets)
 
         with torch.no_grad():
-            _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs)
+            # _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs)
+            soft_logits, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs)
 
-        means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_ViT, train=True)
+        #Soften the student logits by applying softmax first and log() second
+        T = 1.0
+        soft_targets = nn.functional.softmax(soft_logits / T, dim=-1)
+        soft_prob = nn.functional.log_softmax(output / T, dim=-1)
 
-        means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus)
+        # Calculate the soft targets loss. Scaled by T**2 as suggested by the authors of the paper "Distilling the knowledge in a neural network"
+        # ce_loss = torch.sum(soft_targets * (soft_targets.log() - soft_prob)) / soft_prob.size()[0] * (T**2)
 
+        # # if epoch > args.warmup_epoch:
+        # if epoch % 2 == 0:
+        #     ### merge layers
+        #     ## merge 2 
+        selected_indices_x = [0, 2, 4, 6, 8, 10, 12]
+        selected_indices_mean = [1, 3, 5, 7, 9, 11]
+        #     ## merge 3
+        # selected_indices_x = [0, 3, 6, 9, 12]
+        # selected_indices_mean = [2, 5, 8, 11]
+        #     ## merge 4
+        #     # selected_indices_x = [0, 4, 8, 12]
+        #     # selected_indices_mean = [3, 7, 11]
+        time_index = [selected_indices_x[i]*1.0/12 for i in range(len(selected_indices_x)-1)]
+            
+        subset_x = [x_t_from_ViT[i] for i in selected_indices_x]
+        subset_mean = [means_x_minus[i] for i in selected_indices_mean]
+        subset_cov = [covariances_x_minus[i] for i in selected_indices_mean]
+        # subset_cov = [torch.randn_like(x)*args.var_range for x in subset_cov]
+        # else:
+        ### divide sublayers
+        # time_index = interpolate_list([i*1.0 for i in range(13)], k=2)
+        # time_index = [i/12.0 for i in time_index][:-1]
+
+        # subset_x = interpolate_list(x_t_from_ViT, k=2)
+        # subset_mean = subset_x[1:]
+        # subset_cov = [torch.zeros_like(x) for x in subset_mean]
+        # del x_t_from_ViT, means_x_minus, covariances_x_minus
+
+        # means_from_diffusion, stds_from_diffusion = diffusion_model(subset_x, train=True, time_index=time_index)
+        ### residual
+        # residual_mean = [x_t_from_ViT[i+1]-x_t_from_ViT[i] for i in range(len(x_t_from_ViT)-1)]
+
+        means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, subset_mean, stds_from_diffusion, subset_cov)
+
+        # if epoch >= 5:
+        #     loss = 0.5 * means_loss + args.lambda_var * stds_loss + 1 * ce_loss
+        # else: 
         loss = args.lambda_mean * means_loss + args.lambda_var * stds_loss + args.lambda_ce * ce_loss
+        
         loss /= args.accumulation_steps
         loss.backward() 
         if (i + 1) % args.accumulation_steps == 0: 
-            nn.utils.clip_grad_value_(diffusion_model.parameters(), args.clip_grad_value)
+            if args.clip_grad_value != 0:
+                nn.utils.clip_grad_value_(diffusion_model.parameters(), args.clip_grad_value)
             optimizer.step()
             optimizer.zero_grad()
+
+            # diffusion_model.module.embedding.load_state_dict(vit_model.module.model.vit.embeddings.state_dict())
+            # diffusion_model.module.intermediate.load_state_dict(vit_model.module.model.vit.encoder.layer[-1].intermediate.state_dict())
+            # diffusion_model.module.output.load_state_dict(vit_model.module.model.vit.encoder.layer[-1].output.state_dict())
+            # diffusion_model.module.layernorm_after.load_state_dict(vit_model.module.model.vit.encoder.layer[-1].layernorm_after.state_dict())
+            # diffusion_model.module.layernorm.load_state_dict(vit_model.module.model.vit.layernorm.state_dict())
+            # if epoch < 20:
+            #     diffusion_model.module.classifier.load_state_dict(vit_model.module.model.classifier.state_dict())
 
         for param_group in optimizer.param_groups:
             lr = param_group["lr"]

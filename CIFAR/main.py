@@ -25,9 +25,9 @@ import torch.distributed as dist
 import gc
 import warmup_scheduler
 
-os.environ["NCCL_BLOCKING_WAIT"] = "1"
-os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
-os.environ["NCCL_DEBUG"] = "INFO"
+# os.environ["NCCL_BLOCKING_WAIT"] = "1"
+# os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
+os.environ["NCCL_DEBUG"] = "WARN"
 os.environ["NCCL_TIMEOUT"] = "900"
 wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
 # wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
@@ -66,7 +66,7 @@ def main(args):
 
     logger = utils.utils.get_logger(save_path)
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     train_loader, val_loader, _, nb_cls = datasets.cifar_loader.get_loader(
         args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
@@ -259,6 +259,14 @@ def main_diffusion(args):
             net.module.layernorm.load_state_dict(pretrained_ViT.module.model.vit.layernorm.state_dict())
             net.module.classifier.load_state_dict(pretrained_ViT.module.model.classifier.state_dict())
         # Training loop over epochs
+        
+        # if global_rank == 0:
+        #     pretrained_model = models.get_model.get_model('vit_image_net', nb_cls, logger, args).cuda()
+        #     test_results = val.validation_diffusion(test_loader, pretrained_model, args, None)
+        #     log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
+        #     msg = '################## Pretrained VIT test:' + '\t'.join(log)
+        #     logger.info(msg)
+        
         for epoch in range(start_epoch, args.nb_epochs):
             # Set epoch for sampler to ensure shuffling is consistent across processes
             if dist.get_world_size() > 1:
@@ -274,19 +282,22 @@ def main_diffusion(args):
                 torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_{args.backbone}_tuning_{args.lambda_mean}.pth'))
                 training_state_checkpoint = {'epoch': epoch, 'optimizer_state_dict': optimizer.state_dict(), 'lr_scheduler_state_dict': lr_scheduler.state_dict()}
                 torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_last_diffusion_{args.backbone}_tuning_{args.lambda_mean}.pth'))
-                    
-                res = val.validation_diffusion(val_loader, net, args, pretrained_ViT)
+                
+                selected_indices_x = [0, 2, 4, 6, 8, 10, 12]
+                # selected_indices_x = [0, 3, 6, 9, 12]
+                time_index = [selected_indices_x[i]*1.0/12 for i in range(len(selected_indices_x)-1)]
+                res = val.validation_diffusion(val_loader, net, args, pretrained_ViT, time_index=time_index)
                 log = [f"{key}: {res[key]:.3f}" for key in res]
                 msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
                 logger.info(msg)
                 wandb.log({f"Val/{key}": res[key] for key in res}, step=epoch)
-                
-                test_results = val.validation_diffusion(test_loader, net, args, pretrained_ViT)
+
+                test_results = val.validation_diffusion(test_loader, net, args, pretrained_ViT, time_index=time_index)
                 # if epoch % args.update_ema_interval == 0:
                 #     restore_ema(args, ema, net)
         
                 log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
-                msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+                msg = '################## \n ---> Test: Epoch {:d}\t'.format(epoch) + '\t'.join(log)
                 logger.info(msg)
                 wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
 

@@ -8,6 +8,7 @@ from transformers.models.vit.modeling_vit import ViTEmbeddings, ViTIntermediate,
 from transformers import AutoModelForImageClassification
 
 import math
+import random
 
 class Diffusion_Transformer(nn.Module):
     def __init__(
@@ -84,25 +85,73 @@ class Diffusion_Transformer(nn.Module):
             
         return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
 
-    def forward(self, x, train=False):
+    def forward(self, x, train=False, time_index=None):
         if not train:
             x = self.embedding(x)
+            # subtimesteps = 3
+            # for t in range(self.ViT_depth):
+            #     for subtimestep in range(subtimesteps):
+            #         t_tensor = torch.tensor([t+subtimestep/subtimesteps], device=x.device).expand(x.shape[0])
+            #         if subtimestep == 0:
+            #             mean, std, mean_plus_std = self.forward_step(x, t_tensor)
+            #         else:
+            #             mean, std, mean_plus_std = self.forward_step(mean_plus_std, t_tensor)
+            # x = mean_plus_std
+            means = []
+            stds = []
+            # sum_predictions = None
+            # for t in range(self.ViT_depth // 2):
             for t in range(self.ViT_depth):
+            # for t in time_index:
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
-                x = self.forward_step(x, t_tensor)[-1]
+                # residual
+                # x = self.forward_step(x, t_tensor)[-1] + x
+                mean, std, x = self.forward_step(x, t_tensor)
+                means.append(mean)
+                stds.append(std)
             x_layer = self.layernorm_after(x)
             x_layer = self.intermediate(x_layer)
             x_layer = self.output(x_layer, x)
-            return self.classifier(self.layernorm(x_layer)[:, 0, :])
+            return self.classifier(self.layernorm(x_layer)[:, 0, :]), means, stds
+            
+            #     # feed intermediate representation throungh solution head
+            #     x_layer = self.layernorm_after(x)
+            #     x_layer = self.intermediate(x_layer)
+            #     x_layer = self.output(x_layer, x)
+            #     if sum_predictions is None:
+            #         sum_predictions = self.classifier(self.layernorm(x_layer)[:, 0, :])
+            #     else:
+            #         sum_predictions += self.classifier(self.layernorm(x_layer)[:, 0, :])
+
+            # return sum_predictions
+            
         else:
-            assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
-                f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
+            # assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
+            #     f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
             
             means = []
             stds = []
+            # # divide 
+            # subtimesteps = 3
+            # for t in range(self.ViT_depth):
+            #     for subtimestep in range(subtimesteps):
+            #         t_tensor = torch.tensor([t+subtimestep/subtimesteps], device=x[t].device).expand(x[t].shape[0])
+            #         if subtimestep == 0:
+            #             mean, std, mean_plus_std = self.forward_step(x[t], t_tensor)
+            #         else:
+            #             mean, std, mean_plus_std = self.forward_step(mean_plus_std, t_tensor)
+            # selected_indices = random.sample(range(self.ViT_depth), 12)   
+            input_ = x[0]
             for t in range(self.ViT_depth):
+            # for id,t in enumerate(time_index):
+                # if t not in selected_indices:
+                #     continue
+                
+                # t_tensor = torch.tensor([t//2 + (t%2)/2], device=x[t].device).expand(x[t].shape[0])
+                
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
-                mean, std, mean_plus_std = self.forward_step(x[t], t_tensor)
+                mean, std, mean_plus_std = self.forward_step(input_, t_tensor)
+                input_ = mean_plus_std
                 means.append(mean)
                 stds.append(std)
             return means, stds

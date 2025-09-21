@@ -140,7 +140,7 @@ def validation_ood(loader, ood_loader, net, args):
     return res
 
 @torch.no_grad()
-def validation_diffusion(loader, net, args, pretrained_vit):
+def validation_diffusion(loader, net, args, pretrained_vit, time_index):
     net.eval()
     # pretrained_vit.eval()
     val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
@@ -152,7 +152,9 @@ def validation_diffusion(loader, net, args, pretrained_vit):
         # output = pretrained_vit._to_words(inputs)
         # output = pretrained_vit.emb(output)
         # output = output + pretrained_vit.pos_emb
-        output = net(inputs)
+        output = net(inputs, time_index=time_index)[0]
+        # if pretrained_vit == None:
+        #     output = output.logits
         # h = pretrained_vit.enc[args.depth - 1].la2(output)
         # h = pretrained_vit.enc[args.depth - 1].mlp(h)
         # output = output + h

@@ -326,9 +326,11 @@ class CustomViT(nn.Module):
             x = layer.attention(layer.layernorm_before(hidden_states), output_attentions=False)
             x = x[0] + hidden_states
             x_t.append(x)
-            hidden_states = layer.output(layer.intermediate(layer.layernorm_after(x)), hidden_states)
+            hidden_states = layer.output(layer.intermediate(layer.layernorm_after(x)), x)
         means = x_t[1:]
         stds = [torch.zeros_like(x) for x in means]
+
+        return self.model.classifier(self.model.vit.layernorm(hidden_states)[:, 0, :]), x_t, means, stds
         return None, x_t, means, stds
 
 def vit_cifar(args, attn_type, num_classes, ksvd_layers, low_rank, rank_multi):
