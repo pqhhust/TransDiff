@@ -301,6 +301,27 @@ def main_diffusion(args):
             f"{args.dataset}_{args.attn_type}_vit_cifar_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
         )
         group = "KEP-SVGP-DiT"
+    elif args.attn_type == 'sgpa':
+        if args.backbone == 'mlp':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}"
+            )
+        elif args.backbone == 'lstm' or args.backbone == 'gru':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}"
+            )
+        elif args.backbone == 'transformer':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}"
+            )
+        pretrained_path = os.path.join(
+            args.pretrained_dir,
+            f"{args.dataset}_{args.attn_type}_vit_cifar_{args.pretrained_seed}"
+        )
+        group = "SGPA-DiT"
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -335,11 +356,25 @@ def main_diffusion(args):
         pretrained_ViT = models.get_model.get_model('q_distribution', nb_cls, logger, args)
         pretrained_ViT.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_acc_net_{run + 1}.pth')))
         pretrained_ViT.cuda()
-        net.emb.load_state_dict(pretrained_ViT.emb.state_dict())
-        net.pos_emb.data.copy_(pretrained_ViT.pos_emb.data)
-        net.ln.load_state_dict(pretrained_ViT.enc[args.depth - 1].la2.state_dict())
-        net.solution_head_1.load_state_dict(pretrained_ViT.enc[args.depth - 1].mlp.state_dict())
-        net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
+        
+        # Handle different attention types for weight loading
+        if args.attn_type == 'sgpa':
+            # For SGPA q_distribution, we can directly copy the weights since they follow the same structure
+            net.emb.load_state_dict(pretrained_ViT.emb.state_dict())
+            net.pos_emb.data.copy_(pretrained_ViT.pos_emb.data)
+            # For SGPA, we need to use a different layer structure for ln and solution heads
+            # Use the last transformer layer for extracting weights
+            last_layer_idx = args.depth - 1
+            net.ln.load_state_dict(pretrained_ViT.enc[last_layer_idx].la2.state_dict())
+            net.solution_head_1.load_state_dict(pretrained_ViT.enc[last_layer_idx].mlp.state_dict())
+            net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
+        else:
+            # Original logic for softmax and kep_svgp
+            net.emb.load_state_dict(pretrained_ViT.emb.state_dict())
+            net.pos_emb.data.copy_(pretrained_ViT.pos_emb.data)
+            net.ln.load_state_dict(pretrained_ViT.enc[args.depth - 1].la2.state_dict())
+            net.solution_head_1.load_state_dict(pretrained_ViT.enc[args.depth - 1].mlp.state_dict())
+            net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
         
         ## define optimizer with warm-up
         optimizer = torch.optim.Adam(
