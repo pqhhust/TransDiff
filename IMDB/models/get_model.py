@@ -1,5 +1,6 @@
 import models.transformer_imdb
 import models.q_distribution
+import models.q_distribution_sgpa
 import models.diffusion
 import models.sgpa
 # import models.svdkl
@@ -9,7 +10,10 @@ def get_model(model_name, vocab_size, logger, args):
     #     feature_extractor = models.svdkl.vit_cola(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi)
     #     net = models.svdkl.DKLModel(feature_extractor, num_dim=args.hdim)
     if model_name == "q_distribution":
-        net = models.q_distribution.transformer_imdb(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi)
+        if args.attn_type == "sgpa":
+            net = models.q_distribution_sgpa.transformer_sgpa_q_distribution_imdb(args=args, device=f'cuda:{args.gpu}', vocab_size=vocab_size)
+        else:
+            net = models.q_distribution.transformer_imdb(args=args, vocab_size=vocab_size, attn_type=args.attn_type, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi)
     if model_name == "transformer_imdb" or model_name == 'temperature_scaling' or model_name == 'mc_dropout':
         if args.attn_type == "sgpa":
             net = models.sgpa.Transformer(device='cuda', vocab_size=vocab_size, depth=args.depth, max_len=100, embdim=128, num_class=args.num_classes, hdim=args.hdim, num_heads=args.num_heads, sample_size=1, jitter=1e-7, drop_rate=0.1, keys_len=5, kernel_type='exponential', flag_sgp=True)
