@@ -135,6 +135,9 @@ def validation_ood(loader, ood_loader, net, args):
         elif args.attn_type == "kep_svgp":
             results = [net(inputs)[0] for _ in range(10)]
             output = torch.mean(torch.stack(results), dim=0)
+        elif args.attn_type == "sgpa":
+            results = [net(inputs)[0] for _ in range(10)]
+            output = torch.mean(torch.stack(results), dim=0)
         
         softmax = F.softmax(output, dim=1)
         pred_prob = softmax.max(1)[0]  # Get probabilities of the predicted class
@@ -148,6 +151,9 @@ def validation_ood(loader, ood_loader, net, args):
         if args.attn_type == "softmax":
             output = net(inputs)
         elif args.attn_type == "kep_svgp":
+            results = [net(inputs)[0] for _ in range(10)]
+            output = torch.mean(torch.stack(results), dim=0)
+        elif args.attn_type == "sgpa":
             results = [net(inputs)[0] for _ in range(10)]
             output = torch.mean(torch.stack(results), dim=0)
         

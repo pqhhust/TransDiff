@@ -75,6 +75,8 @@ def ood_test(args):
     
     if args.attn_type == 'softmax':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
+    elif args.attn_type == 'sgpa':
+        save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
     elif args.attn_type == 'kep_svgp':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_ksvdlayer{}'.format(args.ksvd_layers) + '_ksvd{}'.format(args.eta_ksvd) + '_kl{}'.format(args.eta_kl) + '_' + str(args.seed)
 
@@ -110,7 +112,7 @@ def test(args):
 
     if args.attn_type == 'sgpa':
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args.model + '_' + str(args.seed)
-    if args.attn_type == 'softmax':
+    elif args.attn_type == 'softmax':
         args_model = 'vit_cifar' if args.model == 'temperature_scaling' or args.model == 'mc_dropout' else args.model
         save_path = args.save_dir + '/' + args.dataset + '_' + args.attn_type + '_' + args_model + '_' + str(args.seed)
     elif args.attn_type == 'kep_svgp':
@@ -160,7 +162,22 @@ def test_diffusion(args):
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}")
         elif args.backbone == 'transformer':
             save_path = os.path.join(args.save_dir, f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}")
-
+    elif args.attn_type == 'sgpa':
+        if args.backbone == 'mlp':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}"
+            )
+        elif args.backbone == 'lstm' or args.backbone == 'gru':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}"
+            )
+        elif args.backbone == 'transformer':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}"
+            )
     elif args.attn_type == 'kep_svgp':
         if args.backbone == 'mlp':
             save_path = os.path.join(
@@ -283,9 +300,11 @@ if __name__ == '__main__':
     wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
     args = utils.test_utils.get_args_parser()
     if args.attn_type == 'kep_svgp':
-        group = 'KEP-SVGP'
+        group = 'KEP-SVGP-CIFAR'
+    elif args.attn_type == 'sgpa':
+        group = 'SGPA-CIFAR'
     else:
-        group = 'VIT'
+        group = 'VIT-CIFAR'
     wandb.init(project='Difformer',     
                group=group,
                name=f"Seed_{args.seed}",
@@ -294,7 +313,10 @@ if __name__ == '__main__':
     set_seed(args.seed)
     if args.ood_data is None and args.model == 'diffusion':
         test_diffusion(args)
-    elif args.ood_data is None and args.model == 'vit_cifar':
-        test(args)
+    elif args.ood_data is None and (args.model == 'vit_cifar' or args.model in ['diffusion_distillation', 'vit_cifar_distillation']):
+        if args.model in ['diffusion_distillation', 'vit_cifar_distillation']:
+            test_distillation(args)
+        else:
+            test(args)
     else:
         ood_test(args)
