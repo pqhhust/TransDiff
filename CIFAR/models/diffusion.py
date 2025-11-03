@@ -1,10 +1,120 @@
 import torch
 import torch.nn as nn
+import numpy.random as npr
 from models.layers import TransformerEncoder  # Adjust if necessary
 from models.DiT import DiT
 from models.UNet1D import Unet1D
 
 import math
+from einops import rearrange, reduce, repeat
+from einops.layers.torch import Rearrange, Reduce
+
+class Patch_embedding(torch.nn.Module):
+    def __init__(self, patch_size, in_channels, hdim, max_len, drop_rate):
+        super(Patch_embedding, self).__init__()
+        self.patch_size = patch_size
+        self.in_channels = in_channels
+        self.idim = patch_size * patch_size * in_channels
+        self.hdim = hdim
+        self.max_len = max_len
+        self.pos_emb = nn.Parameter(1e-1 * torch.tensor(npr.randn(max_len, hdim), dtype=torch.float32))  
+
+        self.linear_proj = nn.Sequential(
+            nn.Conv2d(in_channels, hdim, kernel_size=patch_size, stride=patch_size),
+            Rearrange('b e (h) (w) -> b (h w) e'),
+        )
+        self.ln = nn.LayerNorm(hdim)
+        self.dropout = nn.Dropout(drop_rate)
+    
+    def forward(self, x):  
+        input_emb = self.linear_proj(x)
+        patch_emb = input_emb + self.pos_emb
+        patch_emb = self.dropout(patch_emb)
+        return self.ln(patch_emb), patch_emb
+        
+class Embeddings(torch.nn.Module):
+    def __init__(self,vocab_size,max_len,emb_size,h_size, drop_rate):
+        super(Embeddings,self).__init__()
+        
+        self.token_embeds=nn.Embedding(vocab_size,emb_size,padding_idx=0)
+        self.pos_embeds=nn.Embedding(max_len,emb_size)
+        self.layer_norm=nn.LayerNorm(h_size)
+            
+        self.project=nn.Linear(emb_size,h_size)
+        self.dropout = nn.Dropout(drop_rate)
+        
+    def forward(self,input_data,pos):
+        rep=self.token_embeds(input_data)
+        pos=self.pos_embeds(pos)
+      
+        output=rep+pos
+        output=self.project(output)
+        output = self.dropout(output)
+        
+        return self.layer_norm(output), output
+
+
+class FC(torch.nn.Module):
+    def __init__(self, hdim, drop_rate=0.):
+        super(FC, self).__init__()
+        self.hdim = hdim
+        self.act = torch.nn.GELU() 
+        self.fc = nn.Sequential(nn.Linear(hdim, hdim), nn.Dropout(drop_rate), self.act, nn.Linear(hdim,hdim), nn.Dropout(drop_rate))
+        self.ln = nn.LayerNorm(hdim)
+
+    def forward(self, x):  
+        res = self.fc(x)
+        return res
+    
+
+class ClassficationHead_vit(torch.nn.Module):
+    def __init__(self, hdim, num_class):
+        super().__init__()
+        self.seqpool = nn.Linear(hdim, 1)
+        self.ln = nn.LayerNorm(hdim)
+        self.fc = nn.Linear(hdim, num_class)
+
+    def forward(self, x):                  # x: [B, L, D]
+        w = self.seqpool(x).transpose(1, 2)    # [B, 1, L]
+        w = torch.softmax(w, dim=-1)           # [B, 1, L]
+        pooled = w @ x                         # [B, 1, D]
+        pooled = pooled.squeeze(1)             # [B, D]
+        return self.fc(self.ln(pooled))        # [B, num_class]
+
+class ClassficationHead(torch.nn.Module):
+    def __init__(self, hdim, num_class, drop_rate=0.):
+        super(ClassficationHead, self).__init__()
+        self.hdim = hdim
+        self.num_class = num_class
+        self.fc = nn.Sequential(nn.Linear(hdim, num_class), nn.Dropout(drop_rate))
+        self.ln = nn.LayerNorm(hdim)
+
+    def forward(self, x, input_mask):
+        input_mask = input_mask.unsqueeze(-1).unsqueeze(1)
+        res = x* input_mask
+        res = torch.mean(res, 2)
+        res = self.ln(res)
+        res = self.fc(res)
+        return res
+
+def kernel_ard(X1, X2, log_ls, log_sf):
+    X1 = X1 * torch.exp(-log_ls).unsqueeze(1)
+    X2 = X2 * torch.exp(-log_ls).unsqueeze(1)
+    factor1 = torch.sum(X1.pow(2), -1)
+    factor2 = torch.sum(X2.pow(2), -1)
+    return torch.exp(log_sf).unsqueeze(1) * \
+        torch.exp(-0.5* (factor1.unsqueeze(3) + factor2.unsqueeze(2) -2* X1 @ X2.permute(0,1,3,2)))
+
+
+def kernel_exp(X1, X2, log_ls, log_sf):
+    X1 = X1 * torch.exp(-log_ls).unsqueeze(1) 
+    X2 = X2 * torch.exp(-log_ls).unsqueeze(1)
+    return torch.exp(log_sf).unsqueeze(1)* torch.exp(X1 @ X2.permute(0,1,3,2))
+
+
+def scale_dot(X1, X2):
+    dk = X2.shape[3]
+    return torch.softmax(X1 @ X2.permute(0,1,3,2)/ (math.sqrt(dk)), 3)
 
 class Diffusion_Transformer(nn.Module):
     def __init__(
@@ -22,8 +132,10 @@ class Diffusion_Transformer(nn.Module):
         self.patch = 8
         self.patch_size = 4
         
-        self.emb = nn.Linear(48, d_model)
-        self.pos_emb = nn.Parameter(torch.randn(1, 64, d_model))
+        self.patch_embedding = Patch_embedding(patch_size=self.patch_size, in_channels=3, hdim=d_model, max_len=64, drop_rate=dropout)
+        self.mlp = FC(hdim=d_model, drop_rate=dropout)
+        self.class_head = ClassficationHead_vit(hdim=d_model, num_class=nb_cls)
+        self.ln = nn.LayerNorm(d_model)
         self.share_params = DiT(hidden_size=d_model, depth=depth, num_heads=num_heads, mlp_ratio=mlp_ratio)
         self.mean_model = nn.Sequential(
             nn.LayerNorm(d_model),
@@ -97,14 +209,14 @@ class Diffusion_Transformer(nn.Module):
 
     def forward(self, x, train=False):
         if not train:
-            x = self._to_words(x)
-            x = self.emb(x)
-            x = x + self.pos_emb
+            x_ln, x = self.patch_embedding.forward(x)
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 x = self.forward_step(x, t_tensor)[-1]
-            x = self.solution_head_1(self.ln(x)) + x
-            return self.solution_head_2(x.mean(1))
+            x_ln = self.ln(x)
+            x = self.mlp.forward(x_ln) + x
+            x = self.class_head.forward(x).squeeze(1)
+            return x
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
@@ -113,6 +225,7 @@ class Diffusion_Transformer(nn.Module):
             stds = []
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
+                # print(x[t].shape, t_tensor.shape)
                 mean, std, mean_plus_std = self.forward_step(x[t], t_tensor)
                 means.append(mean)
                 stds.append(std)

@@ -86,7 +86,7 @@ class ClassficationHead_vit(torch.nn.Module):
 
 class SGP_LAYER(nn.Module):
     """SGPA Attention modified for q_distribution with covariance computation"""
-    def __init__(self, device, num_heads, max_len, hdim, kernel_type, sample_size, jitter, keys_len, drop_rate):
+    def __init__(self, device, num_heads, max_len, hdim, kernel_type, sample_size, jitter, keys_len, drop_rate, flag_sgp=True, inference_mode=True):
         super(SGP_LAYER, self).__init__()
         self.max_len = max_len
         self.num_heads = num_heads
@@ -303,10 +303,10 @@ class ViT(torch.nn.Module):
         z, total_kl, mean, covariance = self.sgp_layer_list[0].forward(patch_emb_ln, self.keys[0])
         
         z_prime = patch_emb.unsqueeze(1) + z 
-        mean = patch_emb.unqueeze(1) + mean
-        x_t.append(z_prime)
-        means.append(mean)
-        covariances.append(covariance)
+        mean = patch_emb.unsqueeze(1) + mean
+        x_t.append(z_prime.squeeze(1))
+        means.append(mean.squeeze(1))
+        covariances.append(covariance.squeeze(1))
         z_ln = self.ln(z_prime)
         
         z = self.mlp_layer_list[0].forward(z_ln) + z_prime 
@@ -324,9 +324,12 @@ class ViT(torch.nn.Module):
                 total_kl += kl
             z_prime = z_prev.unsqueeze(1) + z
             mean = z_prev.unsqueeze(1) + mean
-            x_t.append(z_prime)
-            means.append(mean)
-            covariances.append(covariance)
+            # print(f'Layer {i}, z_prime shape: {z_prime.shape}')
+            # print(f'Layer {i}, mean shape: {mean.shape}')
+            # print(f'Layer {i}, z_prev shape: {z_prev.shape}')
+            x_t.append(z_prime.squeeze(1))
+            means.append(mean.squeeze(1))
+            covariances.append(covariance.squeeze(1))
             z_ln = self.ln(z_prime)  
             z = self.mlp_layer_list[i].forward(z_ln) + z_prime  
             if self.flag_sgp and i < self.depth-1:
@@ -350,7 +353,6 @@ class ViT(torch.nn.Module):
 def vit_sgpa_q_distribution(args, device, num_classes, **kwargs):
     """Factory function to create SGPA q_distribution model"""
     return ViT(
-        args=args,
         device=device,
         num_classes=num_classes,
         img_size=32,
