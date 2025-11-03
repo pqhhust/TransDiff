@@ -84,10 +84,10 @@ class ClassficationHead_vit(torch.nn.Module):
         return res
 
 
-class SGPAttention_QDistribution(nn.Module):
+class SGP_LAYER(nn.Module):
     """SGPA Attention modified for q_distribution with covariance computation"""
     def __init__(self, device, num_heads, max_len, hdim, kernel_type, sample_size, jitter, keys_len, drop_rate):
-        super(SGPAttention_QDistribution, self).__init__()
+        super(SGP_LAYER, self).__init__()
         self.max_len = max_len
         self.num_heads = num_heads
         self.hdim = hdim
@@ -212,7 +212,7 @@ class SGPAttention_QDistribution(nn.Module):
         kl += 0.5* torch.mean(torch.sum(temp, (1,2)))
         kl -= torch.mean(torch.sum(log_ssqrt, (-1, -2, -3))) 
         
-        return attn_out, None, None, kl, mean_out, covariance_out
+        return attn_out, kl, mean_out, covariance_out
 
 
 class TransformerEncoder_SGPA(nn.Module):
@@ -255,96 +255,101 @@ class TransformerEncoder_SGPA(nn.Module):
         return out, scores, Lambda_inv, kl, x_t_trans, mean, cov
 
 
-class ViT_SGPA_QDistribution(nn.Module):
-    """SGPA ViT modified to work as q_distribution model"""
-    def __init__(self, args, device, num_classes=10, img_size=32, channels=3, 
-                 patch=4, dropout=0., num_layers=7, hidden=384, mlp_hidden=384, head=8, 
-                 kernel_type='ard', sample_size=1, jitter=1e-6, keys_len=16):
-        super(ViT_SGPA_QDistribution, self).__init__()
-        self.args = args
+class ViT(torch.nn.Module):
+    def __init__(self, device, depth, patch_size, in_channels, max_len, num_class, hdim, num_heads, sample_size, jitter, drop_rate, keys_len, kernel_type, flag_sgp, inference_mode=False):
+        super(ViT, self).__init__()
+        self.hdim = hdim
+        self.num_heads = num_heads
+        self.patch_size = patch_size
+        self.in_channels = in_channels
+        self.max_len = max_len
+        self.num_class = num_class
+        self.sample_size=sample_size
+        self.depth = depth
+        self.jitter = jitter
+        self.flag_sgp = flag_sgp
+        if not self.flag_sgp:
+            self.sample_size = 1
+        self.keys_len = keys_len
+        self.kernel_type = kernel_type
+        self.drop_rate = drop_rate
+        self.inference_mode = inference_mode
+
+        self.patch_embedding = Patch_embedding(patch_size=patch_size, in_channels=in_channels, hdim=hdim, max_len=max_len, drop_rate=drop_rate)
+        
+        self.class_head = ClassficationHead_vit(hdim=hdim, num_class=num_class)
+
         self.device = device
-        self.patch = patch
-        self.patch_size = img_size // self.patch
-        num_tokens = self.patch ** 2
-        self.num_layers = num_layers
-        self.hdim = hidden
-        self.num_heads = head
 
-        # Patch embedding (equivalent to emb in original q_distribution)
-        self.emb = nn.Linear((img_size//patch)**2*channels, hidden)
-        self.pos_emb = nn.Parameter(torch.randn(1, num_tokens, hidden))
-        
-        # SGPA transformer layers
-        self.enc = nn.ModuleList([
-            TransformerEncoder_SGPA(
-                args=args,
-                device=device,
-                feats=hidden, 
-                mlp_hidden=mlp_hidden, 
-                head=head, 
-                dropout=dropout, 
-                embed_len=num_tokens,
-                kernel_type=kernel_type,
-                sample_size=sample_size,
-                jitter=jitter,
-                keys_len=keys_len
-            ) for _ in range(num_layers)
-        ])
-        
-        # SGPA keys for each layer
-        self.keys = nn.ParameterList([
-            nn.Parameter(torch.tensor(npr.randn(head, 1, keys_len, hidden), dtype=torch.float32)) 
-            for _ in range(num_layers)
-        ])
-        
-        # Classification head (equivalent to fc in original q_distribution)
-        self.fc = nn.Sequential(
-            nn.LayerNorm(hidden),
-            nn.Linear(hidden, num_classes)
-        )
+        self.ln = nn.LayerNorm(hdim)
 
-    def _to_words(self, x):
-        """Convert image to patches (equivalent to original q_distribution)"""
-        out = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size).permute(0,2,3,4,5,1)
-        out = out.reshape(x.size(0), self.patch**2, -1)
-        return out
+        self.keys = nn.ParameterList([nn.Parameter(torch.tensor(npr.randn(self.num_heads, 1, self.keys_len, self.hdim), dtype=torch.float32)) for i in range(self.depth)])
 
-    def forward(self, x):
+        self.sgp_layer_list = nn.ModuleList([SGP_LAYER(device=device, num_heads=num_heads, max_len=max_len, hdim=hdim, kernel_type=self.kernel_type, drop_rate=self.drop_rate, \
+            keys_len=self.keys_len, sample_size=self.sample_size, jitter=jitter, flag_sgp=flag_sgp, inference_mode=self.inference_mode)])
+        self.mlp_layer_list = nn.ModuleList([FC(hdim=hdim, drop_rate=self.drop_rate)])
+
+        for i in range(1, depth):
+            self.sgp_layer_list.append(SGP_LAYER(device=device, num_heads=num_heads, max_len=max_len, hdim=hdim,\
+                kernel_type=self.kernel_type, drop_rate=self.drop_rate, keys_len=self.keys_len, sample_size=1, jitter=jitter, flag_sgp=flag_sgp, inference_mode=self.inference_mode))
+            self.mlp_layer_list.append(FC(hdim=hdim, drop_rate=self.drop_rate))
+
+    def forward(self, X):
         x_t = []
-        score_list = []
-        Lambda_inv_list = []
-        kl_list = []
         means = []
         covariances = []
+        patch_emb_ln, patch_emb = self.patch_embedding.forward(X) 
+        x_t.append(patch_emb)
+        z, total_kl, mean, covariance = self.sgp_layer_list[0].forward(patch_emb_ln, self.keys[0])
         
-        # Patch embedding
-        out = self._to_words(x)
-        out = self.emb(out)
-        out = out + self.pos_emb
-        x_t.append(out)
+        z_prime = patch_emb.unsqueeze(1) + z 
+        mean = patch_emb.unqueeze(1) + mean
+        x_t.append(z_prime)
+        means.append(mean)
+        covariances.append(covariance)
+        z_ln = self.ln(z_prime)
         
-        # Pass through SGPA transformer layers
-        for i, enc in enumerate(self.enc):
-            sgpa_key = self.keys[i]
-            out, scores, Lambda_inv, kl, x_t_trans, mean, cov = enc(out, sgpa_key)
-            
-            score_list.append(scores if scores is not None else [])
-            Lambda_inv_list.append(Lambda_inv if Lambda_inv is not None else [])
-            kl_list.append(kl)
-            x_t.append(x_t_trans)
-            means.append(mean)
-            covariances.append(cov)
-        
-        # Global average pooling and classification
-        out = out.mean(1)
-        out = self.fc(out)
+        z = self.mlp_layer_list[0].forward(z_ln) + z_prime 
 
-        return out, x_t, means, covariances
+        cur_k = None
+        if self.flag_sgp:
+            cur_k = self.mlp_layer_list[0].forward(self.keys[1]) + self.keys[1] 
+        for i in range(1, self.depth):
+            z_prev = z.reshape(-1, z.shape[-2], z.shape[-1]) 
+            z_ln = self.ln(z_prev) 
+            if self.flag_sgp:
+                cur_k = self.ln(cur_k) 
+            z, kl, mean, covariance = self.sgp_layer_list[i].forward(z_ln, cur_k)
+            if self.flag_sgp and not self.inference_mode:
+                total_kl += kl
+            z_prime = z_prev.unsqueeze(1) + z
+            mean = z_prev.unsqueeze(1) + mean
+            x_t.append(z_prime)
+            means.append(mean)
+            covariances.append(covariance)
+            z_ln = self.ln(z_prime)  
+            z = self.mlp_layer_list[i].forward(z_ln) + z_prime  
+            if self.flag_sgp and i < self.depth-1:
+                cur_k = self.mlp_layer_list[i].forward(self.keys[i+1]) + self.keys[i+1] 
+            
+        logits = self.class_head.forward(z).squeeze(1) 
+        return logits, x_t, means, covariances
+    def loss(self, X, y, anneal_kl=1.):
+        logits, total_kl = self.forward(X)
+        ce_loss = nn.CrossEntropyLoss()
+        y = torch.unsqueeze(y,1)
+        y = torch.tile(torch.unsqueeze(y, 1), (1, self.sample_size, 1)).view(-1, y.shape[1])
+        neg_ElogPyGf = ce_loss(logits.view(-1, self.num_class), y.view(-1))
+        if self.flag_sgp and total_kl.item() > 0:
+            loss = neg_ElogPyGf + anneal_kl* total_kl
+        else:
+            loss = neg_ElogPyGf
+        return loss
 
 
 def vit_sgpa_q_distribution(args, device, num_classes, **kwargs):
     """Factory function to create SGPA q_distribution model"""
-    return ViT_SGPA_QDistribution(
+    return ViT(
         args=args,
         device=device,
         num_classes=num_classes,
