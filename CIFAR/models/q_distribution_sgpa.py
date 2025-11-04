@@ -302,11 +302,12 @@ class ViT(torch.nn.Module):
         x_t.append(patch_emb)
         z, total_kl, mean, covariance = self.sgp_layer_list[0].forward(patch_emb_ln, self.keys[0])
         
-        z_prime = patch_emb.unsqueeze(1) + z 
-        mean = patch_emb.unsqueeze(1) + mean
-        x_t.append(z_prime.squeeze(1))
-        means.append(mean.squeeze(1))
-        covariances.append(covariance.squeeze(1))
+        z_prime = patch_emb + z
+        # print(z_prime.shape, z.shape, patch_emb.shape)
+        mean = patch_emb + mean
+        x_t.append(z_prime)
+        means.append(mean)
+        covariances.append(covariance)
         z_ln = self.ln(z_prime)
         
         z = self.mlp_layer_list[0].forward(z_ln) + z_prime 
@@ -322,21 +323,22 @@ class ViT(torch.nn.Module):
             z, kl, mean, covariance = self.sgp_layer_list[i].forward(z_ln, cur_k)
             if self.flag_sgp and not self.inference_mode:
                 total_kl += kl
-            z_prime = z_prev.unsqueeze(1) + z
-            mean = z_prev.unsqueeze(1) + mean
+            # print(z.shape, z_prev.shape)
+            z_prime = z_prev + z
+            mean = z_prev + mean
             # print(f'Layer {i}, z_prime shape: {z_prime.shape}')
             # print(f'Layer {i}, mean shape: {mean.shape}')
             # print(f'Layer {i}, z_prev shape: {z_prev.shape}')
-            x_t.append(z_prime.squeeze(1))
-            means.append(mean.squeeze(1))
-            covariances.append(covariance.squeeze(1))
+            x_t.append(z_prime)
+            means.append(mean)
+            covariances.append(covariance)
             z_ln = self.ln(z_prime)  
             z = self.mlp_layer_list[i].forward(z_ln) + z_prime  
             if self.flag_sgp and i < self.depth-1:
                 cur_k = self.mlp_layer_list[i].forward(self.keys[i+1]) + self.keys[i+1] 
             
-        logits = self.class_head.forward(z).squeeze(1) 
-        return logits, x_t, means, covariances
+        # logits = self.class_head.forward(z).squeeze(1) 
+        return None, x_t, means, covariances
     def loss(self, X, y, anneal_kl=1.):
         logits, total_kl = self.forward(X)
         ce_loss = nn.CrossEntropyLoss()
