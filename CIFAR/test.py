@@ -69,7 +69,7 @@ def test_cifar_c_corruptions_diffusion(dataset, model, corruption_dir, transform
     return cor_results_storage
 
 def ood_test(args):
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     metrics = ['AUROC', 'AUPR', 'FPR95']
     results_storage = {metric: [] for metric in metrics}
     
@@ -105,7 +105,7 @@ def ood_test(args):
 
 
 def test(args):
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     metrics = ['Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
     results_storage = {metric: [] for metric in metrics}
     cor_results_all_models = {}
@@ -150,7 +150,7 @@ def test(args):
         utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
 
 def test_diffusion(args):
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     metrics = ['Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
     results_storage = {metric: [] for metric in metrics}
     cor_results_all_models = {}
@@ -229,7 +229,7 @@ def test_diffusion(args):
         utils.utils.save_cifar_c_results_to_csv(args.dataset, args.attn_type, save_path, metrics, cor_results_all_models)
 
 def test_distillation(args):
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     metrics = ['Acc.', 'AUROC', 'AUPR Succ.', 'AUPR', 'FPR', 'AURC', 'EAURC', 'ECE', 'NLL', 'Brier']
     results_storage = {metric: [] for metric in metrics}
     cor_results_all_models = {}

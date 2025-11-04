@@ -19,8 +19,8 @@ from utils.ema import EMA
 import utils.utils
 
 import warmup_scheduler
-# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def step_ema(args, ema, net, epoch):
         with_decay = False if epoch < args.start_ema_step else True
@@ -73,7 +73,7 @@ def main(args):
 
     logger = utils.utils.get_logger(save_path)
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     train_loader, val_loader, _, nb_cls = datasets.cifar_loader.get_loader(
         args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
@@ -337,7 +337,7 @@ def main_diffusion(args):
 
     logger = utils.utils.get_logger(save_path)
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     train_loader, val_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(
         args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
@@ -497,7 +497,7 @@ def main_distillation(args):
 
     logger = utils.utils.get_logger(save_path)
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     train_loader, val_loader, test_loader, nb_cls = datasets.cifar_loader.get_loader(
         args.dataset, args.train_dir, args.val_dir, args.test_dir, args.batch_size
