@@ -17,8 +17,8 @@ from data_loader import get_data, get_vocab, DataLoader
 # import gpytorch
 
 import warmup_scheduler
-# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
+wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')#
+# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')#
 
 
 def main(args):
@@ -278,13 +278,31 @@ def main_diffusion(args):
             f"{args.dataset}_{args.attn_type}_vit_cola_ksvdlayer{args.ksvd_layers}_ksvd{args.eta_ksvd}_kl{args.eta_kl}_{args.pretrained_seed}"
         )
         group = "KEP-SVGP-DiT-CoLA"
+    elif args.attn_type == 'sgpa':
+        if args.backbone == 'mlp':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.mlp_hdim1}_{args.mlp_hdim2}_{args.mlp_hdim3}_{args.mlp_dropout}_{args.lr}_{args.clip}_{args.nb_epochs}"
+            )
+        elif args.backbone == 'lstm' or args.backbone == 'gru':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.rnn_hidden}_{args.rnn_num_layers}_{args.rnn_dropout}_{args.rnn_low_dim}_{args.lr}_{args.nb_epochs}"
+            )
+        elif args.backbone == 'transformer':
+            save_path = os.path.join(
+                args.save_dir,
+                f"{args.dataset}_{args.attn_type}_{args.model}_{args.seed}_{args.backbone}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}"
+            )
+        pretrained_path = os.path.join(args.pretrained_dir, f"{args.dataset}_{args.attn_type}_vit_cola_{args.pretrained_seed}")
+        group = "SGPA-DiT-CoLA"
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
     wandb.init(project='Difformer', 
                group=group,
-               name=f"Change batch-size: Diffusion_seed_{args.seed}_lr_{args.lr}_clip_{args.clip}_pretrained_seed_{args.pretrained_seed}_mlp_dropout_{args.mlp_dropout}_ksvd_layers_{args.ksvd_layers}_gamma_{args.mlp_gamma}",
+               name=f"SGPA_CoLA: Diffusion_seed_{args.seed}_lr_{args.lr}_clip_{args.clip}_pretrained_seed_{args.pretrained_seed}_mlp_dropout_{args.mlp_dropout}_ksvd_layers_{args.ksvd_layers}_gamma_{args.mlp_gamma}",
                config=vars(args))
 
     # Set seed everything
@@ -292,7 +310,7 @@ def main_diffusion(args):
 
     logger = utils.utils.get_logger(save_path)
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     data_train,gold_train,data_test,gold_test,data_ood,gold_ood=\
             get_data(['./data/cola_public/raw/in_domain_train.tsv','./data/cola_public/raw/in_domain_dev.tsv'],['./data/cola_public/raw/out_of_domain_dev.tsv'], args.seed)
@@ -314,10 +332,16 @@ def main_diffusion(args):
         pretrained_ViT = models.get_model.get_model('q_distribution', vocab_size, logger, args)
         pretrained_ViT.load_state_dict(torch.load(os.path.join(pretrained_path, f'best_mcc_net_{run + 1}.pth')))
         pretrained_ViT.cuda()
-        net.embedding.load_state_dict(pretrained_ViT.embedding.state_dict())
-        net.ln.load_state_dict(pretrained_ViT.enc[args.depth - 1].la2.state_dict())
-        net.solution_head_1.load_state_dict(pretrained_ViT.enc[args.depth - 1].mlp.state_dict())
-        net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
+        if args.attn_type == 'sgpa':
+            net.embedding.load_state_dict(pretrained_ViT.embedding.state_dict())
+            net.ln.load_state_dict(pretrained_ViT.ln.state_dict())
+            net.mlp.load_state_dict(pretrained_ViT.mlp_layer_list[-1].state_dict())
+            net.class_head.load_state_dict(pretrained_ViT.class_head.state_dict())
+        else:
+            net.embedding.load_state_dict(pretrained_ViT.embedding.state_dict())
+            net.ln.load_state_dict(pretrained_ViT.enc[args.depth - 1].la2.state_dict())
+            net.solution_head_1.load_state_dict(pretrained_ViT.enc[args.depth - 1].mlp.state_dict())
+            net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
         ## define optimizer with warm-up
         optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
         base_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.nb_epochs, eta_min=args.min_lr)

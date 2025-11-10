@@ -6,6 +6,103 @@ from models.layers import TransformerEncoder
 import math
 from models.DiT import DiT
 
+def kernel_ard(X1, X2, log_ls, log_sf):
+    X1 = X1 * torch.exp(-log_ls).unsqueeze(1)
+    X2 = X2 * torch.exp(-log_ls).unsqueeze(1)
+    factor1 = torch.sum(X1.pow(2), -1)
+    factor2 = torch.sum(X2.pow(2), -1)
+    return torch.exp(log_sf).unsqueeze(1) * \
+        torch.exp(-0.5* (factor1.unsqueeze(3) + factor2.unsqueeze(2) -2* X1 @ X2.permute(0,1,3,2)))
+
+
+def kernel_exp(X1, X2, log_ls, log_sf):
+    X1 = X1 * torch.exp(-log_ls).unsqueeze(1) 
+    X2 = X2 * torch.exp(-log_ls).unsqueeze(1)
+    return torch.exp(log_sf).unsqueeze(1)* torch.exp(X1 @ X2.permute(0,1,3,2))
+
+
+def scale_dot(X1, X2):
+    dk = X2.shape[3]
+    return torch.softmax(X1 @ X2.permute(0,1,3,2)/ (math.sqrt(dk)), 3)
+
+class FC(torch.nn.Module):
+    def __init__(self, hdim, drop_rate=0.):
+        super(FC, self).__init__()
+        self.hdim = hdim
+        self.act = torch.nn.GELU() 
+        self.fc = nn.Sequential(nn.Linear(hdim, hdim), nn.Dropout(drop_rate), self.act, nn.Linear(hdim,hdim), nn.Dropout(drop_rate))
+        self.ln = nn.LayerNorm(hdim)
+
+    def forward(self, x):  
+        res = self.fc(x)
+        return res
+    
+
+class ClassficationHead_vit(torch.nn.Module):
+    def __init__(self, hdim, num_class):
+        super(ClassficationHead_vit, self).__init__()
+        self.hdim = hdim
+        self.num_class = num_class
+        self.fc = nn.Linear(hdim, num_class)
+        self.seqpool = nn.Linear(hdim, 1)
+        self.ln = nn.LayerNorm(hdim)
+
+    def forward(self, x): 
+        # Pooling strategy as in https://arxiv.org/abs/2104.05704 
+        res = self.seqpool(x).permute(0,1,3,2) 
+        res = torch.softmax(res, -1) 
+        res = res @ x 
+        res = torch.mean(res, 2) 
+        res = self.ln(res)
+        res = self.fc(res) 
+        return res
+
+class ClassficationHead(torch.nn.Module):
+    def __init__(self, hdim, num_class, drop_rate=0.):
+        super(ClassficationHead, self).__init__()
+        self.hdim = hdim
+        self.num_class = num_class
+        self.fc = nn.Sequential(nn.Linear(hdim, num_class), nn.Dropout(drop_rate))
+        self.ln = nn.LayerNorm(hdim)
+
+    def forward(self, x, input_mask):
+        input_mask = input_mask.unsqueeze(-1)
+        res = x* input_mask
+        res = torch.mean(res, 1)
+        res = self.ln(res)
+        res = self.fc(res)
+        return res
+    
+class Embeddings(torch.nn.Module):
+    def __init__(self, vocab_size, max_len, emb_size, h_size, drop_rate):
+        super(Embeddings,self).__init__()
+        self.token_embeds=nn.Embedding(vocab_size,emb_size,padding_idx=0)
+        self.pos_embeds=nn.Embedding(max_len,emb_size+1024)
+        self.layer_norm=nn.LayerNorm(h_size)
+        self.project=nn.Linear(emb_size+1024,h_size)
+        self.dropout = nn.Dropout(drop_rate)
+        self.emb_size=emb_size
+        self.h_size = h_size
+        options_file = "https://allennlp.s3.amazonaws.com/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_options.json" 
+        weight_file = "https://allennlp.s3.amazonaws.com/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5"
+        num_rep=1
+        self.elmo=Elmo(options_file,weight_file,num_rep,dropout=0.)
+
+    def forward(self,input_data,pos,data=None):
+        pos=self.pos_embeds(pos)
+        character_ids=batch_to_ids(data).cuda()
+        rep=self.elmo(character_ids)['elmo_representations'][0]
+        rep2=self.token_embeds(input_data)
+        rep=torch.cat([rep,rep2],dim=-1)
+        output=rep+pos 
+        shape_o = output.shape
+        output = output.reshape(-1,self.emb_size+1024)
+        res=self.project(output)
+        res = self.dropout(res)
+        output=res.reshape((shape_o[0],shape_o[1],self.h_size))
+        return output
+
+
 class Diffusion_Transformer(nn.Module):
     def __init__(
         self,
@@ -29,6 +126,9 @@ class Diffusion_Transformer(nn.Module):
         self.vocab_size = vocab_size
         self.embedding = Embeddings(vocab_size=self.vocab_size, max_len=self.max_len, emb_size=self.emb_dim, \
                                     h_size=self.d_model, drop_rate=self.dropout)
+        self.mlp = FC(hdim=d_model, drop_rate=dropout)
+        self.class_head = ClassficationHead(hdim=d_model, num_class=nb_cls, drop_rate=dropout)
+        self.ln = nn.LayerNorm(d_model)
         self.share_params = DiT(hidden_size=d_model, depth=depth, num_heads=num_heads, mlp_ratio=mlp_ratio)
         self.mean_model = nn.Sequential(
             nn.LayerNorm(d_model),
@@ -41,20 +141,6 @@ class Diffusion_Transformer(nn.Module):
             nn.Linear(d_model, d_model),
             nn.GELU(),
             nn.Dropout(dropout)
-        )
-        self.ln = nn.LayerNorm(d_model)
-        self.solution_head_1 = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(d_model, d_model),
-            nn.GELU(),
-            nn.Dropout(dropout),
-        )
-
-        self.solution_head_2 = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, nb_cls)
         )
 
     def get_timestep_embedding(self, timesteps, dim=None):
@@ -100,14 +186,16 @@ class Diffusion_Transformer(nn.Module):
             
         return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
 
-    def forward(self, x, positional=None, data=None, train=False):
+    def forward(self, x, positional=None, data=None, mask=None, train=False):
         if not train:
             x = self.embedding.forward(x, positional, data)
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 x = self.forward_step(x, t_tensor)[-1]
-            x = self.solution_head_1(self.ln(x)) + x
-            return self.solution_head_2(x.mean(1))
+            x_ln = self.ln(x)
+            x = self.mlp.forward(x_ln) + x
+            x = self.class_head.forward(x, mask)
+            return x
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
@@ -120,35 +208,6 @@ class Diffusion_Transformer(nn.Module):
                 means.append(mean)
                 stds.append(std)
             return means, stds
-
-class Embeddings(torch.nn.Module):
-    def __init__(self, vocab_size, max_len, emb_size, h_size, drop_rate):
-        super(Embeddings,self).__init__()
-        self.token_embeds=nn.Embedding(vocab_size,emb_size,padding_idx=0)
-        self.pos_embeds=nn.Embedding(max_len,emb_size+1024)
-        self.layer_norm=nn.LayerNorm(h_size)
-        self.project=nn.Linear(emb_size+1024,h_size)
-        self.dropout = nn.Dropout(drop_rate)
-        self.emb_size=emb_size
-        self.h_size = h_size
-        options_file = "https://allennlp.s3.amazonaws.com/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_options.json" 
-        weight_file = "https://allennlp.s3.amazonaws.com/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5"
-        num_rep=1
-        self.elmo=Elmo(options_file,weight_file,num_rep,dropout=0.)
-
-    def forward(self,input_data,pos,data=None):
-        pos=self.pos_embeds(pos)
-        character_ids=batch_to_ids(data).cuda()
-        rep=self.elmo(character_ids)['elmo_representations'][0]
-        rep2=self.token_embeds(input_data)
-        rep=torch.cat([rep,rep2],dim=-1)
-        output=rep+pos 
-        shape_o = output.shape
-        output = output.reshape(-1,self.emb_size+1024)
-        res=self.project(output)
-        res = self.dropout(res)
-        output=res.reshape((shape_o[0],shape_o[1],self.h_size))
-        return output
 
 class Diffusion_MLP(nn.Module):
     def __init__(self, args, vocab_size, d_model=384, hdim1=64, hdim2=64, hdim3=64, hdim4=64, dropout=0, clip=0.01, ViT_depth=7, nb_cls=10):
