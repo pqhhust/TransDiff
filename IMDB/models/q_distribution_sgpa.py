@@ -75,17 +75,20 @@ class ClassficationHead(torch.nn.Module):
         return res
 
 
-class SGPAttention_QDistribution_IMDB(nn.Module):
-    """SGPA Attention modified for IMDB q_distribution with covariance computation"""
-    def __init__(self, device, num_heads, hdim, kernel_type, sample_size, jitter, keys_len, drop_rate):
-        super(SGPAttention_QDistribution_IMDB, self).__init__()
+class SGP_LAYER(nn.Module):
+    def __init__(self, device, num_heads, hdim, kernel_type, sample_size, jitter, keys_len, drop_rate, flag_sgp, inference_mode):
+        super(SGP_LAYER, self).__init__()
         self.num_heads = num_heads
         self.hdim = hdim
         self.vdim = self.hdim // self.num_heads
         self.dq = self.vdim
+        self.flag_sgp = flag_sgp
         self.keys_len = keys_len
         self.drop_rate = drop_rate
         self.K_k_beta_k_beta = None
+        self.inference_mode = inference_mode
+        self.cache_inverse1 = None
+        self.cache_inverse2 = None
         
         if kernel_type == 'exponential':
             self.log_sf = nn.Parameter(-4. + 0.* torch.tensor(npr.randn(self.num_heads,1), dtype=torch.float32)) 
@@ -93,6 +96,8 @@ class SGPAttention_QDistribution_IMDB(nn.Module):
         elif kernel_type == 'ard':
             self.log_sf = nn.Parameter(0. + 0.* torch.tensor(npr.randn(self.num_heads,1), dtype=torch.float32))
             self.log_ls = nn.Parameter(0. + 1.* torch.tensor(npr.randn(self.num_heads,self.dq), dtype=torch.float32)) 
+        else:
+            raise ValueError("The argument 'kernel_type' should be either 'exponential' or 'ard'.")
         
         self.sample_size = sample_size
         self.jitter = jitter
@@ -101,51 +106,67 @@ class SGPAttention_QDistribution_IMDB(nn.Module):
         
         self.fc_qkv = nn.Linear(self.hdim, 2* self.num_heads* self.vdim, bias=False)
         
-        # SGPA-specific parameters
-        self.v = nn.Parameter(torch.tensor(npr.randn(self.num_heads, 1, self.keys_len, self.vdim), dtype=torch.float32))
-        self.s_sqrt_ltri = nn.Parameter(torch.tensor(npr.randn(self.num_heads, 1, self.vdim, self.keys_len, self.keys_len), dtype=torch.float32))
-        self.log_s_sqrt_diag = nn.Parameter(torch.tensor(npr.randn(self.num_heads, 1, self.vdim, self.keys_len), dtype=torch.float32))
+        if self.flag_sgp:
+            self.v = nn.Parameter(torch.tensor(npr.randn(self.num_heads, 1, self.keys_len, self.vdim), dtype=torch.float32))
+            self.s_sqrt_ltri = nn.Parameter( torch.tensor(npr.randn(self.num_heads, 1, self.vdim, self.keys_len, self.keys_len), dtype=torch.float32))
+            self.log_s_sqrt_diag = nn.Parameter( torch.tensor(npr.randn(self.num_heads, 1, self.vdim, self.keys_len), dtype=torch.float32))
         
         self.W_O = nn.Sequential(nn.Linear(self.hdim, self.hdim), nn.Dropout(self.drop_rate))
       
     def get_q_k_v_ssqrt(self, x, cur_k):
+        
         q, v_gamma = self.fc_qkv(x).view(x.shape[0], x.shape[1], self.num_heads, 2* self.vdim).permute(0,2,1,3).chunk(chunks=2, dim=-1)
-        k_gamma = q  # For SGPA, we typically set k = q
-        
-        W_qk = self.fc_qkv.weight[:self.hdim]
-        k_beta = W_qk.view(self.num_heads, 1, 1, self.vdim, self.hdim) @ cur_k.unsqueeze(-1) 
-        k_beta = k_beta.squeeze(-1).permute(1,0,2,3) 
-        v_beta = self.v.permute(1,0,2,3)
-        log_ssqrt = self.log_s_sqrt_diag.permute(1,0,2,3) 
-        
-        return q, k_gamma, k_beta, v_gamma, v_beta, log_ssqrt  
+        k_gamma = q
+        if self.flag_sgp:
+            W_qk = self.fc_qkv.weight[:self.hdim]
+            k_beta = W_qk.view(self.num_heads, 1, 1, self.vdim, self.hdim) @ cur_k.unsqueeze(-1) 
+            k_beta = k_beta.squeeze(-1).permute(1,0,2,3) 
+            v_beta = self.v.permute(1,0,2,3)
+            log_ssqrt = self.log_s_sqrt_diag.permute(1,0,2,3) 
+            return q, k_gamma, k_beta, v_gamma, v_beta, log_ssqrt  
+        else:
+            return q, k_gamma, v_gamma  
         
     def forward(self, x, cur_k):
         q, k_gamma, k_beta, v_gamma, v_beta, log_ssqrt = self.get_q_k_v_ssqrt(x, cur_k)
-        max_len = x.shape[1]  # Sequence length for IMDB
             
         if self.kernel_type == 'exponential':
-            K_qq, K_qk_beta = kernel_exp(q, torch.cat([q, k_beta.tile(q.shape[0],1,1,1)], 2), \
-                self.log_ls, self.log_sf).tensor_split([max_len,],-1)
-            K_k_beta_k_gamma = K_qk_beta.permute(0,1,3,2)
-
-            if self.K_k_beta_k_beta != None:
-                K_k_beta_k_beta = self.K_k_beta_k_beta
+            if not self.flag_sgp:
+                K_qq = kernel_exp(q, q, self.log_ls, self.log_sf)  # [bs, num_heads, max_len, max_len]
             else:
-                K_k_beta_k_beta = kernel_exp(k_beta, k_beta, self.log_ls, self.log_sf)
-                self.K_k_beta_k_beta = K_k_beta_k_beta
+                K_qq, K_qk_beta = kernel_exp(q, torch.cat([q, k_beta.tile(q.shape[0],1,1,1)], 2), \
+                    self.log_ls, self.log_sf).tensor_split([x.shape[1],],-1) # [bs, num_heads, max_len, max_len + keys_len]
+                K_k_beta_k_gamma = K_qk_beta.permute(0,1,3,2)
+
+                if self.K_k_beta_k_beta != None:
+                    K_k_beta_k_beta = self.K_k_beta_k_beta
+                else:
+                    K_k_beta_k_beta = kernel_exp(k_beta, k_beta, self.log_ls, self.log_sf)
+                    if self.inference_mode:
+                        self.K_k_beta_k_beta = K_k_beta_k_beta
+            K_qk_gamma = K_qq
+            if self.flag_sgp:    
+                K_k_gamma_k_gamma = K_qq
         elif self.kernel_type == 'ard':
-            K_qq, K_qk_beta = kernel_ard(q, torch.cat([q, k_beta.tile(q.shape[0],1,1,1)], 2), \
-                self.log_ls, self.log_sf).tensor_split([max_len,],-1)
-            K_k_beta_k_gamma = K_qk_beta.permute(0,1,3,2)
-
-            if self.K_k_beta_k_beta != None:
-                K_k_beta_k_beta = self.K_k_beta_k_beta
+            if not self.flag_sgp:
+                K_qq = kernel_ard(q, q, self.log_ls, self.log_sf)  
             else:
-                K_k_beta_k_beta = kernel_ard(k_beta, k_beta, self.log_ls, self.log_sf)
-                self.K_k_beta_k_beta = K_k_beta_k_beta
+                K_qq, K_qk_beta = kernel_ard(q, torch.cat([q, k_beta.tile(q.shape[0],1,1,1)], 2), \
+                    self.log_ls, self.log_sf).tensor_split([x.shape[1],],-1) 
+                K_k_beta_k_gamma = K_qk_beta.permute(0,1,3,2)
+
+                if self.K_k_beta_k_beta != None:
+                    K_k_beta_k_beta = self.K_k_beta_k_beta
+                else:
+                    K_k_beta_k_beta = kernel_ard(k_beta, k_beta, self.log_ls, self.log_sf)
+                    if self.inference_mode:
+                        self.K_k_beta_k_beta = K_k_beta_k_beta
+            K_qk_gamma = K_qq
+            if self.flag_sgp:    
+                K_k_gamma_k_gamma = K_qq
+        else:
+            raise ValueError("The argument 'kernel_type' should be either 'exponential' or 'ard'.")
         
-        K_qk_gamma = K_qq
         
         # Compute SGPA covariance similar to KEP-SVGP approach
         s_sqrt = torch.exp(log_ssqrt) 
@@ -203,127 +224,145 @@ class SGPAttention_QDistribution_IMDB(nn.Module):
         kl += 0.5* torch.mean(torch.sum(temp, (1,2)))
         kl -= torch.mean(torch.sum(log_ssqrt, (-1, -2, -3))) 
         
-        return attn_out, None, None, kl, mean_out, covariance_out
+        return attn_out, kl, mean_out, covariance_out
+    
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout= 0.1, max_len=5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
 
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
 
-class TransformerEncoder_SGPA_IMDB(nn.Module):
-    def __init__(self, args, device, feats, mlp_hidden=128, head=8, dropout=0., 
-                 kernel_type='ard', sample_size=1, jitter=1e-6, keys_len=16):
-        super(TransformerEncoder_SGPA_IMDB, self).__init__()
-        self.args = args
+    def forward(self, x):
+        """
+        Arguments:
+            x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+        """
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)
+
+class Embeddings(torch.nn.Module):
+    def __init__(self,vocab_size,max_len,emb_size,h_size, drop_rate):
+        super(Embeddings,self).__init__()
+        
+        self.token_embeds=nn.Embedding(vocab_size,emb_size,padding_idx=0)
+        self.pos_embeds=PositionalEncoding(emb_size, drop_rate, max_len)
+        self.layer_norm=nn.LayerNorm(h_size)
+            
+        self.project=nn.Linear(emb_size,h_size)
+        self.dropout = nn.Dropout(drop_rate)
+        
+    def forward(self,input_data):
+        rep=self.token_embeds(input_data)
+        output=self.pos_embeds(rep)
+      
+        output=self.project(output)
+        output = self.dropout(output)
+        
+        return self.layer_norm(output), output
+
+class Transformer(torch.nn.Module):
+    def __init__(self, device, vocab_size, depth, max_len, num_class, embdim, hdim, num_heads, sample_size, jitter, drop_rate, keys_len, kernel_type, flag_sgp, inference_mode=False):
+        super(Transformer, self).__init__()
+        self.hdim = hdim
+        self.max_len = max_len
+        self.num_class = num_class
+        self.sample_size=sample_size
+        self.depth = depth
+        self.jitter = jitter
+        self.keys_len = keys_len
+        self.kernel_type = kernel_type
+        self.drop_rate = drop_rate
+        self.embdim = embdim
+        self.vocab_size = vocab_size
+        self.flag_sgp=flag_sgp
+
+        self.embedding = Embeddings(vocab_size=vocab_size,max_len=max_len,emb_size=embdim,h_size=hdim,drop_rate=drop_rate)
+        
+        self.class_head = ClassficationHead(hdim=hdim, num_class=num_class, drop_rate=drop_rate)
+
         self.device = device
-        self.la1 = nn.LayerNorm(feats)
-        self.msa = SGPAttention_QDistribution_IMDB(
-            device=device, 
-            num_heads=head, 
-            hdim=feats, 
-            kernel_type=kernel_type, 
-            sample_size=sample_size, 
-            jitter=jitter, 
-            keys_len=keys_len, 
-            drop_rate=dropout
-        )
-        self.la2 = nn.LayerNorm(feats)
-        self.mlp = nn.Sequential(
-            nn.Linear(feats, mlp_hidden),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(mlp_hidden, feats),
-            nn.GELU(),
-            nn.Dropout(dropout),
-        )
 
-    def forward(self, x, sgpa_key):
-        out = self.la1(x)
-        out, scores, Lambda_inv, kl, mean, cov = self.msa(out, sgpa_key)
-        
-        out = out + x
-        x_t_trans = out
-        out = self.mlp(self.la2(out)) + out
-        mean = mean + x
-        
-        return out, scores, Lambda_inv, kl, x_t_trans, mean, cov
+        self.ln = nn.LayerNorm(hdim)
 
+        self.keys = nn.ParameterList([nn.Parameter(torch.tensor(npr.randn(num_heads, 1, self.keys_len, self.hdim), dtype=torch.float32)) for i in range(self.depth)])
 
-class Transformer_SGPA_QDistribution_IMDB(nn.Module):
-    """SGPA Transformer modified to work as q_distribution model for IMDB"""
-    def __init__(self, args, device, vocab_size, num_class=2, max_len=512, 
-                 dropout=0., num_layers=6, hidden=384, mlp_hidden=384, head=8, 
-                 kernel_type='ard', sample_size=1, jitter=1e-6, keys_len=16):
-        super(Transformer_SGPA_QDistribution_IMDB, self).__init__()
-        self.args = args
-        self.device = device
-        self.num_layers = num_layers
-        self.hdim = hidden
-        self.num_heads = head
+        self.sgp_layer_list = nn.ModuleList([SGP_LAYER(device=device, num_heads=num_heads, hdim=hdim, kernel_type=self.kernel_type, drop_rate=self.drop_rate,\
+                 keys_len=self.keys_len, sample_size=self.sample_size, jitter=jitter, flag_sgp=self.flag_sgp, inference_mode=inference_mode)])
+        self.mlp_layer_list = nn.ModuleList([FC(hdim=hdim, drop_rate=self.drop_rate)])
 
-        # Embedding layer (equivalent to embedding in original q_distribution)
-        self.embedding = nn.Embedding(vocab_size, hidden)
-        
-        # Positional encoding (equivalent to pos_encoder in original q_distribution)
-        self.pos_encoder = PositionalEncoding(hidden, dropout, max_len)
-        
-        # SGPA transformer layers
-        self.enc = nn.ModuleList([
-            TransformerEncoder_SGPA_IMDB(
-                args=args,
-                device=device,
-                feats=hidden, 
-                mlp_hidden=mlp_hidden, 
-                head=head, 
-                dropout=dropout, 
-                kernel_type=kernel_type,
-                sample_size=sample_size,
-                jitter=jitter,
-                keys_len=keys_len
-            ) for _ in range(num_layers)
-        ])
-        
-        # SGPA keys for each layer
-        self.keys = nn.ParameterList([
-            nn.Parameter(torch.tensor(npr.randn(head, 1, keys_len, hidden), dtype=torch.float32)) 
-            for _ in range(num_layers)
-        ])
-        
-        # Classification head (equivalent to fc in original q_distribution)
-        self.fc = ClassficationHead(hidden, num_class, dropout)
+        for i in range(1, depth):
+            self.sgp_layer_list.append(SGP_LAYER(device=device, num_heads=num_heads, hdim=hdim, kernel_type=self.kernel_type, drop_rate=self.drop_rate,\
+                 keys_len=self.keys_len, sample_size=1, jitter=jitter, flag_sgp=self.flag_sgp, inference_mode=inference_mode))
+            self.mlp_layer_list.append(FC(hdim=hdim, drop_rate=self.drop_rate))
+        self.inference_mode = inference_mode
 
-    def forward(self, input_ids):
+    def forward(self, X):
         x_t = []
-        score_list = []
-        Lambda_inv_list = []
-        kl_list = []
         means = []
         covariances = []
+        patch_emb_ln, patch_emb = self.embedding.forward(X) 
+        x_t.append(patch_emb)
+        z, total_kl, mean, covariance = self.sgp_layer_list[0].forward(patch_emb_ln, self.keys[0])
         
-        # Embedding and positional encoding
-        out = self.embedding(input_ids).transpose(0, 1)  # (seq_len, batch_size, embed_dim)
-        out = self.pos_encoder(out)
-        out = out.transpose(0, 1)  # (batch_size, seq_len, embed_dim)
-        x_t.append(out)
+        z_prime = patch_emb + z
+        # print(z_prime.shape, z.shape, patch_emb.shape)
+        mean = patch_emb + mean
+        x_t.append(z_prime)
+        means.append(mean)
+        covariances.append(covariance)
+        z_ln = self.ln(z_prime)
         
-        # Pass through SGPA transformer layers
-        for i, enc in enumerate(self.enc):
-            sgpa_key = self.keys[i]
-            out, scores, Lambda_inv, kl, x_t_trans, mean, cov = enc(out, sgpa_key)
-            
-            score_list.append(scores if scores is not None else [])
-            Lambda_inv_list.append(Lambda_inv if Lambda_inv is not None else [])
-            kl_list.append(kl)
-            x_t.append(x_t_trans)
+        z = self.mlp_layer_list[0].forward(z_ln) + z_prime 
+
+        cur_k = None
+        if self.flag_sgp:
+            cur_k = self.mlp_layer_list[0].forward(self.keys[1]) + self.keys[1] 
+        for i in range(1, self.depth):
+            z_prev = z.reshape(-1, z.shape[-2], z.shape[-1]) 
+            z_ln = self.ln(z_prev) 
+            if self.flag_sgp:
+                cur_k = self.ln(cur_k) 
+            z, kl, mean, covariance = self.sgp_layer_list[i].forward(z_ln, cur_k)
+            if self.flag_sgp and not self.inference_mode:
+                total_kl += kl
+            # print(z.shape, z_prev.shape)
+            z_prime = z_prev + z
+            mean = z_prev + mean
+            # print(f'Layer {i}, z_prime shape: {z_prime.shape}')
+            # print(f'Layer {i}, mean shape: {mean.shape}')
+            # print(f'Layer {i}, z_prev shape: {z_prev.shape}')
+            x_t.append(z_prime)
             means.append(mean)
-            covariances.append(cov)
-        
-        # Classification
-        out = self.fc(out)
-
-        return out, x_t, means, covariances
-
+            covariances.append(covariance)
+            z_ln = self.ln(z_prime)  
+            z = self.mlp_layer_list[i].forward(z_ln) + z_prime  
+            if self.flag_sgp and i < self.depth-1:
+                cur_k = self.mlp_layer_list[i].forward(self.keys[i+1]) + self.keys[i+1] 
+            
+        # logits = self.class_head.forward(z).squeeze(1) 
+        return None, x_t, means, covariances 
+    
+    def loss(self, input_data,answers, anneal_kl=1.):
+        logits, total_kl = self.forward(input_data) 
+        ce_loss = nn.CrossEntropyLoss()
+        answers = torch.unsqueeze(answers,1) 
+        answers = torch.tile(torch.unsqueeze(answers, 1), (1, self.sample_size, 1)).view(-1, answers.shape[1]) 
+        neg_ElogPyGf = ce_loss(logits.view(-1, self.num_class), answers.view(-1))
+        if total_kl and total_kl.item() > 0:
+            loss = neg_ElogPyGf + anneal_kl* total_kl
+        else:
+            loss = neg_ElogPyGf
+        return loss
 
 def transformer_sgpa_q_distribution_imdb(args, device, vocab_size, **kwargs):
     """Factory function to create SGPA q_distribution model for IMDB"""
-    return Transformer_SGPA_QDistribution_IMDB(
-        args=args,
+    return Transformer(
         device=device,
         vocab_size=vocab_size,
         num_class=2,

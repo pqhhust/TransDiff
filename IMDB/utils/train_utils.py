@@ -9,7 +9,7 @@ def get_args_parser():
     parser.add_argument('--nb-epochs', default=20, type=int, help='Total number of training epochs ')
     parser.add_argument('--batch-size', default=32, type=int, help='Batch size')
     parser.add_argument('--num-classes',type=int,default=2)
-    parser.add_argument('--max-len',type=int,default=512)
+    parser.add_argument('--max-len',type=int,default=100)
     parser.add_argument('--dataset', default='imdb', type=str, choices = ['imdb'], help='dataset')
     parser.add_argument('--seed', type=int,default=0)
 

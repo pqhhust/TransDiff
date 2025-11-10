@@ -200,6 +200,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
 
         optimizer.zero_grad()
         outs = diffusion_model(inputs)
+        # print(outs.shape)
         ce_loss = compute_loss(ce_criterion, outs, targets)
         with torch.no_grad(): #to be uncomment
             _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs)

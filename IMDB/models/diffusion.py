@@ -6,6 +6,93 @@ from models.layers import TransformerEncoder
 import math
 from models.DiT import DiT
 
+def kernel_ard(X1, X2, log_ls, log_sf):
+    X1 = X1 * torch.exp(-log_ls).unsqueeze(1)
+    X2 = X2 * torch.exp(-log_ls).unsqueeze(1)
+    factor1 = torch.sum(X1.pow(2), -1)
+    factor2 = torch.sum(X2.pow(2), -1)
+    return torch.exp(log_sf).unsqueeze(1) * \
+        torch.exp(-0.5* (factor1.unsqueeze(3) + factor2.unsqueeze(2) -2* X1 @ X2.permute(0,1,3,2)))
+
+
+def kernel_exp(X1, X2, log_ls, log_sf):
+    X1 = X1 * torch.exp(-log_ls).unsqueeze(1) 
+    X2 = X2 * torch.exp(-log_ls).unsqueeze(1)
+    return torch.exp(log_sf).unsqueeze(1)* torch.exp(X1 @ X2.permute(0,1,3,2))
+
+
+def scale_dot(X1, X2):
+    dk = X2.shape[3]
+    return torch.softmax(X1 @ X2.permute(0,1,3,2)/ (math.sqrt(dk)), 3)
+
+class FC(torch.nn.Module):
+    def __init__(self, hdim, drop_rate=0.):
+        super(FC, self).__init__()
+        self.hdim = hdim
+        self.act = torch.nn.GELU() 
+        self.fc = nn.Sequential(nn.Linear(hdim, hdim), nn.Dropout(drop_rate), self.act, nn.Linear(hdim,hdim), nn.Dropout(drop_rate))
+        self.ln = nn.LayerNorm(hdim)
+
+    def forward(self, x):  
+        res = self.fc(x)
+        return res
+
+
+class ClassficationHead(torch.nn.Module):
+    def __init__(self, hdim, num_class, drop_rate=0.):
+        super(ClassficationHead, self).__init__()
+        self.hdim = hdim
+        self.num_class = num_class
+        self.fc = nn.Sequential(nn.Linear(hdim, num_class), nn.Dropout(drop_rate))
+        self.ln = nn.LayerNorm(hdim)
+
+    def forward(self, x):
+        res = x
+        res = x.mean(1)
+        res = self.ln(res)
+        res = self.fc(res)
+        return res
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout= 0.1, max_len=5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        """
+        Arguments:
+            x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+        """
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)
+
+class Embeddings(torch.nn.Module):
+    def __init__(self,vocab_size,max_len,emb_size,h_size, drop_rate):
+        super(Embeddings,self).__init__()
+        
+        self.token_embeds=nn.Embedding(vocab_size,emb_size,padding_idx=0)
+        self.pos_embeds=PositionalEncoding(emb_size, drop_rate, max_len)
+        self.layer_norm=nn.LayerNorm(h_size)
+            
+        self.project=nn.Linear(emb_size,h_size)
+        self.dropout = nn.Dropout(drop_rate)
+        
+    def forward(self,input_data):
+        rep=self.token_embeds(input_data)
+        output=self.pos_embeds(rep)
+      
+        output=self.project(output)
+        output = self.dropout(output)
+        
+        return self.layer_norm(output), output
+
 class Diffusion_Transformer(nn.Module):
     def __init__(
         self,
@@ -27,8 +114,10 @@ class Diffusion_Transformer(nn.Module):
         self.emb_dim = args.emb_dim
         self.nb_cls = nb_cls
         self.vocab_size = vocab_size
-        self.embedding = nn.Embedding(self.vocab_size, self.emb_dim)
-        self.pos_encoder = PositionalEncoding(self.emb_dim, self.dropout, self.max_len)
+        self.embedding = Embeddings(vocab_size=vocab_size,max_len=100,emb_size=args.emb_dim,h_size=d_model,drop_rate=dropout)
+        self.mlp = FC(hdim=d_model, drop_rate=dropout)
+        self.class_head = ClassficationHead(hdim=d_model, num_class=nb_cls, drop_rate=dropout)
+        self.ln = nn.LayerNorm(d_model)
         self.share_params = DiT(hidden_size=d_model, depth=depth, num_heads=num_heads, mlp_ratio=mlp_ratio)
         self.mean_model = nn.Sequential(
             nn.LayerNorm(d_model),
@@ -41,20 +130,6 @@ class Diffusion_Transformer(nn.Module):
             nn.Linear(d_model, d_model),
             nn.GELU(),
             nn.Dropout(dropout)
-        )
-        self.ln = nn.LayerNorm(d_model)
-        self.solution_head_1 = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(d_model, d_model),
-            nn.GELU(),
-            nn.Dropout(dropout),
-        )
-
-        self.solution_head_2 = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, nb_cls)
         )
 
     def get_timestep_embedding(self, timesteps, dim=None):
@@ -102,13 +177,16 @@ class Diffusion_Transformer(nn.Module):
 
     def forward(self, x, train=False):
         if not train:
-            x = self.embedding.forward(x)
-            x = self.pos_encoder(x)
+            x_ln, x = self.embedding.forward(x)
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 x = self.forward_step(x, t_tensor)[-1]
-            x = self.solution_head_1(self.ln(x)) + x
-            return self.solution_head_2(x.mean(1))
+            x_ln = self.ln(x)
+            x = self.mlp.forward(x_ln) + x
+            # print(x.shape)
+            x = self.class_head.forward(x)
+            # print(x.shape)
+            return x
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"

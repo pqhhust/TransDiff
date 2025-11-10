@@ -369,7 +369,7 @@ def main_diffusion(args):
 
     wandb.init(project='Difformer', 
                group=group,
-               name=f"Change batch-size: Diffusion_seed_{args.seed}_lr_{args.lr}_clip_{args.clip}_pretrained_seed_{args.pretrained_seed}_mlp_dropout_{args.mlp_dropout}_ksvd_layers_{args.ksvd_layers}_gamma_{args.mlp_gamma}",
+               name=f"SGPA: Diffusion_seed_{args.seed}_lr_{args.lr}_clip_{args.clip}_pretrained_seed_{args.pretrained_seed}_mlp_dropout_{args.mlp_dropout}_ksvd_layers_{args.ksvd_layers}_gamma_{args.mlp_gamma}",
                config=vars(args))
 
     # Set seed everything
@@ -377,7 +377,7 @@ def main_diffusion(args):
 
     logger = utils.utils.get_logger(save_path)
     logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     # tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     # max_input_length = tokenizer.model_max_length
@@ -451,13 +451,9 @@ def main_diffusion(args):
         if args.attn_type == 'sgpa':
             # For SGPA q_distribution, we can directly copy the weights since they follow the same structure
             net.embedding.load_state_dict(pretrained_ViT.embedding.state_dict())
-            net.pos_encoder.load_state_dict(pretrained_ViT.pos_encoder.state_dict())
-            # For SGPA, we need to use a different layer structure for ln and solution heads
-            # Use the last transformer layer for extracting weights
-            last_layer_idx = args.depth - 1
-            net.ln.load_state_dict(pretrained_ViT.enc[last_layer_idx].la2.state_dict())
-            net.solution_head_1.load_state_dict(pretrained_ViT.enc[last_layer_idx].mlp.state_dict())
-            net.solution_head_2.load_state_dict(pretrained_ViT.fc.state_dict())
+            net.ln.load_state_dict(pretrained_ViT.ln.state_dict())
+            net.class_head.load_state_dict(pretrained_ViT.class_head.state_dict())
+            net.mlp.load_state_dict(pretrained_ViT.mlp_layer_list[-1].state_dict())
         else:
             # Original logic for softmax and kep_svgp
             net.embedding.load_state_dict(pretrained_ViT.embedding.state_dict())
