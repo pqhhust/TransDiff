@@ -66,8 +66,11 @@ class ClassficationHead(torch.nn.Module):
         self.ln = nn.LayerNorm(hdim)
 
     def forward(self, x, input_mask):
-        input_mask = input_mask.unsqueeze(-1)
-        res = x* input_mask
+        if input_mask is not None:
+            input_mask = input_mask.unsqueeze(-1)
+            res = x * input_mask
+        else:
+            res = x
         res = torch.mean(res, 1)
         res = self.ln(res)
         res = self.fc(res)

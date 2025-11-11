@@ -207,7 +207,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
         answers = answers.to(f'cuda:{args.gpu}')
 
         optimizer.zero_grad()
-        outs = diffusion_model(inputs, positional, data, inputs_mask)
+        outs = diffusion_model(inputs, positional, data)
         ce_loss = compute_loss(ce_criterion, outs, answers)
         with torch.no_grad(): #to be uncomment
             _, x_t_from_ViT, means_x_minus, covariances_x_minus = vit_model(inputs, positional, inputs_mask, data)

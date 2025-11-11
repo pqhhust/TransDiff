@@ -220,15 +220,18 @@ class SGP_LAYER(nn.Module):
             samples = mean.unsqueeze(2) + chol_covar * torch.randn((mean.shape[0], mean.shape[1], self.sample_size, mean.shape[2], mean.shape[3]), device=self.device)   
             samples = torch.flatten(samples.permute(0,2,3,1,4),-2,-1) 
             samples = self.W_O(samples) * mask2
+            samples = samples.squeeze()
             
             mean_out = torch.flatten(mean.unsqueeze(2).permute(0,2,3,1,4),-2,-1)
             mean_out = self.W_O(mean_out) * mask2
             mean_out = mean_out.squeeze()
+            # print(mean_out.shape)
             
             covariance_approx = chol_covar * torch.ones((mean.shape[0], mean.shape[1], 1, mean.shape[2], mean.shape[3]), device=self.device)
             covariance_out = torch.flatten(covariance_approx.permute(0,2,3,1,4),-2,-1)
-            covariance_out = self.W_O(covariance_approx) * mask2
+            covariance_out = self.W_O(covariance_out) * mask2
             covariance_out = covariance_out.squeeze()
+            # print(covariance_out.shape)
 
             if self.inference_mode:
                 return samples, None
