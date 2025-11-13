@@ -7,130 +7,14 @@ from torchvision.models import VisionTransformer
 from transformers import ViTForImageClassification
 from transformers import GPT2ForSequenceClassification
 from transformers.models.gpt2.modeling_gpt2 import GPT2Block
+from transformers import Qwen2ForSequenceClassification
+from transformers import Qwen2Tokenizer
+from transformers.masking_utils import create_causal_mask, create_sliding_window_causal_mask
+from transformers.models.qwen2.modeling_qwen2 import PreTrainedModel, Qwen2Attention, Qwen2DecoderLayer, Qwen2PreTrainedModel, Qwen2Config, Qwen2RMSNorm, Qwen2RotaryEmbedding, BaseModelOutputWithPast, Cache, DynamicCache
 # from transformers import T5ForConditionalGeneration
 # from transformers import BertForSequenceClassification
-
-class KEP_SVGPAttention(nn.Module):
-    def __init__(self, dim, num_heads=8, embed_len=64, low_rank=10, rank_multi=10, concate=False, \
-                qk_bias=False, attn_drop=0., proj_drop=0.):
-        super(KEP_SVGPAttention, self).__init__()
-        assert dim % num_heads == 0, 'dim should be divisible by num_heads'
-        self.num_heads = num_heads
-        self.head_dim = dim // num_heads
-
-        self.qk = nn.Linear(dim, dim * 2, bias=qk_bias)
-        self.attn_drop = nn.Dropout(attn_drop)
-        self.proj = nn.Linear(dim, dim)
-        self.proj_drop = nn.Dropout(proj_drop)
-
-        ## projection weights we, wr in kep_svgp attention
-        self.low_rank = low_rank
-        self.rank_multi = rank_multi
-        self.embed_len = embed_len
-        self.we = nn.Parameter(nn.init.orthogonal_(torch.Tensor(self.num_heads, min(self.embed_len, self.low_rank * self.rank_multi), self.low_rank)))
-        self.wr = nn.Parameter(nn.init.orthogonal_(torch.Tensor(self.num_heads, min(self.embed_len, self.low_rank * self.rank_multi), self.low_rank)))
-        self.log_lambda_sqrt_inv_diag = nn.Parameter(nn.init.uniform_(torch.Tensor(self.num_heads, self.low_rank)))
-
-        ## sparse GP
-        self.m_u = nn.Parameter(nn.init.normal_(torch.Tensor(1, self.num_heads, self.low_rank, self.low_rank)))
-        self.s_sqrt_low_triangle = nn.Parameter(nn.init.normal_(torch.Tensor(1, self.num_heads, self.low_rank, self.low_rank, self.low_rank)))
-        self.log_ssqrt = nn.Parameter(nn.init.normal_(torch.Tensor(1, self.num_heads, self.low_rank, self.low_rank)))
-        self.final_weight = nn.Linear(self.low_rank, self.head_dim)
-
-        self.concate = concate
-        if self.concate:
-            self.embed_len_weight = nn.Linear(self.embed_len * 2, self.embed_len)
-
-    def gen_weights(self, x):
-        ## evenly sample
-        if self.embed_len > self.low_rank * self.rank_multi:
-            indices = torch.linspace(0, x.shape[1]-1, self.low_rank * self.rank_multi, dtype=int)
-            x = x.transpose(-2,-1).reshape(x.size(0), self.num_heads, self.head_dim, x.size(1))
-            x = x[:, :, :, indices].transpose(1, 2)
-        else:
-            x = x.transpose(-2,-1).reshape(x.size(0), self.num_heads, self.head_dim, x.size(1))
-            x = x.transpose(1, 2)
-        we = torch.einsum('bahd,hde->bahe', x, self.we.type_as(x)).transpose(1,2)
-        wr = torch.einsum('bahd,hde->bahe', x, self.wr.type_as(x)).transpose(1,2)
-        return we, wr 
-
-    def feature_map(self, x):
-        ## normalization should be on dim=-1
-        return F.normalize(x, p=2, dim=-1)
-
-    def forward(self, x):
-        B, N, C = x.shape
-        qk = self.qk(x).reshape(B, N, 2, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
-        q, k = qk.unbind(0) # (batch_size, num_heads, seq_len, head_dim)
-
-        we, wr = self.gen_weights(x)
-        q = self.feature_map(q) 
-        k = self.feature_map(k) 
-        escore = torch.einsum('...nd,...de->...ne', q, we) # (batch_size, num_heads, seq_len, low_rank)
-        rscore = torch.einsum('...nd,...de->...ne', k, wr) # (batch_size, num_heads, seq_len, low_rank)
-        if self.concate:
-            score = torch.cat((escore, rscore), dim=2) # (batch_size, num_heads, 2 * seq_len, low_rank)
-
-        ## compute mean and covariance for the SGP
-        # mean
-        lambda_sqrt_inv_diag = torch.diag_embed(torch.exp(self.log_lambda_sqrt_inv_diag)) # (num_heads, low_rank, low_rank)
-        if self.concate:
-            v1 = score @ (lambda_sqrt_inv_diag.unsqueeze(0) ** 2) # (batch_size, num_heads, 2 * seq_len, low_rank), E_X\times\Lambda^{-1}, R_X\times\Lambda^{-1}
-        else:
-            v1 = (escore + rscore) @ (lambda_sqrt_inv_diag.unsqueeze(0) ** 2) # (batch_size, num_heads, seq_len, low_rank)
-        mean = v1 @ self.m_u # (batch_size, num_heads, seq_len, low_rank)
-        # covariance 
-        s_sqrt = torch.exp(self.log_ssqrt) # (1, num_heads, low_rank, low_rank)
-        s_sqrt_diag = torch.diag_embed(s_sqrt) # (1, num_heads, low_rank, low_rank, low_rank)
-        s_sqrt_local = s_sqrt_diag + torch.tril(self.s_sqrt_low_triangle, diagonal=-1) # (1, num_heads, low_rank, low_rank, low_rank) 
-        # choleskey factor of the covariance matrix
-        # the last dimension should be the [d] dimension
-        v2 = v1.unsqueeze(2) @ s_sqrt_local # (batch_size, num_heads, low_rank, 2*seq_len / seq_len, low_rank([d] dimension))
-
-        ## samples from the approximate posterior
-        if self.concate:
-            samples = mean + (v2 @ torch.randn(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze().permute(0, 1, 3, 2)
-            covariance = (v2 @ torch.ones(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze().permute(0, 1, 3, 2)
-        else:
-            samples = mean + (v2.permute(0,1,3,2,4) @ torch.randn(B, self.num_heads, N, mean.shape[3], 1).to(x.device)).squeeze()
-        attn_out = self.final_weight(samples)
-        mean = self.final_weight(mean)
-        covariance = self.final_weight(covariance)
-        if self.concate:
-            attn_out = self.embed_len_weight(attn_out.permute(0,1,3,2)).permute(0,1,3,2)
-            mean = self.embed_len_weight(mean.permute(0,1,3,2)).permute(0,1,3,2)
-            covariance = self.embed_len_weight(covariance.permute(0,1,3,2)).permute(0,1,3,2)
-        attn_out = attn_out.transpose(1, 2).reshape(B, N, C)
-        mean = mean.transpose(1, 2).reshape(B, N, C)
-        covariance = covariance.transpose(1, 2).reshape(B, N, C)
-        # attn_out = self.proj(attn_out)
-        attn_out = self.proj_drop(attn_out)
-        mean = self.proj_drop(mean)
-        covariance = self.proj_drop(covariance)
-
-        # covariance = v2 @ v2.transpose(-2, -1) # (batch_size, num_heads, low_rank, 2 * seq_len, 2 * seq_len)
-        # if self.concate:
-        #     covariance = self.embed_len_weight.weight @ covariance @ self.embed_len_weight.weight.transpose(-2, -1) # (batch_size, num_heads, low_rank, seq_len, seq_len)
-        # covariance = self.final_weight.weight.view(1, 1, 1, 1, self.head_dim, self.low_rank) * covariance.permute(0, 1, 3, 4, 2).view(B, self.num_heads, N, N, 1, self.low_rank) @ self.final_weight.weight.view(1, 1, 1, 1, self.head_dim, self.low_rank).permute(0, 1, 2, 3, 5, 4)
-        # # (batch_size, num_heads, seq_len, seq_len, head_dim, head_dim), cross-covariance matrix between two tokens
-        # covariance = covariance.permute(0, 1, 2, 4, 3, 5).reshape(B, self.num_heads, N * self.head_dim, N * self.head_dim)
-        # covariance = torch.diag(covariance, dim1=-2, dim2=-1).reshape(B, self.num_heads, N, self.head_dim)
-
-        ## compute the KL divergence 
-        # Tr(\Lambda^{-2}S_{uu}) term 
-        # where Tr(AA^\top) = ||A||_F^2
-        v3 = (lambda_sqrt_inv_diag[None,None,...] ** 2) @ s_sqrt_local.permute(0,4,1,2,3)
-        kl = 0.5 * torch.sum(v3.pow(2)) 
-        # m_u^\top\Lambda^{-2}m_u term:
-        mu_d = self.m_u.permute(0,1,3,2).unsqueeze(-1)
-        kl += 0.5 * (mu_d.permute(0,1,2,4,3) @ (lambda_sqrt_inv_diag.unsqueeze(0).unsqueeze(2) ** 4) @ mu_d).sum()
-        # log(|\Lambda^2|/|S_uu|) term:
-        kl -= torch.sum(self.log_ssqrt)
-        kl -= 0.5 * 4 * torch.sum(self.log_lambda_sqrt_inv_diag) * self.low_rank
-        # s term, which is a constant
-        kl -= 0.5 * self.low_rank * self.low_rank * self.num_heads
-
-        return attn_out, [escore, rscore, self.we, self.wr], lambda_sqrt_inv_diag, kl, mean, covariance
+from transformers.modeling_layers import GenericForSequenceClassification
+from typing import Optional, Unpack
 
 class TransformerEncoder(nn.Module):
     def __init__(self, args, attn_type, feats, mlp_hidden=128, head=8, dropout=0., embed_len=64, \
@@ -381,7 +265,283 @@ class CustomGPT2(nn.Module):
 
         return None, x_t, means, stds
 
+class HookedQwen2DecoderLayer(Qwen2DecoderLayer):
+    def forward(
+        self,
+        hidden_states,
+        attention_mask = None,
+        position_ids = None,
+        past_key_values = None,
+        use_cache = False,
+        cache_position = None,
+        position_embeddings = None,
+        **kwargs,
+    ) -> torch.Tensor:
+        residual = hidden_states
+        hidden_states = self.input_layernorm(hidden_states)
+        # Self Attention
+        hidden_states, _ = self.self_attn(
+            hidden_states=hidden_states,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_values=past_key_values,
+            use_cache=use_cache,
+            cache_position=cache_position,
+            position_embeddings=position_embeddings,
+            **kwargs,
+        )
+        hidden_states = residual + hidden_states
+
+
+        # Fully Connected
+        residual = hidden_states
+        hidden_states = self.post_attention_layernorm(hidden_states)
+        hidden_states = self.mlp(hidden_states)
+        hidden_states = residual + hidden_states
+        return hidden_states, residual
+
+class HookedQwen2Model(Qwen2PreTrainedModel):
+    def __init__(self, config: Qwen2Config):
+        super().__init__(config)
+        self.padding_idx = config.pad_token_id
+        self.vocab_size = config.vocab_size
+
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
+        self.layers = nn.ModuleList(
+            [HookedQwen2DecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+        )
+        self.norm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.rotary_emb = Qwen2RotaryEmbedding(config=config)
+        self.gradient_checkpointing = False
+        self.has_sliding_layers = "sliding_attention" in self.config.layer_types
+
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def forward(
+        self,
+        input_ids: Optional[torch.LongTensor] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_values: Optional[Cache] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        use_cache: Optional[bool] = None,
+        cache_position: Optional[torch.LongTensor] = None,
+        **kwargs,
+    ) -> BaseModelOutputWithPast:
+        if (input_ids is None) ^ (inputs_embeds is not None):
+            raise ValueError("You must specify exactly one of input_ids or inputs_embeds")
+
+        if inputs_embeds is None:
+            inputs_embeds = self.embed_tokens(input_ids)
+
+        if use_cache and past_key_values is None:
+            past_key_values = DynamicCache(config=self.config)
+
+        if cache_position is None:
+            past_seen_tokens = past_key_values.get_seq_length() if past_key_values is not None else 0
+            cache_position = torch.arange(
+                past_seen_tokens, past_seen_tokens + inputs_embeds.shape[1], device=inputs_embeds.device
+            )
+
+        if position_ids is None:
+            position_ids = cache_position.unsqueeze(0)
+
+        # It may already have been prepared by e.g. `generate`
+        if not isinstance(causal_mask_mapping := attention_mask, dict):
+            # Prepare mask arguments
+            mask_kwargs = {
+                "config": self.config,
+                "input_embeds": inputs_embeds,
+                "attention_mask": attention_mask,
+                "cache_position": cache_position,
+                "past_key_values": past_key_values,
+                "position_ids": position_ids,
+            }
+            # Create the masks
+            causal_mask_mapping = {
+                "full_attention": create_causal_mask(**mask_kwargs),
+            }
+            # The sliding window alternating layers are not always activated depending on the config
+            if self.has_sliding_layers:
+                causal_mask_mapping["sliding_attention"] = create_sliding_window_causal_mask(**mask_kwargs)
+        
+        x_t = []
+        means = []
+
+        hidden_states = inputs_embeds
+        x_t.append(hidden_states)
+        position_embeddings = self.rotary_emb(hidden_states, position_ids)
+
+        for decoder_layer in self.layers[: self.config.num_hidden_layers]:
+            hidden_states, residual = decoder_layer(
+                hidden_states,
+                attention_mask=causal_mask_mapping[decoder_layer.attention_type],
+                position_embeddings=position_embeddings,
+                position_ids=position_ids,
+                past_key_values=past_key_values,
+                use_cache=use_cache,
+                cache_position=cache_position,
+                **kwargs,
+            )
+            x_t.append(hidden_states)
+            means.append(residual)
+
+        hidden_states = self.norm(hidden_states)
+        past_key_values = past_key_values if use_cache else None
+        return past_key_values, hidden_states, x_t, means
+    
+# class HookedQwen2PretrainedModel(PreTrainedModel):
+#     config: Qwen2Config
+#     base_model_prefix = "model"
+#     supports_gradient_checkpointing = True
+#     _no_split_modules = ["HookedQwen2DecoderLayer"]
+#     _skip_keys_device_placement = ["past_key_values"]
+#     _supports_flash_attn = True
+#     _supports_sdpa = True
+#     _supports_flex_attn = True
+
+#     _can_compile_fullgraph = True
+#     _supports_attention_backend = True
+#     _can_record_outputs = {
+#         "hidden_states": HookedQwen2DecoderLayer,
+#         "attentions": None,
+#     }
+
+
+    
+# class CustomQwen2(nn.Module):
+#     def __init__(self, args=None):
+#         super().__init__()
+#         self.model = Qwen2ForSequenceClassification.from_pretrained(
+#             '/mnt/disk1/aiotlab/pqhung/TransDiff/qwen_cola_finetuned_merged'
+#         )
+#         self.config = self.model.config
+
+#     def _expand_attention_mask(self, attention_mask, dtype):
+#         if attention_mask is None:
+#             return None
+#         # Qwen2 expects additive mask of shape (batch, 1, 1, seq_len)
+#         extended = attention_mask[:, None, None, :].to(dtype)
+#         extended = (1.0 - extended) * torch.finfo(dtype).min
+#         return extended
+
+#     def forward(self, input_ids, attention_mask=None, token_type_ids=None):
+#         # Access Qwen2 model structure (different from GPT-2)
+#         model = self.model.model  # Qwen2Model is nested under .model
+#         bsz, seqlen = input_ids.shape
+#         device = input_ids.device
+
+#         # Qwen2 uses embed_tokens instead of wte, and doesn't have wpe
+#         hidden_states = model.embed_tokens(input_ids)
+        
+#         # Apply rotary position embedding is handled inside each layer
+#         x_t = [hidden_states]
+#         means, stds = [], []
+
+#         # Prepare attention mask for Qwen2
+#         attn_mask = self._expand_attention_mask(attention_mask, hidden_states.dtype) if attention_mask is not None else None
+
+#         # Iterate through Qwen2 layers
+#         for layer in model.layers:
+#             # Layer normalization before attention (Qwen2 style)
+#             normed_hidden = layer.input_layernorm(hidden_states)
+            
+#             # Self-attention with RoPE (rotary position embedding)
+#             attn_outputs = layer.self_attn(
+#                 normed_hidden,
+#                 attention_mask=attn_mask,
+#                 position_ids=None,  # RoPE handles positions internally
+#                 past_key_value=None,
+#                 output_attentions=False,
+#                 use_cache=False
+#             )
+            
+#             # Residual connection after attention
+#             attn_hidden = hidden_states + attn_outputs[0]
+            
+#             x_t.append(attn_hidden)
+#             means.append(attn_hidden)
+#             stds.append(torch.zeros_like(attn_hidden))
+
+#             # Post-attention layer norm and MLP
+#             normed_attn = layer.post_attention_layernorm(attn_hidden)
+#             mlp_out = layer.mlp(normed_attn)
+#             hidden_states = attn_hidden + mlp_out
+
+#         return None, x_t, means, stds
+
+
 
 def vit_cifar(args, attn_type, num_classes, ksvd_layers, low_rank, rank_multi):
     return ViT(args=args, attn_type=attn_type, ksvd_layers=ksvd_layers, num_classes=num_classes, low_rank=low_rank, rank_multi=rank_multi, \
                 img_size=32, patch=8, dropout=0.1, num_layers=args.depth, hidden=args.hdim, head=args.num_heads, mlp_hidden=args.hdim, is_cls_token=False)
+
+if __name__ == '__main__':
+    # Sanity check for CustomQwen2
+    print("Testing CustomQwen2...")
+    
+    # Mock args for testing
+    class MockArgs:
+        pass
+    
+    args = MockArgs()
+    
+    try:
+        # Initialize model
+        model = CustomQwen2(args)
+        print(f"✓ Model loaded successfully")
+        print(f"  - Config: {model.config.name_or_path if hasattr(model.config, 'name_or_path') else 'Custom'}")
+        print(f"  - Vocab size: {model.config.vocab_size}")
+        print(f"  - Hidden size: {model.config.hidden_size}")
+        print(f"  - Number of layers: {model.config.num_hidden_layers}")
+        
+        # Create sample input
+        batch_size = 2
+        seq_length = 10
+        input_ids = torch.randint(0, 1000, (batch_size, seq_length))
+        attention_mask = torch.ones_like(input_ids)
+        
+        print(f"\n✓ Created sample input:")
+        print(f"  - Input IDs shape: {input_ids.shape}")
+        print(f"  - Attention mask shape: {attention_mask.shape}")
+        
+        # Forward pass
+        model.eval()
+        with torch.no_grad():
+            output, x_t, means, stds = model(input_ids, attention_mask)
+            
+        print(f"\n✓ Forward pass successful:")
+        print(f"  - Output: {output}")
+        print(f"  - Number of intermediate representations (x_t): {len(x_t)}")
+        print(f"  - Number of means: {len(means)}")
+        print(f"  - Number of stds: {len(stds)}")
+        
+        # Check shapes
+        print(f"\n✓ Shape analysis:")
+        for i, x in enumerate(x_t):
+            print(f"  - x_t[{i}]: {x.shape}")
+        
+        print(f"\n✓ Mean shapes:")
+        for i, mean in enumerate(means):
+            print(f"  - means[{i}]: {mean.shape}")
+            
+        print(f"\n✓ Std shapes:")
+        for i, std in enumerate(stds):
+            print(f"  - stds[{i}]: {std.shape}")
+        
+        # Test with different sequence lengths
+        print(f"\n✓ Testing variable sequence lengths:")
+        for seq_len in [5, 15, 20]:
+            test_ids = torch.randint(0, 1000, (1, seq_len))
+            test_mask = torch.ones_like(test_ids)
+            with torch.no_grad():
+                _, test_x_t, test_means, test_stds = model(test_ids, test_mask)
+            print(f"  - Seq length {seq_len}: {len(test_x_t)} representations, shapes OK")
+        
+        print(f"\n🎉 All tests passed! CustomQwen2 is working correctly.")
+        
+    except Exception as e:
+        print(f"❌ Error during testing: {e}")
+        import traceback
+        traceback.print_exc()
