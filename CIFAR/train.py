@@ -148,11 +148,11 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     #     wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
 
 
-def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger, args, gpt2_model):
+def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger, args, qwen2_model):
     diffusion_model.train()
-    gpt2_model.eval()
+    qwen2_model.eval()
 
-    for p in gpt2_model.parameters():
+    for p in qwen2_model.parameters():
         p.requires_grad = False
 
     mse_criterion = nn.MSELoss()
@@ -198,24 +198,38 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
             attention_mask = attention_mask.cuda(non_blocking=True) if attention_mask is not None else None
 
         with torch.no_grad():
-            _, x_t_from_bert, means_x_minus, stds_x_minus = gpt2_model(
+            _, _, x_t_from_qwen2, means_x_minus = qwen2_model(
                 input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids
             )
-        output = diffusion_model(input_ids)  # logits
+            covariances_x_minus = [torch.zeros_like(mean) for mean in means_x_minus]
+        output, means_from_diffusion, stds_from_diffusion = diffusion_model(input_ids)  # logits
         ce_loss = ce_criterion(output, targets)
 
         # Diffusion alignment path
-        means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_bert, train=True)
+        # means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_qwen2, train=True)
 
-        means_loss, stds_loss = compute_loss_diffusion(
-            args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, stds_x_minus
-        )
+        selected_indices_x = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
+        selected_indices_mean = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]
+        #     ## merge 3
+        # selected_indices_x = [0, 3, 6, 9, 12]
+        # selected_indices_mean = [2, 5, 8, 11]
+        #     ## merge 4
+        #     # selected_indices_x = [0, 4, 8, 12]
+        #     # selected_indices_mean = [3, 7, 11]
+        time_index = [selected_indices_x[i]*1.0/24 for i in range(len(selected_indices_x)-1)]
+            
+        subset_x = [x_t_from_qwen2[i] for i in selected_indices_x]
+        subset_mean = [means_x_minus[i] for i in selected_indices_mean]
+        subset_cov = [covariances_x_minus[i] for i in selected_indices_mean]
+
+        means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, subset_mean, stds_from_diffusion, subset_cov)
 
         loss = args.lambda_mean * means_loss + args.lambda_var * stds_loss + args.lambda_ce * ce_loss
         loss /= args.accumulation_steps
         loss.backward()
         if (i + 1) % args.accumulation_steps == 0:
-            nn.utils.clip_grad_value_(diffusion_model.parameters(), args.clip_grad_value)
+            if args.clip_grad_value != 0:
+                nn.utils.clip_grad_value_(diffusion_model.parameters(), args.clip_grad_value)
             optimizer.step()
             optimizer.zero_grad()
 

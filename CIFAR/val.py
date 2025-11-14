@@ -221,7 +221,7 @@ def validation_diffusion(loader, net, args, pretrained_vit):
     return res
 
 @torch.no_grad()
-def validation_text(loader, net, args):
+def validation_text(loader, net, args, time_index=None):
     net.eval()
     
     mcc_list = []
@@ -235,7 +235,7 @@ def validation_text(loader, net, args):
         labels = batch['label'].cuda()
 
         if args.model == 'diffusion_text':
-            output = net(x=input_ids, attention_mask=attention_mask)
+            output = net(input_ids=input_ids, time_index=time_index)[0]
         elif args.attn_type == "softmax":
             output = net(x=input_ids, attention_mask=attention_mask)['logits']
 

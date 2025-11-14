@@ -5,6 +5,9 @@ from torchvision.models.vision_transformer import vit_b_16
 from torchvision.models.vision_transformer import ViT_B_16_Weights
 import torch.distributed as dist
 from transformers import AutoModelForImageClassification, ViTForImageClassification
+# from models.q_distribution import HookedQwen2Model
+from transformers import Qwen2Config
+from transformers import Qwen2ForSequenceClassification
 
 def get_model(model_name, nb_cls, logger, args):
     if model_name == "vit_image_net":
@@ -16,8 +19,8 @@ def get_model(model_name, nb_cls, logger, args):
         # net = models.q_distribution.ViT_ImageNet().cuda()
         net = models.q_distribution.CustomViT(args).cuda()
     if model_name == "q_distribution_text":
-        # GPT-2-based teacher returning x_t, means, stds
-        net = models.q_distribution.CustomGPT2(args).cuda()
+        config = Qwen2Config.from_pretrained(args.pretrained_dir)
+        net = models.q_distribution.HookedQwen2Model(config).cuda()
     if model_name == "vit_cifar":
         net = models.vit_cifar.vit_cifar(args=args, attn_type=args.attn_type, num_classes=nb_cls, ksvd_layers=args.ksvd_layers, low_rank=args.low_rank, rank_multi=args.rank_multi).cuda()
     if model_name == "diffusion":
@@ -44,6 +47,8 @@ def get_model(model_name, nb_cls, logger, args):
             nb_cls=args.nb_cls,
             CONFIG=config,
         )
+        base_model = Qwen2ForSequenceClassification.from_pretrained(args.pretrained_dir)
+        net.score.load_state_dict(base_model.score.state_dict())
     rank = dist.get_rank() if dist.is_initialized() else 0
     if rank == 0:
         msg = 'Using {} ...'.format(model_name)

@@ -355,7 +355,7 @@ def main_diffusion_text(args):
     train_loader, val_loader, test_loader = loaders.CoLA_loader.CoLALoaders(
         batch_size=args.batch_size,
         num_workers=8,
-        max_length=128,
+        args=args,
         val_ratio=0.1,
         seed=42
     )
@@ -368,16 +368,16 @@ def main_diffusion_text(args):
             prefix = f'{run + 1} / {args.nb_run} Running (Text)'
             logger.info(100*'#' + '\n' + prefix)
 
-        pretrained_GPT2 = models.get_model.get_model('q_distribution_text', nb_cls, logger, args)
-        net = models.get_model.get_model('diffusion_text', nb_cls, logger, (args, pretrained_GPT2.config))
+        pretrained_Qwen2 = models.get_model.get_model('q_distribution_text', nb_cls, logger, args)
+        net = models.get_model.get_model('diffusion_text', nb_cls, logger, (args, pretrained_Qwen2.config))
         net = net.cuda()
         net = nn.parallel.DistributedDataParallel(net, device_ids=[local_rank])
 
         if global_rank == 0:
             print(net)
             print(sum(p.numel() for p in net.parameters() if p.requires_grad))
-
-        pretrained_GPT2 = nn.parallel.DistributedDataParallel(pretrained_GPT2.cuda(), device_ids=[local_rank])
+    
+        pretrained_Qwen2 = nn.parallel.DistributedDataParallel(pretrained_Qwen2.cuda(), device_ids=[local_rank])
 
         optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
         if args.warmup_epoch > 0:
@@ -397,21 +397,18 @@ def main_diffusion_text(args):
             lr_scheduler.load_state_dict(training_state_checkpoint['lr_scheduler_state_dict'])
             start_epoch = training_state_checkpoint['epoch'] + 1
         else:
-            # Initialize embeddings and classifier from teacher GPT-2
             # Embeddings
-            net.module.embedding.wte.load_state_dict({'weight': pretrained_GPT2.module.model.transformer.wte.weight.detach().cpu()})
-            net.module.embedding.wpe.load_state_dict({'weight': pretrained_GPT2.module.model.transformer.wpe.weight.detach().cpu()})
-            # Classifier
-            net.module.ln_mlp.load_state_dict(pretrained_GPT2.module.model.transformer.h[-1].ln_2.state_dict())
-            net.module.mlp_head.load_state_dict(pretrained_GPT2.module.model.transformer.h[-1].mlp.state_dict())
-            net.module.layernorm.load_state_dict(pretrained_GPT2.module.model.transformer.ln_f.state_dict())
-            net.module.classifier.load_state_dict(pretrained_GPT2.module.model.score.state_dict())
+            net.module.embed_tokens.load_state_dict(pretrained_Qwen2.module.embed_tokens.state_dict())
+            net.module.mlp.load_state_dict(pretrained_Qwen2.module.layers[-1].mlp.state_dict())
+            net.module.post_attention_layernorm.load_state_dict(pretrained_Qwen2.module.layers[-1].post_attention_layernorm.state_dict())
+            net.module.norm.load_state_dict(pretrained_Qwen2.module.norm.state_dict())
+            # net.module.score.load_state_dict(pretrained_Qwen2.module.score.state_dict())
 
         for epoch in range(start_epoch, args.nb_epochs):
             if dist.get_world_size() > 1:
                 train_sampler.set_epoch(epoch)
 
-            train.train_diffusion_text(train_loader, net, optimizer, epoch, logger, args, pretrained_GPT2)
+            train.train_diffusion_text(train_loader, net, optimizer, epoch, logger, args, pretrained_Qwen2)
             lr_scheduler.step()
 
             if global_rank == 0:
@@ -423,7 +420,9 @@ def main_diffusion_text(args):
                 }
                 torch.save(training_state_checkpoint, os.path.join(save_path, f'training_state_{run+1}_last_diffusion_text_{args.backbone}_tuning_{args.lambda_mean}.pth'))
 
-                res = val.validation_text(val_loader, net, args)
+                selected_indices_x = [2 * i for i in range(args.depth // 2 + 1)]
+                time_index = [selected_indices_x[i] * 1.0 / args.depth for i in range(len(selected_indices_x) - 1)]
+                res = val.validation_text(val_loader, net, args, time_index=time_index)
                 log = [f"{key}: {res[key]:.3f}" for key in res]
                 msg = '################## \n ---> Validation Epoch {:d}\t'.format(epoch) + '\t'.join(log)
                 logger.info(msg)

@@ -1,14 +1,14 @@
-from transformers import GPT2Tokenizer
+from transformers import Qwen2Tokenizer
 from torch.utils.data import DataLoader
 from datasets import load_dataset
 
-def CoLALoaders(batch_size=32, num_workers=8, max_length=128, val_ratio=0.1, seed=42):
-    dataset = load_dataset("glue", "sst2")
-    tokenizer = GPT2Tokenizer.from_pretrained("PavanNeerudu/gpt2-finetuned-sst2")
+def CoLALoaders(batch_size=32, num_workers=8, args=None, val_ratio=0.1, seed=42):
+    dataset = load_dataset("glue", "cola")
+    tokenizer = Qwen2Tokenizer.from_pretrained(args.pretrained_dir)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     def tokenize_fn(batch):
-        return tokenizer(batch['sentence'], truncation=True, padding='max_length', max_length=max_length)
+        return tokenizer(batch['sentence'], truncation=True, padding='max_length', max_length=512)
     
     tokenized = dataset.map(tokenize_fn, batched=True)
     tokenized.set_format(type='torch', columns=['input_ids', 'attention_mask', 'label'])

@@ -8,6 +8,7 @@ from transformers.models.vit.modeling_vit import ViTEmbeddings, ViTIntermediate,
 from transformers import GPT2Config
 from transformers.models.gpt2.modeling_gpt2 import GPT2MLP
 from transformers import AutoModelForImageClassification
+from transformers.models.qwen2.modeling_qwen2 import Qwen2MLP, Qwen2RMSNorm, Qwen2RotaryEmbedding
 
 import math
 
@@ -31,44 +32,45 @@ class GPT2EmbeddingsLight(nn.Module):
 class Diffusion_Transformer_Text(nn.Module):
     def __init__(
         self,
-        d_model=768,
+        d_model=896,
         depth=1,
-        num_heads=12,
+        num_heads=14,
         mlp_ratio=4.0,
         dropout=0.1,
-        ViT_depth=12,
+        ViT_depth=24,
         nb_cls=2,
         CONFIG=None,
     ):
         super().__init__()
-        self.ViT_depth = ViT_depth
-        self.d_model = d_model
+        self.config = CONFIG
+        self.depth = depth
+        self.ViT_depth = self.config.num_hidden_layers
+        self.d_model = self.config.hidden_size
 
         print(CONFIG)
 
-        self.embedding = GPT2EmbeddingsLight(CONFIG)
+        self.embed_tokens = nn.Embedding(CONFIG.vocab_size, CONFIG.hidden_size, CONFIG.pad_token_id)
 
         # Shared DiT backbone across steps
-        self.share_params = DiT(hidden_size=d_model, depth=depth, num_heads=num_heads, mlp_ratio=mlp_ratio)
+        self.share_params = DiT(hidden_size=self.d_model, depth=self.depth, num_heads=CONFIG.num_attention_heads, mlp_ratio=mlp_ratio)
         # Mean/variance heads
         self.mean_model = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model),
+            nn.LayerNorm(self.d_model),
+            nn.Linear(self.d_model, self.d_model),
             nn.GELU(),
             nn.Dropout(dropout),
         )
         self.var_model = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model),
+            nn.LayerNorm(self.d_model),
+            nn.Linear(self.d_model, self.d_model),
             nn.GELU(),
             nn.Dropout(dropout),
         )
-        # GPT-2-like MLP head (FFN) and final norms
-        self.ln_mlp = nn.LayerNorm(d_model, eps=CONFIG.layer_norm_epsilon)
-        self.mlp_head = GPT2MLP(int(d_model * mlp_ratio), CONFIG)
-        # Final classifier on pooled token (by default use first token position as anchor)
-        self.layernorm = nn.LayerNorm(d_model, eps=CONFIG.layer_norm_epsilon)
-        self.classifier = nn.Linear(d_model, nb_cls, bias=False)
+        # self.rotary_emb = Qwen2RotaryEmbedding(config=CONFIG)
+        self.mlp = Qwen2MLP(CONFIG)
+        self.post_attention_layernorm = Qwen2RMSNorm(CONFIG.hidden_size, eps=CONFIG.rms_norm_eps)
+        self.norm = Qwen2RMSNorm(CONFIG.hidden_size, eps=CONFIG.rms_norm_eps)
+        self.score = nn.Linear(CONFIG.hidden_size, nb_cls, bias=False)
 
     def forward_step(self, x, t):
         x = self.share_params(x, t)
@@ -76,25 +78,44 @@ class Diffusion_Transformer_Text(nn.Module):
         std = self.var_model(x)
         return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
 
-    def forward(self, x, train=False, attention_mask=None):
+    def forward(self, input_ids, train=False, time_index=None):
         if not train:
-            # x can be token ids (LongTensor) or hidden states (FloatTensor)
-            if isinstance(x, torch.Tensor) and x.dtype in (torch.long, torch.int64):
-                x = self.embedding(input_ids=x)
+            means = []
+            stds = []
+            x = self.embed_tokens(input_ids)
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
-                x = self.forward_step(x, t_tensor)[-1]
+                mean, std, x = self.forward_step(x, t_tensor)
+                means.append(mean)
+                stds.append(std)
             # Apply GPT-2-like FFN with residual: x + MLP(LN(x))
-            x_layer = x + self.mlp_head(self.ln_mlp(x))
-            # Classify using token at position 0 by default (assumes BOS present)
-            return self.classifier(self.layernorm(x_layer)[:, 0, :])
+            x_layer = x + self.mlp(self.post_attention_layernorm(x))
+            
+            batch_size = x_layer.shape[0]
+
+            logits = x_layer
+
+            if self.config.pad_token_id is None and batch_size != 1:
+                raise ValueError("Cannot handle batch sizes > 1 if no padding token is defined.")
+            if self.config.pad_token_id is None:
+                last_non_pad_token = -1
+            else:
+                # To handle both left- and right- padding, we take the rightmost token that is not equal to pad_token_id
+                non_pad_mask = (input_ids != self.config.pad_token_id).to(logits.device, torch.int32)
+                token_indices = torch.arange(input_ids.shape[-1], device=logits.device, dtype=torch.int32)
+                last_non_pad_token = (token_indices * non_pad_mask).argmax(-1)
+
+            logits = self.score(self.norm(x_layer))
+            pooled_logits = logits[torch.arange(batch_size, device=logits.device), last_non_pad_token]
+            return pooled_logits, means, stds
         else:
-            assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
-                f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"
-            means, stds = [], []
+            means = []
+            stds = []
+            input_ = x[0]
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
-                mean, std, _ = self.forward_step(x[t], t_tensor)
+                mean, std, mean_plus_std = self.forward_step(input_, t_tensor)
+                input_ = mean_plus_std
                 means.append(mean)
                 stds.append(std)
             return means, stds
