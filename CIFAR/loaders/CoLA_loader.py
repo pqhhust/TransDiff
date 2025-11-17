@@ -12,9 +12,9 @@ def CoLALoaders(batch_size=32, num_workers=8, args=None, val_ratio=0.1, seed=42)
     
     tokenized = dataset.map(tokenize_fn, batched=True)
     tokenized.set_format(type='torch', columns=['input_ids', 'attention_mask', 'label'])
-    train_val = tokenized['train'].train_test_split(test_size=val_ratio, seed=seed)
-    train_dataset = train_val['train']
-    val_dataset = train_val['test']
+    # train_val = tokenized['train'].train_test_split(test_size=val_ratio, seed=seed)
+    train_dataset = tokenized['train']
+    val_dataset = tokenized['validation']
     test_dataset = tokenized['validation']
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
