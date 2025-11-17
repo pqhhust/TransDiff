@@ -221,6 +221,90 @@ def validation_diffusion(loader, net, args, pretrained_vit):
     return res
 
 @torch.no_grad()
+def validation_qwen(loader, net, tokenizer, args):
+    """
+    Validation function for Qwen models on text classification tasks.
+    
+    Args:
+        loader: DataLoader with batches containing 'input_ids', 'attention_mask', 'labels'
+        net: Qwen model for sequence classification
+        tokenizer: Qwen tokenizer
+        args: Arguments object
+    
+    Returns:
+        Dictionary with evaluation metrics
+    """
+    net.eval()
+    
+    mcc_list = []
+    val_log = {'softmax': [], 'correct': [], 'logit': [], 'target': []}
+
+    for batch in loader:
+        input_ids = batch['input_ids'].cuda()
+        attention_mask = batch['attention_mask'].cuda()
+        labels = batch['labels'].cuda()
+
+        # Forward pass
+        outputs = net(input_ids=input_ids, attention_mask=attention_mask)
+        logits = outputs.logits if hasattr(outputs, 'logits') else outputs
+        
+        softmax = F.softmax(logits, dim=1)
+        _, pred_cls = softmax.max(1)
+
+        val_log['correct'].append(pred_cls.cpu().eq(labels.cpu().data.view_as(pred_cls)).numpy())
+        val_log['softmax'].append(softmax.cpu().data.numpy())
+        val_log['logit'].append(logits.cpu().data.numpy())
+        val_log['target'].append(labels.cpu().data.numpy())
+
+        # Calculate Matthews Correlation Coefficient for each batch
+        mcc_list.append(matthews_corrcoef(labels.cpu().numpy(), pred_cls.cpu().numpy()))
+
+    # Concatenate all batches
+    for key in val_log:
+        val_log[key] = np.concatenate(val_log[key])
+    
+    ## Accuracy
+    acc = 100. * val_log['correct'].mean()
+    
+    ## Matthews Correlation Coefficient
+    mcc = 100. * np.array(mcc_list).mean()
+
+    # AURC, EAURC (Area Under Risk-Coverage curve)
+    aurc, eaurc = utils.metrics.calc_aurc_eaurc(val_log['softmax'], val_log['correct'])
+    
+    # FPR, AUPR, AUROC
+    auroc, aupr_success, aupr, fpr = utils.metrics.calc_fpr_aupr(val_log['softmax'], val_log['correct'])
+    
+    # Calibration measure: Expected Calibration Error
+    ece = utils.metrics.calc_ece(val_log['softmax'], val_log['target'], bins=15)
+    
+    # NLL and Brier Score
+    softmax = val_log['softmax'].astype(np.float32)
+    targets = val_log['target'].astype(np.int64)
+    log_probs = np.log(softmax[range(len(targets)), targets] + 1e-10)
+    nll = -log_probs.mean()
+    one_hot = np.zeros_like(softmax)
+    one_hot[range(len(targets)), targets] = 1
+    brier = np.mean(np.sum((softmax - one_hot) ** 2, axis=1))
+
+    # Results dictionary
+    res = {
+        'Acc.': acc,
+        'MCC': mcc,
+        'FPR': fpr * 100,
+        'AUROC': auroc * 100,
+        'AUPR': aupr * 100,
+        'AURC': aurc * 1000,
+        'EAURC': eaurc * 1000,
+        'AUPR Succ.': aupr_success * 100,
+        'ECE': ece * 100,
+        'NLL': nll * 10,
+        'Brier': brier * 100
+    }
+
+    return res
+
+@torch.no_grad()
 def validation_text(loader, net, args, time_index=None):
     net.eval()
     
@@ -290,6 +374,94 @@ def validation_text(loader, net, args, time_index=None):
     }
 
     return res
+
+
+if __name__ == "__main__":
+    import argparse
+    from datasets import load_dataset
+    from transformers import Qwen2Tokenizer, Qwen2ForSequenceClassification, DataCollatorWithPadding
+    from torch.utils.data import DataLoader
+    
+    parser = argparse.ArgumentParser(description="Validate Qwen model from checkpoint")
+    parser.add_argument("--checkpoint", type=str, required=True, help="Path to model checkpoint")
+    parser.add_argument("--model_name", type=str, default="Qwen/Qwen2.5-0.5B", help="Base model name")
+    parser.add_argument("--dataset", type=str, default="cola", help="Dataset name (cola, sst2, etc.)")
+    parser.add_argument("--batch_size", type=int, default=32, help="Batch size for validation")
+    parser.add_argument("--split", type=str, default="validation", help="Dataset split to validate on")
+    parser.add_argument("--max_length", type=int, default=512, help="Maximum sequence length")
+    
+    args = parser.parse_args()
+    
+    print(f"Loading model from checkpoint: {args.checkpoint}")
+    
+    # Load tokenizer
+    tokenizer = Qwen2Tokenizer.from_pretrained(args.checkpoint)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+    
+    # Load model
+    model = Qwen2ForSequenceClassification.from_pretrained(args.checkpoint)
+    model.cuda()
+    model.eval()
+    
+    print(f"Loading {args.dataset} dataset...")
+    # Load dataset
+    if args.dataset == "cola":
+        dataset = load_dataset("glue", "cola")
+    elif args.dataset == "sst2":
+        dataset = load_dataset("glue", "sst2")
+    else:
+        dataset = load_dataset("glue", args.dataset)
+    
+    # Preprocess function
+    def preprocess_function(examples):
+        if "sentence" in examples:
+            text = examples["sentence"]
+        elif "sentence1" in examples:
+            text = examples["sentence1"]
+        else:
+            raise ValueError("Unknown text field in dataset")
+        
+        tokenized = tokenizer(
+            text,
+            truncation=True,
+            padding=False,
+            max_length=args.max_length
+        )
+        tokenized["labels"] = examples["label"]
+        return tokenized
+    
+    # Tokenize dataset
+    print(f"Tokenizing {args.split} split...")
+    tokenized_dataset = dataset[args.split].map(
+        preprocess_function,
+        batched=True,
+        remove_columns=[col for col in dataset[args.split].column_names if col != "label"]
+    )
+    
+    # Create data collator and loader
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+    loader = DataLoader(
+        tokenized_dataset,
+        batch_size=args.batch_size,
+        collate_fn=data_collator,
+        shuffle=False
+    )
+    
+    print(f"Running validation on {len(tokenized_dataset)} samples...")
+    
+    # Run validation
+    results = validation_qwen(loader, model, tokenizer, args)
+    
+    # Print results
+    print("\n" + "="*50)
+    print(f"Validation Results on {args.dataset.upper()} ({args.split} split)")
+    print("="*50)
+    for metric, value in results.items():
+        print(f"{metric:15s}: {value:8.4f}")
+    print("="*50)
+
 
 
 
