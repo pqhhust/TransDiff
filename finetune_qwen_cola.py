@@ -21,6 +21,13 @@ def setup_model_and_tokenizer(model_name, num_labels=2):
     """Initialize tokenizer and model for linear probing."""
     tokenizer = Qwen2Tokenizer.from_pretrained(model_name)
     
+    # Load model first
+    model = Qwen2ForSequenceClassification.from_pretrained(
+        model_name,
+        num_labels=num_labels,
+        problem_type="single_label_classification"
+    )
+    
     # Add padding token if it doesn't exist
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -30,17 +37,14 @@ def setup_model_and_tokenizer(model_name, num_labels=2):
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
     
-    model = Qwen2ForSequenceClassification.from_pretrained(
-        model_name,
-        num_labels=num_labels,
-        problem_type="single_label_classification"
-    )
-    
-    # Set pad token id in model config
+    # Set pad token id in model config BEFORE resizing
     model.config.pad_token_id = tokenizer.pad_token_id
     
-    # Resize token embeddings if needed
-    model.resize_token_embeddings(len(tokenizer))
+    # Resize token embeddings if needed (this must be done AFTER setting pad_token_id)
+    if len(tokenizer) != model.config.vocab_size:
+        logger.info(f"Resizing token embeddings from {model.config.vocab_size} to {len(tokenizer)}")
+        model.resize_token_embeddings(len(tokenizer))
+        model.config.vocab_size = len(tokenizer)
     
     # Freeze all parameters in the base model (everything except the classification head)
     for name, param in model.named_parameters():
@@ -130,6 +134,15 @@ def main():
     
     # Rename label column to match model expectations
     tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
+    
+    # Validate tokenized data - check for out-of-bounds token IDs
+    vocab_size = len(tokenizer)
+    logger.info(f"Validating tokenized data (vocab_size={vocab_size})...")
+    for split in ["train", "validation"]:
+        max_token_id = max([max(ids) for ids in tokenized_datasets[split]["input_ids"]])
+        if max_token_id >= vocab_size:
+            raise ValueError(f"Found token ID {max_token_id} >= vocab_size {vocab_size} in {split} set")
+    logger.info("Token ID validation passed!")
     
     # Data collator for dynamic padding
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
