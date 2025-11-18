@@ -221,7 +221,7 @@ def main_diffusion(args):
         pretrained_ViT = models.get_model.get_model('q_distribution_imagenet', nb_cls, logger, args)
         net = models.get_model.get_model(args.model, nb_cls, logger, (args, pretrained_ViT.config))
         net = net.cuda()
-        net = nn.parallel.DistributedDataParallel(net, device_ids=[local_rank])  # Wrap model with DDP
+        net = nn.parallel.DistributedDataParallel(net, device_ids=[local_rank], find_unused_parameters=True)  # Wrap model with DDP
 
         # Print model info on rank 0
         if global_rank == 0:
@@ -371,7 +371,7 @@ def main_diffusion_text(args):
         pretrained_Qwen2 = models.get_model.get_model('q_distribution_text', nb_cls, logger, args)
         net = models.get_model.get_model('diffusion_text', nb_cls, logger, (args, pretrained_Qwen2.config))
         net = net.cuda()
-        net = nn.parallel.DistributedDataParallel(net, device_ids=[local_rank])
+        net = nn.parallel.DistributedDataParallel(net, device_ids=[local_rank], find_unused_parameters=True)
 
         if global_rank == 0:
             print(net)
@@ -398,14 +398,16 @@ def main_diffusion_text(args):
             start_epoch = training_state_checkpoint['epoch'] + 1
         else:
             # Embeddings
-            net.module.embed_tokens.load_state_dict(pretrained_Qwen2.module.embed_tokens.state_dict())
+            net.module.qwen.embed_tokens.load_state_dict(pretrained_Qwen2.module.embed_tokens.state_dict())
             net.module.mlp.load_state_dict(pretrained_Qwen2.module.layers[-1].mlp.state_dict())
             net.module.post_attention_layernorm.load_state_dict(pretrained_Qwen2.module.layers[-1].post_attention_layernorm.state_dict())
             net.module.norm.load_state_dict(pretrained_Qwen2.module.norm.state_dict())
+            net.module.qwen.rotary_emb.load_state_dict(pretrained_Qwen2.module.rotary_emb.state_dict())
             for i in range(args.depth - args.last_layers):
-                net.module.layers[i].load_state_dict(pretrained_Qwen2.module.layers[i].state_dict() )
+                net.module.qwen.layers[i].load_state_dict(pretrained_Qwen2.module.layers[i].state_dict() )
             # net.module.score.load_state_dict(pretrained_Qwen2.module.score.state_dict())
-
+            for param in net.module.qwen.parameters():
+                param.requires_grad = False
         for epoch in range(start_epoch, args.nb_epochs):
             if dist.get_world_size() > 1:
                 train_sampler.set_epoch(epoch)

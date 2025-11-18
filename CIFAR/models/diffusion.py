@@ -5,7 +5,7 @@ from models.DiT import DiT
 from models.UNet1D import Unet1D
 from torchvision.models.vision_transformer import MLPBlock
 from transformers.models.vit.modeling_vit import ViTEmbeddings, ViTIntermediate, ViTOutput
-from transformers import GPT2Config
+from transformers import GPT2Config, Qwen2Model
 from transformers.models.gpt2.modeling_gpt2 import GPT2MLP
 from transformers import AutoModelForImageClassification
 from transformers.models.qwen2.modeling_qwen2 import Qwen2MLP, Qwen2RMSNorm, Qwen2RotaryEmbedding, Qwen2DecoderLayer
@@ -49,10 +49,12 @@ class Diffusion_Transformer_Text(nn.Module):
         self.d_model = self.config.hidden_size
         self.last_layers = last_layers
         print(CONFIG)
-
-        self.embed_tokens = nn.Embedding(CONFIG.vocab_size, CONFIG.hidden_size, CONFIG.pad_token_id)
-
-        self.layers = nn.ModuleList([Qwen2DecoderLayer(CONFIG, layer_idx) for layer_idx in range(ViT_depth - last_layers)])
+        CONFIG_NEW = CONFIG
+        CONFIG_NEW.depth = ViT_depth - last_layers
+        self.qwen = Qwen2Model(CONFIG_NEW)
+        # self.embed_tokens = nn.Embedding(CONFIG.vocab_size, CONFIG.hidden_size, CONFIG.pad_token_id)
+        # self.rotary_emb = Qwen2RotaryEmbedding(config=CONFIG)
+        # self.layers = nn.ModuleList([Qwen2DecoderLayer(CONFIG, layer_idx) for layer_idx in range(ViT_depth - last_layers)])
         # Shared DiT backbone across steps
         self.share_params = DiT(hidden_size=self.d_model, depth=self.depth, num_heads=CONFIG.num_attention_heads, mlp_ratio=mlp_ratio)
         # Mean/variance heads
@@ -84,9 +86,9 @@ class Diffusion_Transformer_Text(nn.Module):
         if not train:
             means = []
             stds = []
-            x = self.embed_tokens(input_ids)
-            for t in range(self.ViT_depth - self.last_layers):
-                x = self.layers[t](x, attention_mask)['hidden_states']
+            x = self.qwen(input_ids, attention_mask)['last_hidden_state']
+            # for t in range(self.ViT_depth - self.last_layers):
+            #     x = self.layers[t](x, attention_mask, position_embeddings)['hidden_states']
             for t in range(self.last_layers):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 mean, std, x = self.forward_step(x, t_tensor)
