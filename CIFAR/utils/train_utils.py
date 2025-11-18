@@ -39,6 +39,7 @@ def get_args_parser():
     parser.add_argument("--accumulation-steps", default=1, type=int)
     parser.add_argument("--resume-weights", default=None, type=str, help='Path to the checkpoint to resume from')
     parser.add_argument("--resume-training-state", default='training_state_1_last_diffusion_transformer.pth', type=str, help='Path to the traing_state to resume from')
+    parser.add_argument('--last_layers', default=5, type=int, help='Number of last layers to apply diffusion on')
 
     ## nb of run 
     parser.add_argument('--nb-run', default=1, type=int, help='Run n times, in order to compute std')

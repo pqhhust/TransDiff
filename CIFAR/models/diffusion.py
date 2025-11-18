@@ -8,7 +8,7 @@ from transformers.models.vit.modeling_vit import ViTEmbeddings, ViTIntermediate,
 from transformers import GPT2Config
 from transformers.models.gpt2.modeling_gpt2 import GPT2MLP
 from transformers import AutoModelForImageClassification
-from transformers.models.qwen2.modeling_qwen2 import Qwen2MLP, Qwen2RMSNorm, Qwen2RotaryEmbedding
+from transformers.models.qwen2.modeling_qwen2 import Qwen2MLP, Qwen2RMSNorm, Qwen2RotaryEmbedding, Qwen2DecoderLayer
 
 import math
 
@@ -40,17 +40,19 @@ class Diffusion_Transformer_Text(nn.Module):
         ViT_depth=24,
         nb_cls=2,
         CONFIG=None,
+        last_layers = 5
     ):
         super().__init__()
         self.config = CONFIG
         self.depth = depth
         self.ViT_depth = self.config.num_hidden_layers
         self.d_model = self.config.hidden_size
-
+        self.last_layers = last_layers
         print(CONFIG)
 
         self.embed_tokens = nn.Embedding(CONFIG.vocab_size, CONFIG.hidden_size, CONFIG.pad_token_id)
 
+        self.layers = nn.ModuleList([Qwen2DecoderLayer(CONFIG, layer_idx) for layer_idx in range(ViT_depth - last_layers)])
         # Shared DiT backbone across steps
         self.share_params = DiT(hidden_size=self.d_model, depth=self.depth, num_heads=CONFIG.num_attention_heads, mlp_ratio=mlp_ratio)
         # Mean/variance heads
@@ -78,12 +80,14 @@ class Diffusion_Transformer_Text(nn.Module):
         std = self.var_model(x)
         return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
 
-    def forward(self, input_ids, train=False, time_index=None):
+    def forward(self, input_ids, attention_mask, train=False, time_index=None):
         if not train:
             means = []
             stds = []
             x = self.embed_tokens(input_ids)
-            for t in range(self.ViT_depth):
+            for t in range(self.ViT_depth - self.last_layers):
+                x = self.layers[t](x, attention_mask)['hidden_states']
+            for t in range(self.last_layers):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 mean, std, x = self.forward_step(x, t_tensor)
                 means.append(mean)
@@ -112,7 +116,7 @@ class Diffusion_Transformer_Text(nn.Module):
             means = []
             stds = []
             input_ = x[0]
-            for t in range(self.ViT_depth):
+            for t in range(self.last_layers):
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
                 mean, std, mean_plus_std = self.forward_step(input_, t_tensor)
                 input_ = mean_plus_std

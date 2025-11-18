@@ -319,7 +319,7 @@ def validation_text(loader, net, args, time_index=None):
         labels = batch['label'].cuda()
 
         if args.model == 'diffusion_text':
-            output = net(input_ids=input_ids, time_index=time_index)[0]
+            output = net(input_ids=input_ids, attention_mask=attention_mask, time_index=time_index)[0]
         elif args.attn_type == "softmax":
             output = net(x=input_ids, attention_mask=attention_mask)['logits']
 

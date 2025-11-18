@@ -202,25 +202,27 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
                 input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids
             )
             covariances_x_minus = [torch.zeros_like(mean) for mean in means_x_minus]
-        output, means_from_diffusion, stds_from_diffusion = diffusion_model(input_ids)  # logits
+            means_x_minus = means_x_minus[-args.last_layers:]
+            covariances_x_minus = covariances_x_minus[-args.last_layers:]
+        output, means_from_diffusion, stds_from_diffusion = diffusion_model(input_ids, attention_mask)  # logits
         ce_loss = ce_criterion(output, targets)
 
         # Diffusion alignment path
         # means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_qwen2, train=True)
 
-        selected_indices_x = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
-        selected_indices_mean = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]
+        selected_indices_x = [i for i in range(0, args.last_layers + 1)]
+        selected_indices_mean = [i for i in range(1, args.last_layers)]
         #     ## merge 3
         # selected_indices_x = [0, 3, 6, 9, 12]
         # selected_indices_mean = [2, 5, 8, 11]
         #     ## merge 4
         #     # selected_indices_x = [0, 4, 8, 12]
         #     # selected_indices_mean = [3, 7, 11]
-        time_index = [selected_indices_x[i]*1.0/24 for i in range(len(selected_indices_x)-1)]
+        # time_index = [selected_indices_x[i]*1.0/24 for i in range(len(selected_indices_x)-1)]
             
-        subset_x = [x_t_from_qwen2[i] for i in selected_indices_x]
-        subset_mean = [means_x_minus[i] for i in selected_indices_mean]
-        subset_cov = [covariances_x_minus[i] for i in selected_indices_mean]
+        # subset_x = [x_t_from_qwen2[i] for i in selected_indices_x]
+        subset_mean = means_x_minus
+        subset_cov = covariances_x_minus
 
         means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, subset_mean, stds_from_diffusion, subset_cov)
 
