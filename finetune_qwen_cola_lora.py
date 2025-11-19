@@ -85,9 +85,9 @@ def compute_metrics(eval_pred):
     }
 
 def main():
-    parser = argparse.ArgumentParser(description="Fine-tune Qwen2.5-0.5B on CoLA")
+    parser = argparse.ArgumentParser(description="Fine-tune Qwen2.5-0.5B on sst2")
     parser.add_argument("--model_name", default="Qwen/Qwen2.5-0.5B", help="Model name or path")
-    parser.add_argument("--output_dir", default="./qwen_cola_finetuned", help="Output directory")
+    parser.add_argument("--output_dir", default="./qwen_sst2_finetuned", help="Output directory")
     parser.add_argument("--batch_size", type=int, default=32, help="Training batch size")
     parser.add_argument("--eval_batch_size", type=int, default=32, help="Evaluation batch size")
     parser.add_argument("--learning_rate", type=float, default=3e-4, help="Learning rate")
@@ -109,9 +109,9 @@ def main():
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     
-    logger.info(f"Loading CoLA dataset...")
-    # Load CoLA dataset
-    dataset = load_dataset("glue", "cola")
+    logger.info(f"Loading sst2 dataset...")
+    # Load sst2 dataset
+    dataset = load_dataset("glue", "sst2")
     
     logger.info(f"Dataset info:")
     logger.info(f"Train: {len(dataset['train'])} samples")
@@ -219,7 +219,7 @@ def main():
     # Save training and evaluation results
     results_file = os.path.join(args.output_dir, "results.txt")
     with open(results_file, "w") as f:
-        f.write(f"Fine-tuning Results on CoLA Dataset\n")
+        f.write(f"Fine-tuning Results on sst2 Dataset\n")
         f.write(f"=" * 40 + "\n\n")
         f.write(f"Evaluation Results:\n")
         f.write(f"  Accuracy: {eval_results['eval_accuracy']:.4f}\n")

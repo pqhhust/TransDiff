@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from datasets import load_dataset
 
 def CoLALoaders(batch_size=32, num_workers=8, args=None, val_ratio=0.1, seed=42):
-    dataset = load_dataset("glue", "cola")
+    dataset = load_dataset("glue", "sst2")
     tokenizer = Qwen2Tokenizer.from_pretrained(args.pretrained_dir)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
