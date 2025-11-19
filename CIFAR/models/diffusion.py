@@ -11,6 +11,7 @@ from transformers import AutoModelForImageClassification
 from transformers.models.qwen2.modeling_qwen2 import Qwen2MLP, Qwen2RMSNorm, Qwen2RotaryEmbedding, Qwen2DecoderLayer
 
 import math
+from copy import deepcopy
 
 class GPT2EmbeddingsLight(nn.Module):
     def __init__(self, config: GPT2Config):
@@ -49,8 +50,9 @@ class Diffusion_Transformer_Text(nn.Module):
         self.d_model = self.config.hidden_size
         self.last_layers = last_layers
         print(CONFIG)
-        CONFIG_NEW = CONFIG
-        CONFIG_NEW.depth = ViT_depth - last_layers
+        CONFIG_NEW = deepcopy(self.config)
+
+        CONFIG_NEW.num_hidden_layers = self.ViT_depth - self.last_layers
         self.qwen = Qwen2Model(CONFIG_NEW)
         # self.embed_tokens = nn.Embedding(CONFIG.vocab_size, CONFIG.hidden_size, CONFIG.pad_token_id)
         # self.rotary_emb = Qwen2RotaryEmbedding(config=CONFIG)
