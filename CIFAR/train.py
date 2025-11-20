@@ -6,6 +6,7 @@ import utils.utils
 import wandb  
 import torch.distributed as dist
 import gc
+import math
 
 def compute_loss_diffusion(args, mse_criterion, means_from_diffusion, means_x_minus, stds_from_diffusion, covariances_x_minus):
     """
@@ -148,6 +149,20 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
     #     wandb.log({f"Train/{key}": train_log[key].avg for key in train_log}, step=epoch)
 
 
+def negative_log_likelihood(xs, means, covariances):
+    nll = 0
+    for x, mean, std in zip(xs, means, covariances):
+        ## compute log density of a Gaussian with mean mean and std std at x, std is a diagonal matrix
+        B, S, D = mean.shape
+        N = S * D
+
+        log_var = torch.log(std ** 2)                        # [B, S, D]
+        log_det_term = log_var.sum(dim=(1, 2))              # [B]
+        quad_term = (((x - mean) / std) ** 2).sum(dim=(1, 2))  # [B]
+
+        nll += 0.5 * (N * math.log(2 * math.pi) + log_det_term + quad_term)  # [B]
+    return nll
+
 def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger, args, qwen2_model):
     diffusion_model.train()
     qwen2_model.eval()
@@ -163,8 +178,9 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
 
     train_log = {
         'CE Loss': utils.utils.AverageMeter(),
-        'Mean Loss': utils.utils.AverageMeter(),
-        'Var Loss': utils.utils.AverageMeter(),
+        # 'Mean Loss': utils.utils.AverageMeter(),
+        # 'Var Loss': utils.utils.AverageMeter(),
+        'NLL': utils.utils.AverageMeter(),
         'Tot. Loss': utils.utils.AverageMeter(),
         'LR': utils.utils.AverageMeter(),
     }
@@ -224,9 +240,11 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
         subset_mean = means_x_minus
         subset_cov = covariances_x_minus
 
-        means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, subset_mean, stds_from_diffusion, subset_cov)
+        nll = negative_log_likelihood(x_t_from_qwen2, means_from_diffusion, stds_from_diffusion)
 
-        loss = args.lambda_mean * means_loss + args.lambda_var * stds_loss + args.lambda_ce * ce_loss
+        # means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, subset_mean, stds_from_diffusion, subset_cov)
+
+        loss = args.lambda_mean * nll + args.lambda_ce * ce_loss
         loss /= args.accumulation_steps
         loss.backward()
         if (i + 1) % args.accumulation_steps == 0:
@@ -241,8 +259,9 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
             break
 
         train_log['CE Loss'].update(ce_loss.item(), input_ids.size(0))
-        train_log['Mean Loss'].update(means_loss.item(), input_ids.size(0))
-        train_log['Var Loss'].update(stds_loss.item(), input_ids.size(0))
+        train_log['NLL'].update(nll.item(), input_ids.size(0))
+        # train_log['Mean Loss'].update(means_loss.item(), input_ids.size(0))
+        # train_log['Var Loss'].update(stds_loss.item(), input_ids.size(0))
         train_log['Tot. Loss'].update(loss.item(), input_ids.size(0))
         train_log['LR'].update(lr, input_ids.size(0))
 

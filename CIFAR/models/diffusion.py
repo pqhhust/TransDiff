@@ -81,7 +81,7 @@ class Diffusion_Transformer_Text(nn.Module):
     def forward_step(self, x, t):
         x = self.share_params(x, t)
         mean_x_t = self.mean_model(x) + x
-        std = self.var_model(x)
+        std = torch.exp(self.var_model(x))
         return mean_x_t, std, mean_x_t + std * torch.randn_like(mean_x_t)
 
     def forward(self, input_ids, attention_mask, train=False, time_index=None):
