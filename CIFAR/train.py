@@ -151,17 +151,20 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
 
 def negative_log_likelihood(xs, means, covariances):
     nll = 0
+    count = 0
     for x, mean, std in zip(xs, means, covariances):
         ## compute log density of a Gaussian with mean mean and std std at x, std is a diagonal matrix
         B, S, D = mean.shape
         N = S * D
 
         log_var = torch.log(std ** 2)                        # [B, S, D]
-        log_det_term = log_var.sum(dim=(1, 2))              # [B]
-        quad_term = (((x - mean) / std) ** 2).sum(dim=(1, 2))  # [B]
+        log_det_term = log_var.mean(dim=(1, 2))              # [B]
+        quad_term = (((x - mean) / std) ** 2).mean(dim=(1, 2))  # [B]
 
-        nll += 0.5 * (N * math.log(2 * math.pi) + log_det_term + quad_term)  # [B]
-    return nll
+        # nll += 0.5 * (N * math.log(2 * math.pi) + log_det_term + quad_term)  # [B]
+        nll += 0.5 * (log_det_term + quad_term)  # [B]
+        count += 1
+    return nll.mean()/count
 
 def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger, args, qwen2_model):
     diffusion_model.train()

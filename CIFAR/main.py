@@ -26,12 +26,15 @@ import torch.distributed as dist
 import gc
 import warmup_scheduler
 
-os.environ["NCCL_BLOCKING_WAIT"] = "1"
-os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
-os.environ["NCCL_DEBUG"] = "INFO"
-os.environ["NCCL_TIMEOUT"] = "900"
-# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+# os.environ["NCCL_BLOCKING_WAIT"] = "1"
+# os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
+# os.environ["NCCL_DEBUG"] = "INFO"
+# os.environ["NCCL_TIMEOUT"] = "900"
+wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+
 
 def step_ema(args, ema, net, epoch):
         with_decay = False if epoch < args.start_ema_step else True
@@ -329,7 +332,7 @@ def main_diffusion_text(args):
         args.save_dir,
         f"text_{args.model}_{args.seed}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}"
     )
-    group = "GPT2-DiT"
+    group = "Qwen-DiT"
 
     # Distributed init
     local_rank = int(os.environ['LOCAL_RANK'])
@@ -408,6 +411,14 @@ def main_diffusion_text(args):
             # net.module.score.load_state_dict(pretrained_Qwen2.module.score.state_dict())
             for param in net.module.qwen.parameters():
                 param.requires_grad = False
+            for param in net.module.mlp.parameters():
+                param.requires_grad = False
+            for param in net.module.post_attention_layernorm.parameters():
+                param.requires_grad = False
+            for param in net.module.norm.parameters():
+                param.requires_grad = False
+            # for param in net.module.score.parameters():
+            #     param.requires_grad = False
         for epoch in range(start_epoch, args.nb_epochs):
             if dist.get_world_size() > 1:
                 train_sampler.set_epoch(epoch)
@@ -415,6 +426,10 @@ def main_diffusion_text(args):
             train.train_diffusion_text(train_loader, net, optimizer, epoch, logger, args, pretrained_Qwen2)
             lr_scheduler.step()
 
+            # ensure local GPU work finished, then sync all ranks before rank 0 does heavy validation
+            torch.cuda.synchronize()
+            dist.barrier()
+            
             if global_rank == 0:
                 torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_text_{args.backbone}_tuning_{args.lambda_mean}.pth'))
                 training_state_checkpoint = {
@@ -446,12 +461,12 @@ def main_diffusion_text(args):
                     best_acc = acc
                     torch.save(net.module.state_dict(), os.path.join(save_path, f'best_acc_net_{run+1}_diffusion_text_{args.backbone}.pth'))
 
-                test_results = val.validation_text(test_loader, net, args)
-                log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
-                msg = '################## \n ---> Test Epoch {:d}\t'.format(epoch) + '\t'.join(log)
-                logger.info(msg)
-                wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
-            dist.barrier()
+                # test_results = val.validation_text(test_loader, net, args)
+                # log = [f"{key}: {test_results[key]:.3f}" for key in test_results]
+                # msg = '################## \n ---> Test Epoch {:d}\t'.format(epoch) + '\t'.join(log)
+                # logger.info(msg)
+                # wandb.log({f"Test/{key}": test_results[key] for key in test_results}, step=epoch)
+            # dist.barrier()
 
     dist.destroy_process_group()
     if global_rank == 0:
