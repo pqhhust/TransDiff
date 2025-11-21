@@ -408,10 +408,32 @@ def main_diffusion_text(args):
             # net.module.score.load_state_dict(pretrained_Qwen2.module.score.state_dict())
             for param in net.module.qwen.parameters():
                 param.requires_grad = False
+            for param in net.module.post_attention_layernorm.parameters():
+                param.requires_grad = False
+            for param in net.module.mlp.parameters():
+                param.requires_grad = False
+            for param in net.module.norm.parameters():
+                param.requires_grad = False
+            for param in net.module.score.parameters():
+                param.requires_grad = False
         for epoch in range(start_epoch, args.nb_epochs):
             if dist.get_world_size() > 1:
                 train_sampler.set_epoch(epoch)
             if not args.same_optimizer and epoch == args.epochs_stage1:
+                for param in net.module.score.parameters():
+                    param.requires_grad = True
+                for param in net.module.post_attention_layernorm.parameters():
+                    param.requires_grad = True
+                for param in net.module.mlp.parameters():
+                    param.requires_grad = True
+                for param in net.module.norm.parameters():
+                    param.requires_grad = True
+                for param in net.module.share_params.parameters():
+                    param.requires_grad = False
+                for param in net.module.mean_model.parameters():
+                    param.requires_grad = False
+                for param in net.module.var_model.parameters():
+                    param.requires_grad = False
                 optimizer2 = torch.optim.Adam(net.parameters(), lr=args.lr2, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
                 if args.warmup_epoch2 > 0:
                     warmup_lr_scheduler2 = torch.optim.lr_scheduler.LinearLR(optimizer2, start_factor=args.min_lr / args.lr2, end_factor=1.0, total_iters=args.warmup_epoch2)
