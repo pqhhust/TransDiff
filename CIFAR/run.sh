@@ -1,8 +1,1 @@
-#!/bin/bash
-#SBATCH --job-name=cuongdm       # Job name
-#SBATCH --output=log_slurm/result_cuongdm.txt      # Output file
-#SBATCH --error=log_slurm/error_cuongdm.txt        # Error file
-#SBATCH --ntasks=1               # Number of tasks (processes)
-#SBATCH --gpus=1                 # Number of GPUs per node
-#SBATCH --cpus-per-task=20                              # Number of CPU cores per task
-sh bash-1.sh
+CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 torchrun --nproc_per_node=8 main.py --model diffusion_text --seed 0 --depth 24 --attn-type softmax --num_heads 14 --hdim 896 --batch-size 16 --nb-epochs 20 --nb-run 1 --lr 3e-4 --weight-decay 5e-5 --warmup-epoch 5 --save-dir ./results/diffusion --backbone transformer --pretrained_dir /home/cuong/qwen-sst/TransDiff/qwen_sst2_finetuned_merged --pretrained_seed 0 --trans_depth 4 --trans_num_heads 14 --trans_mlp_ratio 4.0 --trans_dropout 0.1 --lambda_mean 0.3 --lambda_var 1 --lambda_ce 0.7 --last_layers 5 --run_name DiT-5-seed CoLA

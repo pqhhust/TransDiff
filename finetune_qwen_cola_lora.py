@@ -91,7 +91,7 @@ def main():
     parser.add_argument("--batch_size", type=int, default=32, help="Training batch size")
     parser.add_argument("--eval_batch_size", type=int, default=32, help="Evaluation batch size")
     parser.add_argument("--learning_rate", type=float, default=3e-4, help="Learning rate")
-    parser.add_argument("--num_epochs", type=int, default=5, help="Number of training epochs")
+    parser.add_argument("--num_epochs", type=int, default=3, help="Number of training epochs")
     parser.add_argument("--warmup_steps", type=int, default=500, help="Warmup steps")
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay")
     parser.add_argument("--save_steps", type=int, default=500, help="Save checkpoint every N steps")
@@ -100,8 +100,8 @@ def main():
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--fp16", action="store_true", help="Use mixed precision training")
     parser.add_argument("--use_lora", action="store_true", default=True, help="Use LoRA for efficient fine-tuning")
-    parser.add_argument("--lora_r", type=int, default=16, help="LoRA rank")
-    parser.add_argument("--lora_alpha", type=int, default=32, help="LoRA alpha scaling factor")
+    parser.add_argument("--lora_r", type=int, default=4, help="LoRA rank")
+    parser.add_argument("--lora_alpha", type=int, default=8, help="LoRA alpha scaling factor")
     
     args = parser.parse_args()
     

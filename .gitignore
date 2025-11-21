@@ -3,6 +3,9 @@ CIFAR/data/CIFAR100*
 CIFAR/data/CIFAR-10-C*
 CIFAR/data/IMAGENET*
 CIFAR/wandb
+wandb
+qwen_sst2_finetuned
+qwen_sst2_finetuned_merged
 __pycache__
 # CIFAR10_out 
 CIFAR/log_slurm
