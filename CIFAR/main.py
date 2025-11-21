@@ -30,8 +30,8 @@ os.environ["NCCL_BLOCKING_WAIT"] = "1"
 os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
 os.environ["NCCL_DEBUG"] = "INFO"
 os.environ["NCCL_TIMEOUT"] = "900"
-# wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
-wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
+wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+# wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def step_ema(args, ema, net, epoch):
         with_decay = False if epoch < args.start_ema_step else True
@@ -408,12 +408,27 @@ def main_diffusion_text(args):
             # net.module.score.load_state_dict(pretrained_Qwen2.module.score.state_dict())
             for param in net.module.qwen.parameters():
                 param.requires_grad = False
+
         for epoch in range(start_epoch, args.nb_epochs):
             if dist.get_world_size() > 1:
                 train_sampler.set_epoch(epoch)
-
-            train.train_diffusion_text(train_loader, net, optimizer, epoch, logger, args, pretrained_Qwen2)
-            lr_scheduler.step()
+            if not args.same_optimizer and epoch == args.epochs_stage1:
+                optimizer2 = torch.optim.Adam(net.parameters(), lr=args.lr2, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
+                if args.warmup_epoch2 > 0:
+                    warmup_lr_scheduler2 = torch.optim.lr_scheduler.LinearLR(optimizer2, start_factor=args.min_lr / args.lr2, end_factor=1.0, total_iters=args.warmup_epoch2)
+                    main_lr_scheduler2 = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer2, T_max=args.nb_epochs - epoch - args.warmup_epoch2, eta_min=args.min_lr)
+                    lr_scheduler2 = torch.optim.lr_scheduler.SequentialLR(optimizer2, schedulers=[warmup_lr_scheduler2, main_lr_scheduler2], milestones=[args.warmup_epoch2])
+                else:
+                    lr_scheduler2 = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer2, T_max=args.nb_epochs - epoch, eta_min=args.min_lr)
+            if args.epochs_stage1 is not None and epoch < args.epochs_stage1:
+                train.train_diffusion_text(train_loader, net, optimizer, epoch, logger, args, pretrained_Qwen2)
+                lr_scheduler.step()
+            elif args.epochs_stage1 is not None:
+                train.train_diffusion_text(train_loader, net, optimizer2, epoch, logger, args, pretrained_Qwen2)
+                lr_scheduler2.step()
+            else:
+                train.train_diffusion_text(train_loader, net, optimizer, epoch, logger, args, pretrained_Qwen2)
+                lr_scheduler.step()
 
             if global_rank == 0:
                 torch.save(net.module.state_dict(), os.path.join(save_path, f'last_net_{run+1}_diffusion_text_{args.backbone}_tuning_{args.lambda_mean}.pth'))

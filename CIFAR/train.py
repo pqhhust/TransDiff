@@ -240,12 +240,21 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
         subset_mean = means_x_minus
         subset_cov = covariances_x_minus
 
-        nll = negative_log_likelihood(x_t_from_qwen2, means_from_diffusion, stds_from_diffusion)
+        if args.epochs_stage1 is not None and epoch < args.epochs_stage1:
+            nll = negative_log_likelihood(x_t_from_qwen2, means_from_diffusion, stds_from_diffusion)
+        elif args.epochs_stage1 is None:
+            nll = negative_log_likelihood(x_t_from_qwen2, means_from_diffusion, stds_from_diffusion)
+        else:
+            nll = 0
 
         # means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, subset_mean, stds_from_diffusion, subset_cov)
-
-        loss = args.lambda_mean * nll + args.lambda_ce * ce_loss
-        loss /= args.accumulation_steps
+        if args.epochs_stage1 is not None and epoch < args.epochs_stage1:
+            loss = nll
+        elif args.epochs_stage1 is not None:
+            loss = ce_loss
+        else:
+            loss = args.lambda_mean * nll + args.lambda_ce * ce_loss
+            loss /= args.accumulation_steps
         loss.backward()
         if (i + 1) % args.accumulation_steps == 0:
             if args.clip_grad_value != 0:
