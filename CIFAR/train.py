@@ -248,7 +248,7 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
         elif args.epochs_stage1 is None:
             nll = negative_log_likelihood(x_t_from_qwen2, means_from_diffusion, stds_from_diffusion)
         else:
-            nll = 0
+            nll = torch.zeros(1).cuda()
 
         # means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, subset_mean, stds_from_diffusion, subset_cov)
         if args.epochs_stage1 is not None and epoch < args.epochs_stage1:
@@ -291,3 +291,4 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
             import gc; gc.collect()
             if is_distributed:
                 dist.barrier()
+        # return
