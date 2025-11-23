@@ -7,6 +7,7 @@ import sklearn.metrics as skm
 import datasets.cifar_loader as cifar_loader
 from utils.temperature_scaling import ModelWithTemperature
 from utils.mc_dropout import mc_dropout
+import wandb
 # from laplace import Laplace
 
 @torch.no_grad()
@@ -33,7 +34,7 @@ def validation(loader, net, args, method=None):
     #         la.optimize_prior_precision(method='marglik')
     net.eval()
     
-    val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
+    val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[], 'rv_coff': []}
 
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
@@ -61,8 +62,41 @@ def validation(loader, net, args, method=None):
                     output = net(inputs)    
             elif args.attn_type == "kep_svgp":
                 results = []
+                x1s = []
+                x2s = []
+                # frobenius_norm = 0
                 for _ in range(10):
-                    results.append(net(inputs)[0])
+                    out, x_t, _, _ = net(inputs)
+                    results.append(out)
+                    # print(x_t[0][0].shape)
+                    ## Shape of x_t: list of num_layers + 1 vectors, each of shape (B, num_tokens, dim)
+                    x1s.append(x_t[args.index1].reshape(x_t[args.index1].size(0), 1, -1)) ## Shape (B, num_tokens, dim)
+                    x2s.append(x_t[args.index2].reshape(x_t[args.index2].size(0), 1, -1)) ## Shape (B, num_tokens, dim)
+                # print(x1s[0].shape)
+                x1s = torch.stack(x1s) 
+                x1s = x1s.reshape(x1s.size(0), x1s.size(1), x1s.size(2), x1s.size(3), 1).permute(1, 2, 0, 3, 4) ## (B, num_tokens, num_samples, dim, 1)
+                x2s = torch.stack(x2s) 
+                x2s = x2s.reshape(x2s.size(0), x2s.size(1), x2s.size(2), x2s.size(3), 1).permute(1, 2, 0, 3, 4) ## (B, num_tokens, num_samples, dim, 1)
+                ## Compute cross-layer covariance of x1s and x2s
+                ## Compute E[X1X2^T] - E[X1]E[X2]^T
+                ex1 = torch.mean(x1s, dim=2, keepdim=True)
+                ex2 = torch.mean(x2s, dim=2, keepdim=True)
+                x1_minus_ex1 = x1s - ex1
+                x2_minus_ex2 = x2s - ex2
+                # ex1x2t = torch.mean(torch.matmul(x1s, x2s), dim=0)
+                # vx1 = torch.var(x1s, dim=2, unbiased=True, keepdim=True)
+                # trvx1square = (vx1 ** 2).sum((-2, -1))
+                # vx2 = torch.var(x2s, dim=2, unbiased=True, keepdim=True)
+                # trvx2square = (vx2 ** 2).sum((-2, -1))
+                var_x1 = torch.matmul(x1_minus_ex1, x1_minus_ex1.transpose(-2, -1)).mean(2)  ## (B, num_tokens, dim, dim)
+                var_x2 = torch.matmul(x2_minus_ex2, x2_minus_ex2.transpose(-2, -1)).mean(2)  ## (B, num_tokens, dim, dim)
+                cov_x1x2 = torch.matmul(x1_minus_ex1, x2_minus_ex2.transpose(-2, -1)).mean(2)
+                # frobenius_norm = torch.norm(cov_x1x2, dim=(-2, -1)).squeeze(0).mean(1)
+                tr_cov_x1x2square = (cov_x1x2 ** 2).sum((-2, -1))  ## (B, num_tokens)
+                trvx1square = (var_x1 ** 2).sum((-2, -1))  ## (B, num_tokens)
+                trvx2square = (var_x2 ** 2).sum((-2, -1))  ## (B, num_tokens)
+                rv_coff = tr_cov_x1x2square / (trvx1square.sqrt() * trvx2square.sqrt() + 1e-10) ## (1, B, num_tokens)
+                val_log['rv_coff'].append(rv_coff.cpu().data.numpy())
                 outputs = torch.stack(results)
                 output = torch.mean(outputs, 0)
             
@@ -106,6 +140,7 @@ def validation(loader, net, args, method=None):
         nll, brier = utils.metrics.calc_nll_brier(val_log['softmax'], val_log['logit'], val_log['target'])
 
     # log
+    wandb.log({'RV_Coff': np.mean(val_log['rv_coff'])})
     res = {
         'Acc.': acc,
         'FPR' : fpr*100,
@@ -116,7 +151,8 @@ def validation(loader, net, args, method=None):
         'AUPR Succ.': aupr_success*100,
         'ECE' : ece*100,
         'NLL' : nll*10,
-        'Brier' : brier*100
+        'Brier' : brier*100,
+        'RV Coff': np.mean(val_log['rv_coff'])
     }
 
     return res
@@ -186,14 +222,51 @@ def validation_ood(loader, ood_loader, net, args):
 def validation_diffusion(loader, net, args, pretrained_vit):
     net.eval()
     # pretrained_vit.eval()
-    val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[]}
+    val_log = {'softmax' : [], 'correct' : [], 'logit' : [], 'target':[], 'rv_coff': []}
 
     for batch_idx, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.cuda(), targets.cuda()
         # output = pretrained_vit._to_words(inputs)
         # output = pretrained_vit.emb(output)
         # output = output + pretrained_vit.pos_emb
-        output = net(inputs)
+        results = []
+        x1s = []
+        x2s = []
+        # frobenius_norm = 0
+        for _ in range(10):
+            out, x_t = net(inputs)
+            results.append(out)
+            # print(x_t[0][0].shape)
+            ## Shape of x_t: list of num_layers + 1 vectors, each of shape (B, num_tokens, dim)
+            x1s.append(x_t[args.index1].permute(0, 2, 1)) ## Shape (B, num_tokens, dim)
+            x2s.append(x_t[args.index2].permute(0, 2, 1)) ## Shape (B, num_tokens, dim)
+        # print(x1s[0].shape)
+        x1s = torch.stack(x1s) 
+        x1s = x1s.reshape(x1s.size(0), x1s.size(1), x1s.size(2), x1s.size(3), 1).permute(1, 2, 0, 3, 4) ## (B, num_tokens, num_samples, dim, 1)
+        x2s = torch.stack(x2s) 
+        x2s = x2s.reshape(x2s.size(0), x2s.size(1), x2s.size(2), x2s.size(3), 1).permute(1, 2, 0, 3, 4) ## (B, num_tokens, num_samples, dim, 1)
+        ## Compute cross-layer covariance of x1s and x2s
+        ## Compute E[X1X2^T] - E[X1]E[X2]^T
+        ex1 = torch.mean(x1s, dim=2, keepdim=True)
+        ex2 = torch.mean(x2s, dim=2, keepdim=True)
+        x1_minus_ex1 = x1s - ex1
+        x2_minus_ex2 = x2s - ex2
+        # ex1x2t = torch.mean(torch.matmul(x1s, x2s), dim=0)
+        # vx1 = torch.var(x1s, dim=2, unbiased=True, keepdim=True)
+        # trvx1square = (vx1 ** 2).sum((-2, -1))
+        # vx2 = torch.var(x2s, dim=2, unbiased=True, keepdim=True)
+        # trvx2square = (vx2 ** 2).sum((-2, -1))
+        var_x1 = torch.matmul(x1_minus_ex1, x1_minus_ex1.transpose(-2, -1)).mean(2)  ## (B, num_tokens, dim, dim)
+        var_x2 = torch.matmul(x2_minus_ex2, x2_minus_ex2.transpose(-2, -1)).mean(2)  ## (B, num_tokens, dim, dim)
+        cov_x1x2 = torch.matmul(x1_minus_ex1, x2_minus_ex2.transpose(-2, -1)).mean(2)
+        # frobenius_norm = torch.norm(cov_x1x2, dim=(-2, -1)).squeeze(0).mean(1)
+        tr_cov_x1x2square = (cov_x1x2 ** 2).sum((-2, -1))  ## (B, num_tokens)
+        trvx1square = (var_x1 ** 2).sum((-2, -1))  ## (B, num_tokens)
+        trvx2square = (var_x2 ** 2).sum((-2, -1))  ## (B, num_tokens)
+        rv_coff = tr_cov_x1x2square / (trvx1square.sqrt() * trvx2square.sqrt() + 1e-10) ## (1, B, num_tokens)
+        val_log['rv_coff'].append(rv_coff.cpu().data.numpy())
+        outputs = torch.stack(results)
+        output = torch.mean(outputs, 0)
         # h = pretrained_vit.enc[args.depth - 1].la2(output)
         # h = pretrained_vit.enc[args.depth - 1].mlp(h)
         # output = output + h
@@ -233,6 +306,7 @@ def validation_diffusion(loader, net, args, pretrained_vit):
     nll, brier = utils.metrics.calc_nll_brier(val_log['softmax'], val_log['logit'], val_log['target'])
 
     # log
+    wandb.log({'RV_Coff': np.mean(val_log['rv_coff'])})
     res = {
         'Acc.': acc,
         'FPR' : fpr*100,
@@ -243,7 +317,8 @@ def validation_diffusion(loader, net, args, pretrained_vit):
         'AUPR Succ.': aupr_success*100,
         'ECE' : ece*100,
         'NLL' : nll*10,
-        'Brier' : brier*100
+        'Brier' : brier*100,
+        'RV Coff': np.mean(val_log['rv_coff'])
     }
 
     return res

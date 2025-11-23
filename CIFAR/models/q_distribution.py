@@ -81,8 +81,8 @@ class KEP_SVGPAttention(nn.Module):
 
         ## samples from the approximate posterior
         if self.concate:
-            samples = mean + (v2 @ torch.randn(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze().permute(0, 1, 3, 2)
-            covariance = (v2 @ torch.ones(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze().permute(0, 1, 3, 2)
+            samples = mean + (v2 @ torch.randn(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze(dim=-1).permute(0, 1, 3, 2)
+            covariance = (v2 @ torch.ones(B, self.num_heads, self.low_rank, self.low_rank, 1).to(x.device)).squeeze(dim=-1).permute(0, 1, 3, 2)
         else:
             samples = mean + (v2.permute(0,1,3,2,4) @ torch.randn(B, self.num_heads, N, mean.shape[3], 1).to(x.device)).squeeze()
         attn_out = self.final_weight(samples)

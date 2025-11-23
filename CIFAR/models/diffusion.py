@@ -97,14 +97,17 @@ class Diffusion_Transformer(nn.Module):
 
     def forward(self, x, train=False):
         if not train:
+            xts = []
             x = self._to_words(x)
             x = self.emb(x)
             x = x + self.pos_emb
+            xts.append(x)
             for t in range(self.ViT_depth):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 x = self.forward_step(x, t_tensor)[-1]
+                xts.append(x)
             x = self.solution_head_1(self.ln(x)) + x
-            return self.solution_head_2(x.mean(1))
+            return self.solution_head_2(x.mean(1)), xts
         else:
             assert isinstance(x, list) and len(x) - 1 == self.ViT_depth, \
                 f"Expected input list length {self.ViT_depth + 1}, got {len(x)}"

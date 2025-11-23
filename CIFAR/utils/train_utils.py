@@ -17,6 +17,8 @@ def get_args_parser():
     parser.add_argument('--depth', type=int, default=7)
     parser.add_argument('--hdim', type=int, default=384)
     parser.add_argument('--num_heads', type=int, default=12)
+    parser.add_argument('--index1', type=int, default=1, help='Index of the first layer to compute RV coefficient')
+    parser.add_argument('--index2', type=int, default=2, help='Index of the second layer to compute RV coefficient')
 
     # KEP-SVGP-attention
     parser.add_argument('--ksvd-layers', type=int, default=1, help='Number of ksvd layers applied to the transformer')
