@@ -91,12 +91,14 @@ class Diffusion_Transformer_Text(nn.Module):
             x = self.qwen(input_ids, attention_mask)['last_hidden_state']
             # for t in range(self.ViT_depth - self.last_layers):
             #     x = self.layers[t](x, attention_mask, position_embeddings)['hidden_states']
+            x_prime = x
             for t in range(self.last_layers):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 if t == 0:    
                     mean, std, x = self.forward_step(x, t_tensor)
+                    x_prime = x
                 else:
-                    mean, std, _ = self.forward_step(x, t_tensor)
+                    mean, std, x_prime = self.forward_step(x_prime, t_tensor)
                 means.append(mean)
                 stds.append(std)
             # Apply GPT-2-like FFN with residual: x + MLP(LN(x))
