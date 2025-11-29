@@ -93,7 +93,10 @@ class Diffusion_Transformer_Text(nn.Module):
             #     x = self.layers[t](x, attention_mask, position_embeddings)['hidden_states']
             for t in range(self.last_layers):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
-                mean, std, x = self.forward_step(x, t_tensor)
+                if t == 0:    
+                    mean, std, x = self.forward_step(x, t_tensor)
+                else:
+                    mean, std, _ = self.forward_step(x, t_tensor)
                 means.append(mean)
                 stds.append(std)
             # Apply GPT-2-like FFN with residual: x + MLP(LN(x))
