@@ -54,6 +54,7 @@ class Diffusion_Transformer_Text(nn.Module):
 
         CONFIG_NEW.num_hidden_layers = self.ViT_depth - self.last_layers
         self.qwen = Qwen2Model(CONFIG_NEW)
+        self.qwen.norm = nn.Identity()
         # self.embed_tokens = nn.Embedding(CONFIG.vocab_size, CONFIG.hidden_size, CONFIG.pad_token_id)
         # self.rotary_emb = Qwen2RotaryEmbedding(config=CONFIG)
         # self.layers = nn.ModuleList([Qwen2DecoderLayer(CONFIG, layer_idx) for layer_idx in range(ViT_depth - last_layers)])
@@ -91,14 +92,9 @@ class Diffusion_Transformer_Text(nn.Module):
             x = self.qwen(input_ids, attention_mask)['last_hidden_state']
             # for t in range(self.ViT_depth - self.last_layers):
             #     x = self.layers[t](x, attention_mask, position_embeddings)['hidden_states']
-            x_prime = x
             for t in range(self.last_layers):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
-                if t == 0:    
-                    mean, std, x = self.forward_step(x, t_tensor)
-                    x_prime = x
-                else:
-                    mean, std, x_prime = self.forward_step(x_prime, t_tensor)
+                mean, std, x = self.forward_step(x, t_tensor)
                 means.append(mean)
                 stds.append(std)
             # Apply GPT-2-like FFN with residual: x + MLP(LN(x))
@@ -119,6 +115,7 @@ class Diffusion_Transformer_Text(nn.Module):
                 last_non_pad_token = (token_indices * non_pad_mask).argmax(-1)
 
             logits = self.score(self.norm(x_layer))
+            # logits = self.score(x_layer)
             pooled_logits = logits[torch.arange(batch_size, device=logits.device), last_non_pad_token]
             return pooled_logits, means, stds
         else:

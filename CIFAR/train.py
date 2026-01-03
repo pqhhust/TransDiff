@@ -152,6 +152,7 @@ def train_diffusion(train_loader, diffusion_model, optimizer, epoch, logger, arg
 def negative_log_likelihood(xs, means, covariances):
     nll = 0
     count = 0
+    # print(len(xs), len(means), len(covariances))
     for x, mean, std in zip(xs, means, covariances):
         ## compute log density of a Gaussian with mean mean and std std at x, std is a diagonal matrix
         B, S, D = mean.shape

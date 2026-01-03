@@ -5,10 +5,15 @@ from datasets import load_dataset
 def CoLALoaders(batch_size=32, num_workers=8, args=None, val_ratio=0.1, seed=42):
     dataset = load_dataset("glue", "sst2")
     tokenizer = Qwen2Tokenizer.from_pretrained(args.pretrained_dir)
+    # Add padding token if it doesn't exist
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+    # Ensure we have a valid pad token
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
     def tokenize_fn(batch):
-        return tokenizer(batch['sentence'], truncation=True, padding='max_length', max_length=512)
+        return tokenizer(batch['sentence'], truncation=False, padding='max_length', max_length=64)
     
     tokenized = dataset.map(tokenize_fn, batched=True)
     tokenized.set_format(type='torch', columns=['input_ids', 'attention_mask', 'label'])

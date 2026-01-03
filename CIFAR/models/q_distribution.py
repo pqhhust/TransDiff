@@ -14,7 +14,7 @@ from transformers.models.qwen2.modeling_qwen2 import PreTrainedModel, Qwen2Atten
 # from transformers import T5ForConditionalGeneration
 # from transformers import BertForSequenceClassification
 from transformers.modeling_layers import GenericForSequenceClassification
-from typing import Optional, Unpack
+from typing import Optional
 
 class TransformerEncoder(nn.Module):
     def __init__(self, args, attn_type, feats, mlp_hidden=128, head=8, dropout=0., embed_len=64, \
