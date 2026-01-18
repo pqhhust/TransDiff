@@ -411,15 +411,15 @@ def main_diffusion_text(args):
             for param in net.module.qwen.parameters():
                 param.requires_grad = False
             for param in net.module.post_attention_layernorm.parameters():
-                param.requires_grad = True
+                param.requires_grad = False
             for param in net.module.mlp.parameters():
                 param.requires_grad = False
             for param in net.module.last_decoder_layers.parameters():
                 param.requires_grad = False
             for param in net.module.norm.parameters():
-                param.requires_grad = True
+                param.requires_grad = False
             for param in net.module.score.parameters():
-                param.requires_grad = True
+                param.requires_grad = False
         for epoch in range(start_epoch, args.nb_epochs):
             if dist.get_world_size() > 1:
                 train_sampler.set_epoch(epoch)
