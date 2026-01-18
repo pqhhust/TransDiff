@@ -26,10 +26,10 @@ import torch.distributed as dist
 import gc
 import warmup_scheduler
 
-os.environ["NCCL_BLOCKING_WAIT"] = "1"
-os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
-os.environ["NCCL_DEBUG"] = "INFO"
-os.environ["NCCL_TIMEOUT"] = "900"
+# os.environ["NCCL_BLOCKING_WAIT"] = "1"
+# os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
+# os.environ["NCCL_DEBUG"] = "INFO"
+# os.environ["NCCL_TIMEOUT"] = "900"
 wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
 # wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
@@ -329,7 +329,7 @@ def main_diffusion_text(args):
         args.save_dir,
         f"text_{args.model}_{args.seed}_{args.trans_depth}_{args.trans_num_heads}_{args.trans_mlp_ratio}_{args.trans_dropout}_{args.lr}_{args.nb_epochs}"
     )
-    group = "Qwen-DiT"
+    group = "Qwen-DiT-new"
 
     # Distributed init
     local_rank = int(os.environ['LOCAL_RANK'])
@@ -409,13 +409,13 @@ def main_diffusion_text(args):
             for param in net.module.qwen.parameters():
                 param.requires_grad = False
             for param in net.module.post_attention_layernorm.parameters():
-                param.requires_grad = False
+                param.requires_grad = True
             for param in net.module.mlp.parameters():
-                param.requires_grad = False
+                param.requires_grad = True
             for param in net.module.norm.parameters():
-                param.requires_grad = False
+                param.requires_grad = True
             for param in net.module.score.parameters():
-                param.requires_grad = False
+                param.requires_grad = True
         for epoch in range(start_epoch, args.nb_epochs):
             if dist.get_world_size() > 1:
                 train_sampler.set_epoch(epoch)

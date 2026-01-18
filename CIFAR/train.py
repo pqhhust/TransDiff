@@ -244,21 +244,24 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
         subset_mean = means_x_minus
         subset_cov = covariances_x_minus
 
-        if args.epochs_stage1 is not None and epoch < args.epochs_stage1:
-            nll = negative_log_likelihood(x_t_from_qwen2, means_from_diffusion, stds_from_diffusion)
-        elif args.epochs_stage1 is None:
-            nll = negative_log_likelihood(x_t_from_qwen2, means_from_diffusion, stds_from_diffusion)
-        else:
-            nll = torch.zeros(1).cuda()
+        # if args.epochs_stage1 is not None and epoch < args.epochs_stage1:
+        #     nll = negative_log_likelihood(x_t_from_qwen2, means_from_diffusion, stds_from_diffusion)
+        # elif args.epochs_stage1 is None:
+        #     nll = negative_log_likelihood(x_t_from_qwen2, means_from_diffusion, stds_from_diffusion)
+        # else:
+        #     nll = torch.zeros(1).cuda()
+        nll = negative_log_likelihood(x_t_from_qwen2, means_from_diffusion, stds_from_diffusion)
+        # means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion[-args.last_layers:], means_x_minus, stds_from_diffusion[-args.last_layers:], covariances_x_minus)
 
         # means_loss, stds_loss = compute_loss_diffusion(args, mse_criterion, means_from_diffusion, subset_mean, stds_from_diffusion, subset_cov)
-        if args.epochs_stage1 is not None and epoch < args.epochs_stage1:
-            loss = nll
-        elif args.epochs_stage1 is not None:
-            loss = ce_loss
-        else:
-            loss = args.lambda_mean * nll + args.lambda_ce * ce_loss
-            loss /= args.accumulation_steps
+        # if args.epochs_stage1 is not None and epoch < args.epochs_stage1:
+        #     loss = nll
+        # elif args.epochs_stage1 is not None:
+        #     loss = ce_loss
+        # else:
+        loss = args.lambda_mean * nll + args.lambda_ce * ce_loss
+        # loss = args.lambda_mean * means_loss + args.lambda_ce * ce_loss + args.lambda_var * stds_loss
+        loss /= args.accumulation_steps
         loss.backward()
         if (i + 1) % args.accumulation_steps == 0:
             if args.clip_grad_value != 0:
@@ -278,7 +281,7 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
         train_log['Tot. Loss'].update(loss.item(), input_ids.size(0))
         train_log['LR'].update(lr, input_ids.size(0))
 
-        if i % 100 == 99 and rank == 0 and logger is not None:
+        if i % 10 == 9 and rank == 0 and logger is not None:
             log = ['LR : {:.5f}'.format(train_log['LR'].avg)] + [
                 key + ': {:.2f}'.format(train_log[key].avg) for key in train_log if key != 'LR'
             ]

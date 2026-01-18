@@ -319,11 +319,16 @@ def validation_text(loader, net, args, time_index=None):
         labels = batch['label'].cuda()
 
         if args.model == 'diffusion_text':
-            output = net(input_ids=input_ids, attention_mask=attention_mask, time_index=time_index)[0]
+            softmaxs = []
+            for _ in range(10):
+                output = net(input_ids=input_ids, attention_mask=attention_mask, time_index=time_index)[0]
+                softmaxs.append(output)
+            softmax = torch.mean(torch.stack(softmaxs), dim=0)
+            softmax = F.softmax(softmax, dim=1)
+            output = torch.zeros_like(softmax)
         elif args.attn_type == "softmax":
             output = net(x=input_ids, attention_mask=attention_mask)['logits']
 
-        softmax = F.softmax(output, dim=1)
         _, pred_cls = softmax.max(1)
 
         val_log['correct'].append(pred_cls.cpu().eq(labels.cpu().data.view_as(pred_cls)).numpy())
@@ -347,7 +352,7 @@ def validation_text(loader, net, args, time_index=None):
     # calibration measure ece , mce, rmsce
     ece = utils.metrics.calc_ece(val_log['softmax'], val_log['target'], bins=15)
     # brier, nll
-    if args.model == 'svdkl' or args.model == 'mc_dropout':
+    if args.model == 'svdkl' or args.model == 'mc_dropout' or args.model == 'diffusion_text':
         softmax = val_log['softmax'].astype(np.float32)
         targets = val_log['target'].astype(np.int64)
         log_probs = np.log(softmax[range(len(targets)), targets] + 1e-10)
@@ -461,7 +466,3 @@ if __name__ == "__main__":
     for metric, value in results.items():
         print(f"{metric:15s}: {value:8.4f}")
     print("="*50)
-
-
-
-
