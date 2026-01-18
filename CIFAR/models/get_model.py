@@ -67,7 +67,8 @@ def get_model(model_name, nb_cls, logger, args):
             ViT_depth=args.depth,
             nb_cls=args.nb_cls,
             CONFIG=config,
-            last_layers=args.last_layers
+            from_layer=args.from_layer,
+            to_layer=args.to_layer,
         )
         base_model = Qwen2ForSequenceClassification.from_pretrained(args.pretrained_dir)
         net.score.load_state_dict(base_model.score.state_dict())

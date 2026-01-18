@@ -39,6 +39,8 @@ def get_args_parser():
     parser.add_argument("--accumulation-steps", default=1, type=int)
     parser.add_argument("--resume-weights", default=None, type=str, help='Path to the checkpoint to resume from')
     parser.add_argument("--resume-training-state", default='training_state_1_last_diffusion_transformer.pth', type=str, help='Path to the traing_state to resume from')
+    parser.add_argument('--from_layer', default=0, type=int, help='Layer from which to start apply DiT')
+    parser.add_argument('--to_layer', default=7, type=int, help='Layer to which to apply DiT')
     parser.add_argument('--last_layers', default=5, type=int, help='Number of last layers to apply diffusion on')
     parser.add_argument('--epochs_stage1', default=None, type=int, help='Number of epochs for stage 1')
     parser.add_argument('--same_optimizer', action='store_true', help='whether to use the same optimizer for both diffusion and backbone')

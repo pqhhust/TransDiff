@@ -403,14 +403,18 @@ def main_diffusion_text(args):
             net.module.post_attention_layernorm.load_state_dict(pretrained_Qwen2.module.layers[-1].post_attention_layernorm.state_dict())
             net.module.norm.load_state_dict(pretrained_Qwen2.module.norm.state_dict())
             net.module.qwen.rotary_emb.load_state_dict(pretrained_Qwen2.module.rotary_emb.state_dict())
-            for i in range(args.depth - args.last_layers):
-                net.module.qwen.layers[i].load_state_dict(pretrained_Qwen2.module.layers[i].state_dict() )
+            for i in range(args.from_layer):
+                net.module.qwen.layers[i].load_state_dict(pretrained_Qwen2.module.layers[i].state_dict())
+            for i in range(args.to_layer, pretrained_Qwen2.module.config.num_hidden_layers):
+                net.module.last_decoder_layers[i - args.to_layer].load_state_dict(pretrained_Qwen2.module.layers[i].state_dict())
             # net.module.score.load_state_dict(pretrained_Qwen2.module.score.state_dict())
             for param in net.module.qwen.parameters():
                 param.requires_grad = False
             for param in net.module.post_attention_layernorm.parameters():
                 param.requires_grad = False
             for param in net.module.mlp.parameters():
+                param.requires_grad = False
+            for param in net.module.last_decoder_layers.parameters():
                 param.requires_grad = False
             for param in net.module.norm.parameters():
                 param.requires_grad = False
@@ -425,6 +429,8 @@ def main_diffusion_text(args):
                 for param in net.module.post_attention_layernorm.parameters():
                     param.requires_grad = True
                 for param in net.module.mlp.parameters():
+                    param.requires_grad = True
+                for param in net.module.last_decoder_layers.parameters():
                     param.requires_grad = True
                 for param in net.module.norm.parameters():
                     param.requires_grad = True
