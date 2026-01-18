@@ -9,6 +9,7 @@ from transformers import GPT2Config, Qwen2Model
 from transformers.models.gpt2.modeling_gpt2 import GPT2MLP
 from transformers import AutoModelForImageClassification
 from transformers.models.qwen2.modeling_qwen2 import Qwen2MLP, Qwen2RMSNorm, Qwen2RotaryEmbedding, Qwen2DecoderLayer
+from transformers.masking_utils import create_causal_mask
 
 import math
 from copy import deepcopy
@@ -41,18 +42,21 @@ class Diffusion_Transformer_Text(nn.Module):
         ViT_depth=24,
         nb_cls=2,
         CONFIG=None,
-        last_layers = 5
+        from_layer=0,
+        to_layer=0,
     ):
         super().__init__()
         self.config = CONFIG
         self.depth = depth
         self.ViT_depth = self.config.num_hidden_layers
         self.d_model = self.config.hidden_size
-        self.last_layers = last_layers
+        self.from_layer = from_layer
+        self.to_layer = to_layer
+        self.num_steps = to_layer - from_layer
         print(CONFIG)
         CONFIG_NEW = deepcopy(self.config)
 
-        CONFIG_NEW.num_hidden_layers = self.ViT_depth - self.last_layers
+        CONFIG_NEW.num_hidden_layers = self.from_layer
         self.qwen = Qwen2Model(CONFIG_NEW)
         self.qwen.norm = nn.Identity()
         # self.embed_tokens = nn.Embedding(CONFIG.vocab_size, CONFIG.hidden_size, CONFIG.pad_token_id)
@@ -74,8 +78,10 @@ class Diffusion_Transformer_Text(nn.Module):
             nn.Dropout(dropout),
         )
         # self.rotary_emb = Qwen2RotaryEmbedding(config=CONFIG)
+        
         self.mlp = Qwen2MLP(CONFIG)
         self.post_attention_layernorm = Qwen2RMSNorm(CONFIG.hidden_size, eps=CONFIG.rms_norm_eps)
+        self.last_decoder_layers = nn.ModuleList([Qwen2DecoderLayer(CONFIG, layer_idx) for layer_idx in range(to_layer, self.ViT_depth)])
         self.norm = Qwen2RMSNorm(CONFIG.hidden_size, eps=CONFIG.rms_norm_eps)
         self.score = nn.Linear(CONFIG.hidden_size, nb_cls, bias=False)
 
@@ -89,16 +95,34 @@ class Diffusion_Transformer_Text(nn.Module):
         if not train:
             means = []
             stds = []
+            inputs_embeds = self.qwen.embed_tokens(input_ids)
+            position_ids = torch.arange(input_ids.size(1), device=input_ids.device).unsqueeze(0)
+            position_embeddings = self.qwen.rotary_emb(inputs_embeds, position_ids)
             x = self.qwen(input_ids, attention_mask)['last_hidden_state']
             # for t in range(self.ViT_depth - self.last_layers):
             #     x = self.layers[t](x, attention_mask, position_embeddings)['hidden_states']
-            for t in range(self.last_layers):
+            for t in range(self.num_steps):
                 t_tensor = torch.tensor([t], device=x.device).expand(x.shape[0])
                 mean, std, x = self.forward_step(x, t_tensor)
                 means.append(mean)
                 stds.append(std)
             # Apply GPT-2-like FFN with residual: x + MLP(LN(x))
             x_layer = x + self.mlp(self.post_attention_layernorm(x))
+            mask_kwargs = {
+                "config": self.config,
+                "input_embeds": inputs_embeds,
+                "attention_mask": attention_mask,
+                "cache_position": torch.arange(input_ids.shape[1], device=input_ids.device),
+                "past_key_values": None,
+                "position_ids": position_ids,
+            }
+            # Create the masks
+            causal_mask_mapping = {
+                "full_attention": create_causal_mask(**mask_kwargs),
+            }
+            for layer in self.last_decoder_layers:
+                # decoder_attention_mask = attention_mask.bool()
+                x_layer = layer(x_layer, attention_mask=causal_mask_mapping["full_attention"], position_ids=position_ids, position_embeddings=position_embeddings)
             
             batch_size = x_layer.shape[0]
 
@@ -122,7 +146,7 @@ class Diffusion_Transformer_Text(nn.Module):
             means = []
             stds = []
             input_ = x[0]
-            for t in range(self.last_layers):
+            for t in range(self.num_steps):
                 t_tensor = torch.tensor([t], device=x[t].device).expand(x[t].shape[0])
                 mean, std, mean_plus_std = self.forward_step(input_, t_tensor)
                 input_ = mean_plus_std
