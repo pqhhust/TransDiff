@@ -222,16 +222,16 @@ def train_diffusion_text(train_loader, diffusion_model, optimizer, epoch, logger
                 input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids
             )
             covariances_x_minus = [torch.zeros_like(mean) for mean in means_x_minus]
-            means_x_minus = means_x_minus[-args.last_layers:]
-            covariances_x_minus = covariances_x_minus[-args.last_layers:]
+            means_x_minus = means_x_minus[args.from_layer: args.to_layer]
+            covariances_x_minus = covariances_x_minus[args.from_layer: args.to_layer]
         output, means_from_diffusion, stds_from_diffusion = diffusion_model(input_ids, attention_mask)  # logits
         ce_loss = ce_criterion(output, targets)
 
         # Diffusion alignment path
         # means_from_diffusion, stds_from_diffusion = diffusion_model(x_t_from_qwen2, train=True)
 
-        selected_indices_x = [i for i in range(0, args.last_layers + 1)]
-        selected_indices_mean = [i for i in range(1, args.last_layers)]
+        # selected_indices_x = [i for i in range(0, args.last_layers + 1)]
+        # selected_indices_mean = [i for i in range(1, args.last_layers)]
         #     ## merge 3
         # selected_indices_x = [0, 3, 6, 9, 12]
         # selected_indices_mean = [2, 5, 8, 11]
