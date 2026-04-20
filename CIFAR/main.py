@@ -29,7 +29,7 @@ import warmup_scheduler
 # os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
 os.environ["NCCL_DEBUG"] = "WARN"
 os.environ["NCCL_TIMEOUT"] = "900"
-wandb.login(key='1cfab558732ccb32d573a7276a337d22b7d8b371')
+wandb.login(key=os.environ.get('WANDB_API_KEY', '1cfab558732ccb32d573a7276a337d22b7d8b371'))
 # wandb.login(key='6cf7b84d1bd52c9eb1e5eade43f583a8059231f2')
 
 def step_ema(args, ema, net, epoch):

@@ -317,7 +317,12 @@ class CustomViT(nn.Module):
             self.model = ViTForImageClassification.from_pretrained(
                 'aaraki/vit-base-patch16-224-in21k-finetuned-cifar10'
             )
-            self.config = self.model.config   
+            self.config = self.model.config
+        elif args.dataset == 'cifar100':
+            self.model = ViTForImageClassification.from_pretrained(
+                'edumunozsala/vit_base-224-in21k-ft-cifar100'
+            )
+            self.config = self.model.config
     def forward(self, pixel_values):
         x_t = []
         hidden_states = self.model.vit.embeddings(pixel_values)
