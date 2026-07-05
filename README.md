@@ -1,4 +1,7 @@
 # DIRECTOR
+
+**Paper**: [Diffusion-Inspired Reconfiguration of Transformers for Uncertainty Calibration](https://arxiv.org/abs/2602.08920)
+
 To reproduce all the experiments, set your Weights & Biases API key using: 
 ```
 export WANDB_API_KEY=<your_api_key>
