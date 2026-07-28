@@ -12,7 +12,7 @@ def TrainDataLoader(img_dir, transform_train, batch_size):
 # test data loader
 def TestDataLoader(img_dir, transform_test, batch_size):
     test_set = ImageFolder(img_dir, transform_test)
-    test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=False)
+    test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True, persistent_workers=True, drop_last=False)
     return test_loader
 
 def get_loader(dataset, train_dir, val_dir, test_dir, batch_size):

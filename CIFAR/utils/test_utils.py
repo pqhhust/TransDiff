@@ -18,29 +18,58 @@ def get_args_parser():
     
     # KEP-SVGP-attention
     parser.add_argument('--ksvd-layers', type=int, default=1, help='Number of ksvd layers applied to the transformer')
-    parser.add_argument('--attn-type', default='kep_svgp', type=str, choices = ['kep_svgp', 'softmax'], help='Type of attention')
-    parser.add_argument('--concate', action='store_true', help='whether to use [e(x),r(x)] instead of (e(x)+r(x))')  
+    parser.add_argument('--attn-type', default='kep_svgp', type=str, choices = ['kep_svgp', 'softmax', 'sgpa'], help='Type of attention')
+    parser.add_argument('--concate', action='store_true', help='whether to use [e(x),r(x)] instead of (e(x)+r(x))')
     parser.add_argument('--eta-ksvd', type=float, default=0.1, help='coefficient of the KSVD regularization')
     parser.add_argument('--eta-kl', type=float, default=1.0, help='coefficient of the KL divergence regularization')
     parser.add_argument('--low_rank', type=int, default=10, help='Number of dimension the low rank method projected to')
     parser.add_argument('--rank_multi', type=int, default=10, help='low rank dimension * rank_multi')
 
     ## Model
-    parser.add_argument('--model', default='vit_cifar', type=str, choices = ['vit_cifar', 'diffusion'], help='Models name to use')
+    parser.add_argument('--model', default='vit_cifar', type=str,
+                        choices=['vit_cifar', 'diffusion', 'diffusion_distillation', 'vit_cifar_distillation',
+                                 'temperature_scaling', 'mc_dropout'],
+                        help='Models name to use')
     parser.add_argument('--depth', type=int, default=7)
     parser.add_argument('--hdim', type=int, default=384)
     parser.add_argument('--num_heads', type=int, default=12)
-    
-    ## diffusion
 
-    parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer'], help='Backbone name')
+    # Optimiser (only consumed as save_path fields at test time, but must be accepted).
+    parser.add_argument('--lr', default=1e-3, type=float, help='learning rate used at train time (only for save_path match)')
+    parser.add_argument('--weight-decay', default=1e-5, type=float, help='weight decay used at train time')
+    parser.add_argument('--nb-epochs', default=200, type=int, help='number of training epochs — must match the train run for save_path to resolve')
+
+    ## diffusion
+    parser.add_argument('--backbone', type=str, default='mlp', choices=['mlp', 'unet1d', 'transformer', 'mlp_mixer', 'lstm', 'gru'], help='Backbone name')
     parser.add_argument('--pretrained_dir', default=None, type=str, help='Pretrained diffusion model directory')
     parser.add_argument('--ema_decay', default=0.999, type=float, help='Exponential moving average decay')
     parser.add_argument('--ema_update_every', default=1, type=int, help='Update EMA every n steps')
     parser.add_argument('--clip', default=0, type=float, help='std error clipping value')
     parser.add_argument('--mlp_hdim', default=64, type=int, help='hidden dimension for diffusion mlp')
+    parser.add_argument('--mlp_hdim1', default=64, type=int, help='hidden dimension 1 for diffusion mlp')
+    parser.add_argument('--mlp_hdim2', default=64, type=int, help='hidden dimension 2 for diffusion mlp')
+    parser.add_argument('--mlp_hdim3', default=64, type=int, help='hidden dimension 3 for diffusion mlp')
+    parser.add_argument('--mlp_hdim4', default=64, type=int, help='hidden dimension 4 for diffusion mlp')
     parser.add_argument('--pretrained_seed', default=0, type=int, help='seed for pretraining ViT')
     parser.add_argument('--mlp_dropout', default=0.1, type=float, help='dropout rate for diffusion mlp')
+
+    # Transformer diffusion backbone (save_path needs these).
+    parser.add_argument('--trans_depth', type=int, default=1, help='number of DiTBlock')
+    parser.add_argument('--trans_num_heads', type=int, default=12, help='number of heads of a DiTBlock')
+    parser.add_argument('--trans_mlp_ratio', type=float, default=1.0, help='mlp ratio of a DiTBlock')
+    parser.add_argument('--trans_dropout', type=float, default=0.1, help='dropout rate for transformer backbone')
+
+    # RNN diffusion backbone (save_path needs these when --backbone {lstm,gru}).
+    parser.add_argument('--rnn_hidden', default=384, type=int)
+    parser.add_argument('--rnn_num_layers', default=1, type=int)
+    parser.add_argument('--rnn_dropout', default=0.1, type=float)
+    parser.add_argument('--rnn_low_dim', default=6, type=int)
+
+    # Diffusion loss weights (only used as save_path fields and by test_distillation ckpt name).
+    parser.add_argument('--lambda_mean', default=1., type=float)
+    parser.add_argument('--lambda_var', default=1., type=float)
+    parser.add_argument('--lambda_ce', default=1., type=float)
+    parser.add_argument('--temperature', type=float, default=1.0, help='distillation temperature (save_path)')
 
     subparsers = parser.add_subparsers(title="dataset setting", dest="subcommand")
     Cifar10 = subparsers.add_parser("Cifar10",
@@ -66,6 +95,13 @@ def get_args_parser():
     Cifar100.add_argument("--test-dir", type=str, default='./data/CIFAR100/test', help="Cifar100 test directory")
     Cifar100.add_argument("--nb-cls", type=int, default=100, help="number of classes in Cifar100")
 
+    # --- NeurIPS26 rebuttal flags ---
+    parser.add_argument('--num_samples', default=10, type=int,
+                        help='Number of MC samples for KEP-SVGP / SGPA / DIRECTOR ensembling at eval time.')
+    parser.add_argument('--post_hoc_ts', action='store_true',
+                        help='Apply post-hoc Temperature Scaling to the loaded model during test.')
+    parser.add_argument('--dump_softmax', action='store_true',
+                        help='Dump (softmax, target, correct) arrays to save_path/dump_softmax.npz.')
 
     # diffusion setting
     # Diffusion = subparsers.add_parser("Diffusion",

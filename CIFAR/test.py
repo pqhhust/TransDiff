@@ -124,15 +124,27 @@ def test(args):
                                                                        args.test_dir, args.batch_size)
         print(nb_cls)
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
-        net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
+        try:
+            net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}.pth')))
+        except (FileNotFoundError, RuntimeError) as e:
+            logger.info(f'No matching checkpoint — timing with RANDOM weights ({e.__class__.__name__})')
         net = net.cuda()
+        # warm-up pass: spawn loader workers, fill page cache, init CUDA kernels (excluded from timing)
+        with torch.no_grad():
+            for _warm_x, _ in test_loader:
+                _ = net(_warm_x.cuda())
+        torch.cuda.synchronize()
+        torch.cuda.reset_peak_memory_stats()
         logger.info('Start inference.')
         start_time = time.time()
         process_results(args, test_loader, net, metrics, logger, "MSP", results_storage)
         end_time = time.time()
         logger.info('End inference.')
         inference_time = end_time - start_time
-        wandb.log({"inference_time_seconds": inference_time})
+        inference_memory_gb = torch.cuda.max_memory_allocated() / 1024 ** 3
+        logger.info(f'Inference time: {inference_time:.3f} s')
+        logger.info(f'Inference memory: {inference_memory_gb:.4f} GB')
+        wandb.log({"inference_time_seconds": inference_time, "inference_memory_gb": inference_memory_gb})
 
         # if args.dataset == 'cifar10':
         #     transform_test = torchvision.transforms.Compose([
@@ -194,15 +206,27 @@ def test_diffusion(args):
         print(nb_cls)
         net = models.get_model.get_model(args.model, nb_cls, logger, args)
         pretrained_ViT = None
-        net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_diffusion_{args.backbone}.pth')))
+        try:
+            net.load_state_dict(torch.load(os.path.join(save_path, f'best_acc_net_{r + 1}_diffusion_{args.backbone}.pth')))
+        except (FileNotFoundError, RuntimeError) as e:
+            logger.info(f'No matching checkpoint — timing with RANDOM weights ({e.__class__.__name__})')
         net = net.cuda()
+        # warm-up pass: spawn loader workers, fill page cache, init CUDA kernels (excluded from timing)
+        with torch.no_grad():
+            for _warm_x, _ in test_loader:
+                _ = net(_warm_x.cuda())
+        torch.cuda.synchronize()
+        torch.cuda.reset_peak_memory_stats()
         logger.info('Start inference.')
         start_time = time.time()
         process_results_diffusion(args, test_loader, net, metrics, logger, "MSP", results_storage, pretrained_ViT)
         end_time = time.time()
         logger.info('End inference.')
         inference_time = end_time - start_time
-        wandb.log({"inference_time_seconds": inference_time})
+        inference_memory_gb = torch.cuda.max_memory_allocated() / 1024 ** 3
+        logger.info(f'Inference time: {inference_time:.3f} s')
+        logger.info(f'Inference memory: {inference_memory_gb:.4f} GB')
+        wandb.log({"inference_time_seconds": inference_time, "inference_memory_gb": inference_memory_gb})
 
         # if args.dataset == 'cifar10':
         #     transform_test = torchvision.transforms.Compose([
