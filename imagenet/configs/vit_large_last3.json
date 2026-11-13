@@ -1,0 +1,21 @@
+{
+  "from_layer": 21,
+  "to_layer": 24,
+  "trans_depth": 3,
+  "mlp_ratio": 4.0,
+  "dropout": 0.1,
+  "lambda_nll": 1.0,
+  "lambda_ce": 1.0,
+  "epochs": 20,
+  "lr": 0.00005,
+  "min_lr": 0.0000001,
+  "weight_decay": 0.0000005,
+  "warmup_epochs": 5,
+  "batch_size": 32,
+  "effective_batch_size": 512,
+  "precision": "auto",
+  "activation_checkpointing": true,
+  "split_backward": false,
+  "mc_samples": 1,
+  "seed": 0
+}

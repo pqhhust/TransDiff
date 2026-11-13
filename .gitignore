@@ -13,3 +13,6 @@ CIFAR/results
 CIFAR/data/LSUN*
 CIFAR/data/selected_test*
 CIFAR/data/test*
+results/
+transdiff-vit-*.log
+.pytest_cache/

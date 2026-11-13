@@ -98,18 +98,39 @@ class LabelEmbedder(nn.Module):
 #                                 Core DiT Model                                #
 #################################################################################
 
+class SwiGLU(nn.Module):
+    """SwiGLU MLP (Shazeer 2020): fc2(silu(W x) * V x).
+
+    Default width 2/3 * mlp_ratio * d (rounded down to a multiple of 8) keeps the
+    parameter count at or below the GELU Mlp with the same mlp_ratio.
+    """
+    def __init__(self, in_features, hidden_features):
+        super().__init__()
+        self.fc1 = nn.Linear(in_features, 2 * hidden_features, bias=True)
+        self.fc2 = nn.Linear(hidden_features, in_features, bias=True)
+
+    def forward(self, x):
+        a, b = self.fc1(x).chunk(2, dim=-1)
+        return self.fc2(nn.functional.silu(a) * b)
+
+
 class DiTBlock(nn.Module):
     """
     A DiT block with adaptive layer norm zero (adaLN-Zero) conditioning.
     """
-    def __init__(self, hidden_size, num_heads, mlp_ratio=4.0, **block_kwargs):
+    def __init__(self, hidden_size, num_heads, mlp_ratio=4.0, mlp_type='gelu', **block_kwargs):
         super().__init__()
         self.norm1 = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
         self.attn = Attention(hidden_size, num_heads=num_heads, qkv_bias=True, **block_kwargs)
         self.norm2 = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
         mlp_hidden_dim = int(hidden_size * mlp_ratio)
-        approx_gelu = lambda: nn.GELU()#(approximate="tanh")
-        self.mlp = Mlp(in_features=hidden_size, hidden_features=mlp_hidden_dim, act_layer=approx_gelu, drop=0)
+        if mlp_type == 'swiglu':
+            self.mlp = SwiGLU(hidden_size, int(2 * mlp_hidden_dim / 3) // 8 * 8)
+        elif mlp_type == 'gelu':
+            approx_gelu = lambda: nn.GELU()#(approximate="tanh")
+            self.mlp = Mlp(in_features=hidden_size, hidden_features=mlp_hidden_dim, act_layer=approx_gelu, drop=0)
+        else:
+            raise ValueError(f'Unknown mlp_type {mlp_type}')
         self.adaLN_modulation = nn.Sequential(
             nn.SiLU(),
             nn.Linear(hidden_size, 6 * hidden_size, bias=True)
@@ -152,6 +173,7 @@ class DiT(nn.Module):
         depth=1,
         num_heads=12,
         mlp_ratio=1.0,
+        mlp_type='gelu',
     ):
         super().__init__()
         self.num_heads = num_heads
@@ -159,7 +181,7 @@ class DiT(nn.Module):
         self.t_embedder = TimestepEmbedder(hidden_size)
 
         self.blocks = nn.ModuleList([
-            DiTBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio) for _ in range(depth)
+            DiTBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio, mlp_type=mlp_type) for _ in range(depth)
         ])
 
         self.initialize_weights()
